@@ -44,37 +44,42 @@ export default function QuoteChart({
         {betCount > 0 ? (
           <div className="space-y-4">
             {/* Grafico centrato */}
-            <div className="w-full h-64">
-              <ResponsiveContainer width="100%" height={256}>
-                <LineChart data={chartData} margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis 
-                    dataKey="time" 
-                    stroke="#6b7280"
-                    fontSize={12}
-                  />
-                  <YAxis 
-                    stroke="#6b7280"
-                    fontSize={12}
-                    domain={[0, 100]}
-                    tickFormatter={(value) => `${value}%`}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="yes" 
-                    stroke="#10b981" 
-                    strokeWidth={3}
-                    dot={{ fill: '#10b981', strokeWidth: 2, r: 6 }}
-                    activeDot={{ r: 8, stroke: '#10b981', strokeWidth: 2 }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="no" 
-                    stroke="#ef4444" 
-                    strokeWidth={3}
-                    dot={{ fill: '#ef4444', strokeWidth: 2, r: 6 }}
-                    activeDot={{ r: 8, stroke: '#ef4444', strokeWidth: 2 }}
-                  />
+            <div className="w-full h-64 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart 
+                  data={chartData} 
+                  margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
+                >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="time" 
+                      stroke="#6b7280"
+                      fontSize={10}
+                      tick={{ fontSize: 10 }}
+                    />
+                    <YAxis 
+                      stroke="#6b7280"
+                      fontSize={10}
+                      domain={[0, 100]}
+                      tick={{ fontSize: 10 }}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="yes" 
+                      stroke="#10b981" 
+                      strokeWidth={2}
+                      dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2 }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="no" 
+                      stroke="#ef4444" 
+                      strokeWidth={2}
+                      dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2 }}
+                    />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -85,7 +90,7 @@ export default function QuoteChart({
                 <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 text-center">
                   📊 Quote
                 </h4>
-                <div className="flex space-x-6">
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-6">
                   <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                     <span className="text-sm text-gray-700 dark:text-gray-300">Sì</span>

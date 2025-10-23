@@ -287,11 +287,16 @@ export default function PredictionPage({ params }: { params: { slug: string } })
 
   // useEffect per reindirizzare alla homepage se il wallet si disconnette
   useEffect(() => {
-    // Se l'utente era connesso e ora non lo è più, reindirizza alla homepage
-    if (isAuthenticated === false && address === undefined) {
-      console.log('Wallet disconnesso, reindirizzamento alla homepage...');
-      router.push('/');
-    }
+    // Aggiungi un delay per evitare reindirizzamenti prematuri durante il refresh
+    const timeoutId = setTimeout(() => {
+      // Se l'utente era connesso e ora non lo è più, reindirizza alla homepage
+      if (isAuthenticated === false && address === undefined) {
+        console.log('Wallet disconnesso, reindirizzamento alla homepage...');
+        router.push('/');
+      }
+    }, 2000); // 2 secondi di delay
+
+    return () => clearTimeout(timeoutId);
   }, [isAuthenticated, address, router]);
 
   const loadPredictionData = async () => {
