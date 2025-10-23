@@ -28,7 +28,11 @@
     "wagmi": "^2.18.2"
   },
   "overrides": {
-    "glob": "^10.0.0"
+    "glob": "^10.0.0",
+    "hardhat": "2.26.3",
+    "@nomicfoundation/hardhat-chai-matchers": "2.1.0",
+    "@nomicfoundation/hardhat-ethers": "3.1.0",
+    "@typechain/hardhat": "9.1.0"
   },
   "npmConfig": {
     "legacy-peer-deps": true
