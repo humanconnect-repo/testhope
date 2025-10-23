@@ -21,31 +21,6 @@ export default function QuoteChart({
     { time: 'Nessuna scommessa', yes: 0, no: 0 }
   ];
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
-          <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">{label}</p>
-          <div className="space-y-1">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                Sì: <span className="font-bold text-green-600 dark:text-green-400">{payload[0].value}%</span>
-              </span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                No: <span className="font-bold text-red-600 dark:text-red-400">{payload[1].value}%</span>
-              </span>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <div className="w-full">
       <div className="mb-8">
@@ -67,40 +42,67 @@ export default function QuoteChart({
       
       <div className="mb-6">
         {betCount > 0 ? (
-          <div className="w-full h-64">
-            <ResponsiveContainer width="100%" height={256}>
-              <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis 
-                  dataKey="time" 
-                  stroke="#6b7280"
-                  fontSize={12}
-                />
-                <YAxis 
-                  stroke="#6b7280"
-                  fontSize={12}
-                  domain={[0, 100]}
-                  tickFormatter={(value) => `${value}%`}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Line 
-                  type="monotone" 
-                  dataKey="yes" 
-                  stroke="#10b981" 
-                  strokeWidth={3}
-                  dot={{ fill: '#10b981', strokeWidth: 2, r: 6 }}
-                  activeDot={{ r: 8, stroke: '#10b981', strokeWidth: 2 }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="no" 
-                  stroke="#ef4444" 
-                  strokeWidth={3}
-                  dot={{ fill: '#ef4444', strokeWidth: 2, r: 6 }}
-                  activeDot={{ r: 8, stroke: '#ef4444', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="space-y-4">
+            {/* Grafico centrato */}
+            <div className="w-full h-64">
+              <ResponsiveContainer width="100%" height={256}>
+                <LineChart data={chartData} margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    dataKey="time" 
+                    stroke="#6b7280"
+                    fontSize={12}
+                  />
+                  <YAxis 
+                    stroke="#6b7280"
+                    fontSize={12}
+                    domain={[0, 100]}
+                    tickFormatter={(value) => `${value}%`}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="yes" 
+                    stroke="#10b981" 
+                    strokeWidth={3}
+                    dot={{ fill: '#10b981', strokeWidth: 2, r: 6 }}
+                    activeDot={{ r: 8, stroke: '#10b981', strokeWidth: 2 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="no" 
+                    stroke="#ef4444" 
+                    strokeWidth={3}
+                    dot={{ fill: '#ef4444', strokeWidth: 2, r: 6 }}
+                    activeDot={{ r: 8, stroke: '#ef4444', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            
+            {/* Pannello Quote Attuali sotto il grafico */}
+            <div className="flex justify-center">
+              <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 text-center">
+                  📊 Quote
+                </h4>
+                <div className="flex space-x-6">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Sì</span>
+                    <span className="text-sm font-bold text-green-600 dark:text-green-400">
+                      {yesPercentage.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <span className="text-sm text-gray-700 dark:text-gray-300">No</span>
+                    <span className="text-sm font-bold text-red-600 dark:text-red-400">
+                      {noPercentage.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -115,17 +117,6 @@ export default function QuoteChart({
             </div>
           </div>
         )}
-      </div>
-      
-      <div className="mt-4 flex justify-center space-x-6">
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-          <span className="text-sm text-gray-700 dark:text-gray-300">Sì</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-          <span className="text-sm text-gray-700 dark:text-gray-300">No</span>
-        </div>
       </div>
     </div>
   );

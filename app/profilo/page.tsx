@@ -1,16 +1,34 @@
 "use client";
 import { useWeb3Auth } from '@/hooks/useWeb3Auth'
+import { useUserTotalBnb } from '@/hooks/useUserTotalBnb'
+import { useUserActivePredictions } from '@/hooks/useUserActivePredictions'
 import ProfileForm from '@/components/ProfileForm'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 
 export default function ProfiloPage() {
-  const { isAuthenticated, address, isConnected } = useWeb3Auth()
+  const { isAuthenticated, address, isConnected, user } = useWeb3Auth()
   const router = useRouter()
   const [isChecking, setIsChecking] = useState(true)
   const [hasBeenAuthenticated, setHasBeenAuthenticated] = useState(false)
+  
+  // Carica il totale BNB e le statistiche dell'utente
+  const { totalBnb, totalBets, loading: bnbLoading, error: bnbError } = useUserTotalBnb(user?.id || null)
+  
+  // Carica le prediction attive dell'utente
+  const { predictions: activePredictions, loading: predictionsLoading, error: predictionsError } = useUserActivePredictions(user?.id || null)
+  
+  // Stato per il loading durante la navigazione
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
+
+  // Funzione per gestire il click su una prediction con loading
+  const handlePredictionClick = (slug: string, id: string) => {
+    setNavigatingTo(id)
+    router.push(`/bellanapoli.prediction/${slug}`)
+  }
 
   // Controllo iniziale di autenticazione
   useEffect(() => {
@@ -146,7 +164,17 @@ export default function ProfiloPage() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Volumi effettuati totali</span>
-                  <span className="text-lg font-bold text-gray-900 dark:text-white">0.00 BNB</span>
+                  <span className="text-lg font-bold text-gray-900 dark:text-white">
+                    {bnbLoading ? (
+                      <div className="animate-pulse">
+                        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+                      </div>
+                    ) : bnbError ? (
+                      <span className="text-red-500 dark:text-red-400 text-sm">Errore</span>
+                    ) : (
+                      `${totalBnb.toFixed(4)} BNB`
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500 dark:text-gray-400">BNB guadagnati</span>
@@ -200,7 +228,17 @@ export default function ProfiloPage() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Prediction fatte</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">0</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {bnbLoading ? (
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8"></div>
+                      </div>
+                    ) : bnbError ? (
+                      <span className="text-red-500 dark:text-red-400 text-xs">Errore</span>
+                    ) : (
+                      totalBets
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Prediction vinte</span>
@@ -213,25 +251,81 @@ export default function ProfiloPage() {
               </div>
             </div>
 
-            {/* Azioni rapide */}
+            {/* Le tue Prediction in corso */}
             <div className="bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                ⚡ Azioni rapide
+                📊 Le tue Prediction in corso
               </h3>
-              <div className="space-y-3">
-                <button
-                  onClick={() => {/* TODO: Implementare navigazione alle prediction in corso */}}
-                  className="w-full text-left px-4 py-2 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
-                >
-                  📊 Le tue Prediction in corso
-                </button>
-                <button
-                  onClick={() => {/* TODO: Implementare navigazione alle prediction passate */}}
-                  className="w-full text-left px-4 py-2 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
-                >
-                  📈 Le tue Prediction passate
-                </button>
-              </div>
+              {predictionsLoading ? (
+                <div className="space-y-3">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                </div>
+              ) : predictionsError ? (
+                <div className="text-center py-4">
+                  <p className="text-red-500 dark:text-red-400 text-sm">{predictionsError}</p>
+                </div>
+              ) : activePredictions.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    Non hai prediction attive al momento
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {activePredictions.map((prediction) => (
+                    <div
+                      key={prediction.id}
+                      onClick={() => handlePredictionClick(prediction.slug, prediction.id)}
+                      className={`block p-3 rounded-md transition-colors duration-200 cursor-pointer ${
+                        navigatingTo === prediction.id
+                          ? 'bg-primary/10 dark:bg-primary/20'
+                          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {navigatingTo === prediction.id ? (
+                        <div className="flex items-center justify-center py-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-4 h-4 bg-primary/20 rounded-full animate-pulse"></div>
+                            <span className="text-sm text-primary dark:text-primary-400 font-medium">
+                              Caricamento...
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
+                              {prediction.title}
+                            </h4>
+                            <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary dark:bg-primary/20 ml-2 flex-shrink-0">
+                              {prediction.category}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
+                            <span>
+                              Scommessa: {prediction.amount_bnb.toFixed(4)} BNB
+                            </span>
+                            <span className={`px-2 py-1 rounded ${
+                              prediction.position === 'yes' 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                                : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                            }`}>
+                              {prediction.position === 'yes' ? 'Sì' : 'No'}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

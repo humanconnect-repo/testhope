@@ -27,15 +27,31 @@ export default function RootLayout({
                 global.indexedDB = {} as IDBFactory;
               }
               
-              // Disabilita warning Lit in console
+              // Filtri console per errori non bloccanti
               if (typeof window !== 'undefined') {
+                // Filtra warning Lit
                 const originalWarn = console.warn;
                 console.warn = (...args) => {
                   if (typeof args[0] === "string" && args[0].includes("Lit is in dev mode")) return;
                   originalWarn(...args);
                 };
                 
-                // Disabilita anche altri warning di Lit
+                // Filtra errori Coinbase Analytics
+                const originalError = console.error;
+                console.error = (...args) => {
+                  const message = args[0]?.toString() || '';
+                  if (
+                    message.includes('cca-lite.coinbase.com') ||
+                    message.includes('ERR_BLOCKED_BY_CLIENT') ||
+                    message.includes('Analytics SDK') ||
+                    message.includes('Failed to fetch')
+                  ) {
+                    return; // Non mostrare questi errori
+                  }
+                  originalError(...args);
+                };
+                
+                // Disabilita warning Lit
                 window.litDisableBundleWarning = true;
                 if (window.litConfig) {
                   window.litConfig.devMode = false;

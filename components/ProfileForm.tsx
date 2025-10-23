@@ -40,13 +40,15 @@ export default function ProfileForm() {
     const loadProfile = async () => {
       try {
         // Prima prova a usare i dati già caricati nell'utente
-        const userProfile: Profile | undefined = user?.user_metadata?.profile
+        const userProfile = user?.user_metadata
         console.log('🔍 ProfileForm useEffect - user:', user)
         console.log('🔍 ProfileForm useEffect - userProfile:', userProfile)
-        if (userProfile) {
+        console.log('🔍 ProfileForm useEffect - user.user_metadata:', user?.user_metadata)
+        
+        if (userProfile && userProfile.username) {
           console.log('📋 Caricando profilo da utente autenticato:', userProfile)
           setProfile({
-            nickname: userProfile.nickname || '', // nickname nel DB e nel form
+            nickname: userProfile.username || '', // username nel DB, nickname nel form
             avatar_url: userProfile.avatar_url || '',
             bio: userProfile.bio || ''
           })
@@ -63,15 +65,20 @@ export default function ProfileForm() {
           .eq('wallet_address', address)
           .single()
 
+        console.log('🔍 Database query result:', { data, error })
+
         if (error && error.code !== 'PGRST116') {
           console.error('Errore caricamento profilo:', error)
         } else if (data) {
+          console.log('📋 Dati caricati dal database:', data)
           setProfile({
             nickname: data.username || '', // username nel DB, nickname nel form
             avatar_url: data.avatar_url || '',
             bio: data.bio || ''
           })
           // Non serve più setAvatarPreview
+        } else {
+          console.log('📋 Nessun profilo trovato nel database')
         }
       } catch (err) {
         console.error('Errore caricamento profilo:', err)
