@@ -28,8 +28,12 @@ export default function Footer() {
               >
                 Keet
               </button> |{' '}
-              <a href="#" className="text-primary hover:underline">Telegram</a> |{' '}
-              <a href="#" className="text-primary hover:underline">X</a>
+              <a 
+                href="mailto:bellanapoli@tuta.com" 
+                className="text-primary hover:underline"
+              >
+                Report a bug
+              </a>
             </p>
           </div>
         </div>
@@ -46,7 +50,7 @@ export default function Footer() {
               
               <div className="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg p-4 mb-4">
                 <p className="text-yellow-800 dark:text-yellow-200 text-sm font-medium">
-                  ⏰ Il link Keet scade il <strong>6 novembre 2024</strong>
+                  ⏰ Il link Keet scade il <strong>6 novembre 2025</strong>
                 </p>
               </div>
 
