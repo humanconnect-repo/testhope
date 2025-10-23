@@ -13,6 +13,9 @@ interface Profile {
 interface User {
   user_metadata?: {
     profile?: Profile;
+    username?: string;
+    avatar_url?: string;
+    bio?: string;
   };
 }
 
