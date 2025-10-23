@@ -28,8 +28,7 @@
     "wagmi": "^2.18.2"
   },
   "overrides": {
-    "glob": "^10.0.0",
-    "hardhat": "2.26.3"
+    "glob": "^10.0.0"
   },
   "npmConfig": {
     "legacy-peer-deps": true
