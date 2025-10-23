@@ -62,13 +62,13 @@ export default function PredictionList({ selectedCategory }: PredictionListProps
             const { data: betStats } = await supabase
               .rpc('get_prediction_percentages', { prediction_uuid: prediction.id });
 
-            const stats = betStats?.[0] || { yes_percentage: 0, no_percentage: 0, total_bets: 0 };
+            const stats = betStats?.[0] || { yes_percentage: 0, no_percentage: 0, total_bets: 0, total_amount_bnb: 0 };
 
             return {
               ...prediction,
               yes_percentage: stats.yes_percentage || 0,
               no_percentage: stats.no_percentage || 0,
-              total_bets: stats.total_bets || 0
+              total_bets: stats.total_amount_bnb || 0
             };
           })
         );
@@ -105,13 +105,13 @@ export default function PredictionList({ selectedCategory }: PredictionListProps
             const { data: betStats } = await supabase
               .rpc('get_prediction_percentages', { prediction_uuid: prediction.id });
 
-            const stats = betStats?.[0] || { yes_percentage: 0, no_percentage: 0, total_bets: 0 };
+            const stats = betStats?.[0] || { yes_percentage: 0, no_percentage: 0, total_bets: 0, total_amount_bnb: 0 };
 
             return {
               ...prediction,
               yes_percentage: stats.yes_percentage || 0,
               no_percentage: stats.no_percentage || 0,
-              total_bets: stats.total_bets || 0
+              total_bets: stats.total_amount_bnb || 0
             };
           })
         );
@@ -143,13 +143,13 @@ export default function PredictionList({ selectedCategory }: PredictionListProps
             const { data: betStats } = await supabase
               .rpc('get_prediction_percentages', { prediction_uuid: prediction.id });
 
-            const stats = betStats?.[0] || { yes_percentage: 0, no_percentage: 0, total_bets: 0 };
+            const stats = betStats?.[0] || { yes_percentage: 0, no_percentage: 0, total_bets: 0, total_amount_bnb: 0 };
 
             return {
               ...prediction,
               yes_percentage: stats.yes_percentage || 0,
               no_percentage: stats.no_percentage || 0,
-              total_bets: stats.total_bets || 0
+              total_bets: stats.total_amount_bnb || 0
             };
           })
         );
@@ -297,6 +297,7 @@ export default function PredictionList({ selectedCategory }: PredictionListProps
             noPercentage={prediction.no_percentage}
             category={prediction.category}
             status={prediction.status}
+            totalBets={prediction.total_bets || 0}
           />
         ))}
       </div>
