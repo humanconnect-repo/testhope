@@ -13,6 +13,7 @@ interface PredictionCardProps {
   noPercentage: number;
   category: string;
   status?: string;
+  totalBets?: number;
 }
 
 export default function PredictionCard({ 
@@ -22,7 +23,8 @@ export default function PredictionCard({
   yesPercentage, 
   noPercentage, 
   category,
-  status 
+  status,
+  totalBets = 0
 }: PredictionCardProps) {
   const { isConnected } = useWeb3Auth();
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -69,7 +71,7 @@ export default function PredictionCard({
 
         {/* Status e Data di chiusura */}
         <div className="mb-3 space-y-1">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between">
             <span className={`text-xs font-medium ${
               status === 'attiva' 
                 ? 'text-green-600 dark:text-green-400' 
@@ -89,6 +91,9 @@ export default function PredictionCard({
                status === 'risolta' ? '🏆 RISOLTA' :
                status === 'cancellata' ? '🔴 CANCELLATA' :
                '🟢 ATTIVA'}
+            </span>
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+              Volumi: <span className="font-bold text-primary">{totalBets.toFixed(4)} BNB</span>
             </span>
           </div>
           {status !== 'attiva' && status !== 'in_attesa' && (
