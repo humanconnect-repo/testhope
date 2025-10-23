@@ -1,0 +1,243 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,wght@0,200;0,300;0,400;0,600;0,700;0,800;0,900;1,200;1,300;1,400;1,600;1,700;1,800;1,900&display=swap');
+@import '@rainbow-me/rainbowkit/styles.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: 'Nunito Sans', sans-serif;
+}
+
+body {
+  background: #ffffff;
+  color: #1a1a1a;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.dark body {
+  background: #0d1117 !important;
+  color: #ffffff !important;
+}
+
+/* Forza il dark mode su tutti gli elementi */
+.dark {
+  background-color: #0d1117 !important;
+  color: #ffffff !important;
+}
+
+.dark * {
+  border-color: #374151 !important;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #404040;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #525252;
+}
+
+/* Line clamp utility */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Personalizzazione RainbowKit per tema Bella Napoli */
+[data-rk] {
+  --rk-colors-modalBackground: #1a1a1a !important;
+  --rk-colors-modalText: #ffffff !important;
+  --rk-colors-modalTextDim: #9ca3af !important;
+  --rk-colors-modalTextSecondary: #6b7280 !important;
+  --rk-colors-generalBorder: #374151 !important;
+  --rk-colors-connectButtonBackground: #0d1117 !important;
+  --rk-colors-connectButtonText: #ffffff !important;
+  --rk-colors-connectButtonInnerBackground: linear-gradient(0deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.1)) !important;
+  --rk-colors-menuItemBackground: rgba(255, 255, 255, 0.05) !important;
+  --rk-colors-profileAction: #ffffff !important;
+  --rk-colors-profileActionHover: rgba(255, 255, 255, 0.1) !important;
+  --rk-colors-accentColor: #f59e0b !important;
+  --rk-colors-accentColorForeground: #000000 !important;
+  --rk-radii-modal: 16px !important;
+  --rk-radii-connectButton: 12px !important;
+  --rk-radii-menuButton: 12px !important;
+  --rk-fonts-body: 'Nunito Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif !important;
+}
+
+/* Stile personalizzato per i wallet buttons - come le card */
+[data-rk] [data-testid="wallet-button"] {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  border: 1px solid #0ea5e9 !important;
+  border-radius: 12px !important;
+  transition: all 0.2s ease !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+[data-rk] [data-testid="wallet-button"]:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  border-color: #0284c7 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3) !important;
+}
+
+/* Stile per il pulsante Connect Wallet principale */
+[data-rk] button[data-testid="rk-connect-button"] {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  border: 1px solid #0ea5e9 !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-rk] button[data-testid="rk-connect-button"]:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  border-color: #0284c7 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3) !important;
+}
+
+/* Stile per il titolo del modal */
+[data-rk] h1 {
+  font-family: 'Nunito Sans', sans-serif !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+}
+
+/* Stile per le sezioni */
+[data-rk] [data-testid="wallet-section"] h2 {
+  color: #f59e0b !important;
+  font-weight: 600 !important;
+  font-family: 'Nunito Sans', sans-serif !important;
+}
+
+/* Nascondi il link "Learn More" se non lo vuoi */
+[data-rk] a[href*="learnMoreUrl"],
+[data-rk] a[href*="rainbowkit.com"],
+[data-rk] a[href*="bella-napoli.vercel.app"] {
+  display: none !important;
+}
+
+/* Migliora la visualizzazione del modal "Get a Wallet" */
+[data-rk] [data-testid="wallet-download-section"],
+[data-rk] [data-testid="wallet-download-modal"],
+[data-rk] [class*="wallet-download"],
+[data-rk] [class*="download-section"] {
+  background: #1a1a1a !important;
+  border-radius: 16px !important;
+  padding: 20px !important;
+  min-height: 200px !important;
+}
+
+/* Stile per i link di download wallet */
+[data-rk] a[href*="wallet"],
+[data-rk] a[href*="download"],
+[data-rk] a[href*="install"] {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  color: #ffffff !important;
+  padding: 12px 20px !important;
+  border-radius: 12px !important;
+  text-decoration: none !important;
+  font-weight: 600 !important;
+  display: inline-block !important;
+  margin: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-rk] a[href*="wallet"]:hover,
+[data-rk] a[href*="download"]:hover,
+[data-rk] a[href*="install"]:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3) !important;
+}
+
+/* Stile per tutti i pulsanti di connessione RainbowKit */
+[data-rk] button[class*="connectButton"],
+[data-rk] button[class*="ConnectButton"],
+[data-rk] button[class*="rk-connect"],
+[data-rk] button[class*="connect-wallet"] {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  border: 1px solid #0ea5e9 !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-rk] button[class*="connectButton"]:hover,
+[data-rk] button[class*="ConnectButton"]:hover,
+[data-rk] button[class*="rk-connect"]:hover,
+[data-rk] button[class*="connect-wallet"]:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  border-color: #0284c7 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3) !important;
+}
+
+/* Stile per il pulsante Connect Wallet nell'header */
+button[data-testid="rk-connect-button"],
+button[class*="rk-connect-button"],
+button[class*="connect-button"] {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  border: 1px solid #0ea5e9 !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+button[data-testid="rk-connect-button"]:hover,
+button[class*="rk-connect-button"]:hover,
+button[class*="connect-button"]:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  border-color: #0284c7 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3) !important;
+}
