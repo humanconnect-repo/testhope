@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "npm install --legacy-peer-deps && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -29,6 +29,9 @@
   },
   "overrides": {
     "glob": "^10.0.0"
+  },
+  "npmConfig": {
+    "legacy-peer-deps": true
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
