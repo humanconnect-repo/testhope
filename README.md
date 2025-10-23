@@ -1,5 +1,7 @@
 # Bella Napoli - Prediction Market
 
+Il Prediction Market Italiano per scommettere sul futuro con stile degen! 🍕
+
 Un mercato delle predizioni dove puoi scommettere sul futuro e vincere premi reali.
 
 ## 🎯 Cos'è Bella Napoli?
