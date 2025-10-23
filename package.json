@@ -14,7 +14,7 @@
     "@rainbow-me/rainbowkit": "^2.2.8",
     "@supabase/supabase-js": "^2.74.0",
     "@tanstack/react-query": "^5.90.2",
-    "@wagmi/connectors": "^0.3.24",
+    "@wagmi/connectors": "^6.1.0",
     "@wagmi/core": "^2.21.2",
     "fast-redact": "^3.5.0",
     "next": "^14.2.33",
