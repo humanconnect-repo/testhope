@@ -58,7 +58,7 @@ export function useUserActivePredictions(userId: string | null) {
           setPredictions([]);
         } else {
           // Trasforma i dati per la UI
-          const activePredictions: ActivePrediction[] = bets.map(bet => ({
+          const activePredictions: ActivePrediction[] = bets.map((bet: any) => ({
             id: bet.predictions.id,
             title: bet.predictions.title,
             slug: bet.predictions.slug,
