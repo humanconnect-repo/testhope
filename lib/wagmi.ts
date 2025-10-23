@@ -4,7 +4,7 @@ import {
   injected, 
   walletConnect, 
   coinbaseWallet 
-} from 'wagmi/connectors'
+} from '@wagmi/connectors'
 
 export const config = createConfig({
   chains: [bscTestnet],
