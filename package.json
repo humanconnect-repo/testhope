@@ -29,7 +29,7 @@
     "wagmi": "^2.18.2"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
+    "@nomicfoundation/hardhat-chai-matchers": "^2.2.0",
     "@nomicfoundation/hardhat-ethers": "^3.1.0",
     "@nomicfoundation/hardhat-network-helpers": "^3.0.1",
     "@nomicfoundation/hardhat-verify": "^3.0.4",
@@ -39,7 +39,7 @@
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "autoprefixer": "^10.4.16",
-    "chai": "^6.2.0",
+    "chai": "^4.5.0",
     "dotenv": "^17.2.3",
     "eslint": "^8.56.0",
     "eslint-config-next": "^15.5.4",
