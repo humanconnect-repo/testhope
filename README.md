@@ -52,3 +52,4 @@ Per assistenza o domande, contatta il team di supporto attraverso la piattaforma
 ---
 
 **Bella Napoli** - Dove le predizioni diventano realtà! 🍕
+# Force Vercel update
