@@ -44,7 +44,7 @@ backup/
 
 # Hardhat
 cache/
-artifacts/
+# artifacts/  # Commented out to include artifacts in git for Vercel
 typechain-types/
 
 # Supabase
