@@ -35,7 +35,7 @@ export function useUserTotalBnb(userId: string | null) {
           setTotalBets(0);
         } else {
           // Somma tutti i BNB scommessi
-          const total = bets.reduce((sum, bet) => {
+          const total = bets.reduce((sum: number, bet: any) => {
             return sum + (bet.amount_bnb || 0);
           }, 0);
           setTotalBnb(total);
