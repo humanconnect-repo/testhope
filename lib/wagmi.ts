@@ -1,26 +1,11 @@
-import { createConfig, http } from 'wagmi'
+import { getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { bscTestnet } from 'wagmi/chains'
-import { 
-  injected, 
-  walletConnect, 
-  coinbaseWallet 
-} from '@wagmi/connectors'
 
-export const config = createConfig({
+export const config = getDefaultConfig({
+  appName: 'Bella Napoli',
+  projectId: '980d4d23a4a0c766d257eb52d6c1dd16',
   chains: [bscTestnet],
-  connectors: [
-    injected(), // MetaMask, Rabby Wallet e altri wallet iniettati
-    walletConnect({
-      projectId: '980d4d23a4a0c766d257eb52d6c1dd16'
-    }), // WalletConnect per mobile
-    coinbaseWallet({
-      appName: 'Bella Napoli',
-      appLogoUrl: 'https://bellanapoli.vercel.app/media/logos/bnpm.png'
-    }) // Coinbase Wallet
-  ],
-  transports: {
-    [bscTestnet.id]: http(),
-  },
+  ssr: true,
 })
 
 declare module 'wagmi' {
