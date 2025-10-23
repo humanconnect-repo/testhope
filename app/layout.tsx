@@ -22,12 +22,21 @@ export default function RootLayout({
               // Forza sempre il tema scuro
               document.documentElement.classList.add('dark')
               
-              // Disabilita Lit dev mode per eliminare il warning
+              // Polyfill di sicurezza per indexedDB durante SSR
+              if (typeof window === 'undefined') {
+                global.indexedDB = {} as IDBFactory;
+              }
+              
+              // Disabilita warning Lit in console
               if (typeof window !== 'undefined') {
-                window.litDisableBundleWarning = true;
+                const originalWarn = console.warn;
+                console.warn = (...args) => {
+                  if (typeof args[0] === "string" && args[0].includes("Lit is in dev mode")) return;
+                  originalWarn(...args);
+                };
+                
                 // Disabilita anche altri warning di Lit
                 window.litDisableBundleWarning = true;
-                // Imposta Lit in modalità produzione
                 if (window.litConfig) {
                   window.litConfig.devMode = false;
                 }

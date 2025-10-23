@@ -53,3 +53,10 @@ supabase/.temp
 
 # Debug files
 debug/
+
+# Development folders
+scripts/
+test/
+
+# Temporary files
+temp-repo/

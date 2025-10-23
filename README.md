@@ -2,27 +2,27 @@
 
 Il Prediction Market Italiano per scommettere sul futuro con stile degen! 🍕
 
-Un mercato delle predizioni dove puoi scommettere sul futuro e vincere premi reali.
+Un mercato delle predizioni decentralizzato dove puoi scommettere su eventi futuri e vincere premi reali.
 
 ## 🎯 Cos'è Bella Napoli?
 
-Bella Napoli è una piattaforma innovativa che ti permette di:
-- **Scommettere** su eventi futuri con criptovalute
+Bella Napoli è una piattaforma Web3 innovativa che ti permette di:
+- **Scommettere** su eventi futuri con criptovalute (BNB)
 - **Vincere** premi reali quando le tue predizioni si avverano
 - **Partecipare** a una community di predittori esperti
-- **Gestire** il tuo profilo e le tue scommesse
+- **Gestire** il tuo profilo e le tue scommesse in modo decentralizzato
 
 ## 🚀 Caratteristiche Principali
 
 - **Predizioni in Tempo Reale**: Scommetti su eventi in corso
 - **Categorie Diversificate**: Crypto, Politica, Sport, TV, e molto altro
-- **Sistema di Punti**: Accumula punti e scala la classifica
+- **Blockchain Sicura**: Tutto su BNB Chain Testnet
 - **Interfaccia Intuitiva**: Facile da usare per tutti
-- **Sicurezza Garantita**: Le tue scommesse sono protette
+- **Wallet Integration**: MetaMask, WalletConnect, Coinbase Wallet
 
 ## 🎮 Come Funziona
 
-1. **Connetti il tuo wallet** per iniziare
+1. **Connetti il tuo wallet** (MetaMask, WalletConnect, etc.)
 2. **Scegli una predizione** dalla lista disponibile
 3. **Piazza la tua scommessa** con BNB
 4. **Aspetta il risultato** e vinci se hai ragione!
@@ -37,13 +37,22 @@ Bella Napoli è una piattaforma innovativa che ti permette di:
 
 ## 🔒 Sicurezza e Privacy
 
-- Le tue transazioni sono sicure e trasparenti
-- I tuoi dati personali sono protetti
-- Solo tu puoi gestire il tuo wallet e le tue scommesse
+- **Blockchain Sicura**: Tutte le transazioni sono su BNB Chain
+- **Smart Contract**: Logica decentralizzata e trasparente
+- **Privacy**: Solo tu controlli il tuo wallet e le tue scommesse
+- **Trasparenza**: Tutti i risultati sono verificabili on-chain
 
 ## 📱 Accesso
 
-La piattaforma è accessibile da qualsiasi dispositivo con un browser moderno. Non è necessario scaricare app.
+La piattaforma è accessibile da qualsiasi dispositivo con un browser moderno e un wallet crypto. Non è necessario scaricare app.
+
+## 🛠️ Tecnologie
+
+- **Frontend**: Next.js 14, React, Tailwind CSS
+- **Blockchain**: BNB Chain Testnet
+- **Wallet**: RainbowKit, Wagmi
+- **Database**: Supabase
+- **Smart Contracts**: Solidity
 
 ## 🆘 Supporto
 
@@ -52,4 +61,3 @@ Per assistenza o domande, contatta il team di supporto attraverso la piattaforma
 ---
 
 **Bella Napoli** - Dove le predizioni diventano realtà! 🍕
-# Force Vercel update
