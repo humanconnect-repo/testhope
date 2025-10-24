@@ -1086,7 +1086,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                             : poolState.isResolved
                             ? 'Pool risolto. I rewards sono disponibili per i vincitori.'
                             : prediction?.status === 'in_attesa'
-                            ? 'Il contratto per questa Prediction è in attesa di essere deployato.'
+                            ? 'Non è ancora possibile scommettere su questa prediction.'
                             : 'Non è più possibile scommettere su questa prediction.'
                           }
                         </p>
