@@ -67,6 +67,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   
   // Stati per il modal di scommessa
   const [showBettingModal, setShowBettingModal] = useState(false);
+  const [showBettingConfirmModal, setShowBettingConfirmModal] = useState(false);
   const [bettingSteps, setBettingSteps] = useState<BettingStep[]>([]);
   const [currentBettingStep, setCurrentBettingStep] = useState(0);
   const [bettingTransactionHash, setBettingTransactionHash] = useState<string>('');
@@ -411,7 +412,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       // Carica i top bettors via RPC (evita join PostgREST senza FK)
       try {
         const { data: bettorsRpcData, error: bettorsError } = await supabase
-          .rpc('get_top_bettors', { prediction_uuid: predictionData.id, limit_count: 10 });
+          .rpc('get_top_bettors', { prediction_uuid: predictionData.id, limit_count: 5 });
 
         if (bettorsError) {
           console.warn('Error loading top bettors:', bettorsError);
@@ -513,7 +514,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
 
       // Fallback al database se il contratto non è disponibile o errore
       const { data: recentBetsData, error } = await supabase
-        .rpc('get_recent_bets', { limit_count: 10 });
+        .rpc('get_recent_bets', { limit_count: 5 });
 
       if (error) {
         console.warn('Error calling get_recent_bets RPC:', error);
@@ -712,7 +713,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
 
     try {
       const { data: commentsRpcData, error: commentsError } = await supabase
-        .rpc('get_prediction_comments', { prediction_uuid: prediction.id, limit_count: 10 });
+        .rpc('get_prediction_comments', { prediction_uuid: prediction.id, limit_count: 5 });
 
       if (commentsError) {
         console.warn('Error loading comments:', commentsError);
@@ -761,6 +762,14 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       return;
     }
 
+    // Mostra modal di conferma prima di procedere
+    setShowBettingConfirmModal(true);
+  };
+
+  // Funzione per confermare la scommessa
+  const confirmBet = async () => {
+    setShowBettingConfirmModal(false);
+
     // Inizializza il modal
     setBettingSteps(initializeBettingSteps());
     setCurrentBettingStep(0);
@@ -784,7 +793,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       if (poolAddress) {
         try {
           const { canUserBet } = await import('@/lib/contracts');
-          const betCheck = await canUserBet(poolAddress, address);
+          const betCheck = await canUserBet(poolAddress, address!);
           if (!betCheck.canBet) {
             throw new Error(betCheck.reason);
           }
@@ -822,7 +831,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       // Salva nel database usando la funzione RPC esistente
       const { data: betId, error: dbError } = await supabase
         .rpc('create_bet', {
-          prediction_uuid: prediction.id,
+          prediction_uuid: prediction!.id,
           bet_amount: amount,
           bet_position: selectedPosition,
           caller_wallet: address
@@ -837,10 +846,6 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       // Step 5: Completato
       updateBettingStepStatus('completed', 'loading');
       setCurrentBettingStep(5);
-
-      // Ricarica i dati
-      await loadPredictionData();
-      await loadRecentBets(true); // Refresh forzato dopo scommessa
 
       updateBettingStepStatus('completed', 'completed');
 
@@ -926,15 +931,26 @@ export default function PredictionPage({ params }: { params: { slug: string } })
             <span className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary dark:bg-primary/20">
               {prediction.category}
             </span>
-            {/* Stato del pool dal smart contract (REAL-TIME) */}
+            {/* Status della prediction */}
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              poolState.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
-              poolState.isPaused ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
-              poolState.isResolved ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
-              poolState.isCancelled ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' :
-              'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+              prediction.status === 'in_attesa'
+                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                : prediction.status === 'attiva' 
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                : prediction.status === 'in_pausa'
+                ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400'
+                : prediction.status === 'risolta'
+                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                : prediction.status === 'cancellata'
+                ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
             }`}>
-              {poolState.statusIcon} {poolState.statusText}
+              {prediction.status === 'in_attesa' ? '🟡 In attesa' : 
+               prediction.status === 'attiva' ? '🟢 Attiva' :
+               prediction.status === 'in_pausa' ? '🟠 In pausa' :
+               prediction.status === 'risolta' ? '🏆 Risolta' :
+               prediction.status === 'cancellata' ? '❌ Cancellata' :
+               'Sconosciuto'}
             </span>
           </div>
 
@@ -1005,7 +1021,9 @@ export default function PredictionPage({ params }: { params: { slug: string } })
           <div className="lg:col-span-1">
             <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6 sticky top-24">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
-                {prediction?.status === 'in_attesa' || prediction?.status === 'attiva' ? 'Fai la tua prediction' : 'Piazza la tua scommessa'}
+                {prediction?.status === 'in_attesa' ? 'Prediction in attesa' : 
+                 prediction?.status === 'attiva' ? 'Fai la tua prediction' : 
+                 'Piazza la tua scommessa'}
               </h3>
 
               {/* Avviso se l'utente ha già scommesso */}
@@ -1199,7 +1217,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                 {!isAuthenticated 
                   ? 'Connettiti per scommettere'
                   : !canStillBet 
-                    ? (prediction?.status === 'in_attesa' ? 'Attendi' : 'Scommessa chiusa')
+                    ? (prediction?.status === 'in_attesa' ? 'In attesa' : 'Scommessa chiusa')
                     : userHasBet
                       ? 'Hai già scommesso'
                       : bettingLoading
@@ -1386,10 +1404,10 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                 <div className="flex items-center space-x-2">
                   <span className="text-gray-600 dark:text-gray-400">Stato:</span>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    prediction.status === 'attiva' 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                      : prediction.status === 'in_attesa'
+                    prediction.status === 'in_attesa'
                       ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                      : prediction.status === 'attiva' 
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                       : prediction.status === 'in_pausa'
                       ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
                       : prediction.status === 'risolta'
@@ -1551,6 +1569,80 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       </main>
 
       <Footer />
+
+      {/* Modal di Conferma Scommessa */}
+      {showBettingConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          
+          {/* Modal */}
+          <div className="relative bg-white dark:bg-dark-card rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 mx-4 max-w-md w-full">
+            {/* Content */}
+            <div className="text-center mb-6">
+              <div className="flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-blue-600 dark:text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Stai per connetterti al tuo wallet
+                </h3>
+              </div>
+              
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                  Ecco i BNB che stai inviando firmando la TX!
+                </p>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-blue-700 dark:text-blue-300">Importo:</span>
+                    <span className="text-lg font-bold text-yellow-600 dark:text-yellow-400">{betAmount} BNB</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-blue-700 dark:text-blue-300">Scelta:</span>
+                    <span className={`text-lg font-bold ${selectedPosition === 'yes' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {selectedPosition === 'yes' ? 'SÌ' : 'NO'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="flex items-center justify-center space-x-2">
+                  <span className="text-2xl">🎭</span>
+                  <p className="text-lg font-semibold text-blue-800 dark:text-blue-200">
+                    Buona fortuna!
+                  </p>
+                  <span className="text-2xl">🎭</span>
+                </div>
+              </div>
+              
+              {/* Tooltip */}
+              <div className="mt-4">
+                <p className="text-sm text-white dark:text-gray-200 text-center">
+                  <span className="font-medium">Tooltip:</span> se procedi e poi annulli la TX dal tuo wallet controlla che non rimanga in sospeso e di non firmarla dopo per sbaglio.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowBettingConfirmModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={confirmBet}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Conferma
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal di Progresso Scommessa */}
       <BettingProgressModal
