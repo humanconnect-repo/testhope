@@ -22,7 +22,8 @@ export default function Header() {
               className="rounded-lg w-8 h-8"
             />
             <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-              Scommetti sul futuro, con stile degen!
+              <span className="block sm:inline">Scommetti sul futuro,</span>
+              <span className="block sm:inline">con stile degen!</span>
             </p>
           </div>
 

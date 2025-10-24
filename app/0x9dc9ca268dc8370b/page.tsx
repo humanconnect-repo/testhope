@@ -11,11 +11,16 @@ export default function AdminPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Se non è in loading e non è admin, reindirizza alla home
-    if (!loading && !isAdmin) {
-      console.log('❌ Accesso negato: utente non è admin');
-      router.push('/');
-    }
+    // Aggiungi un delay per evitare reindirizzamenti prematuri durante il refresh
+    const timeoutId = setTimeout(() => {
+      // Se non è in loading e non è admin, reindirizza alla home
+      if (!loading && !isAdmin) {
+        console.log('❌ Accesso negato: utente non è admin');
+        router.push('/');
+      }
+    }, 5000); // 5 secondi di delay per dare tempo all'autenticazione
+    
+    return () => clearTimeout(timeoutId);
   }, [isAdmin, loading, router]);
 
   // Mostra loading mentre controlla i permessi

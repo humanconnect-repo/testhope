@@ -43,48 +43,48 @@ export default function QuoteChart({
       <div className="mb-6">
         {betCount > 0 ? (
           <div className="space-y-4">
-            {/* Grafico centrato */}
-            <div className="w-full h-64 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+            {/* Grafico centrato - nascosto su mobile */}
+            <div className="hidden sm:block w-full h-64 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart 
                   data={chartData} 
                   margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
                 >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="time" 
-                      stroke="#6b7280"
-                      fontSize={10}
-                      tick={{ fontSize: 10 }}
-                    />
-                    <YAxis 
-                      stroke="#6b7280"
-                      fontSize={10}
-                      domain={[0, 100]}
-                      tick={{ fontSize: 10 }}
-                      tickFormatter={(value) => `${value}%`}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="yes" 
-                      stroke="#10b981" 
-                      strokeWidth={2}
-                      dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
-                      activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2 }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="no" 
-                      stroke="#ef4444" 
-                      strokeWidth={2}
-                      dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
-                      activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2 }}
-                    />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    dataKey="time" 
+                    stroke="#6b7280"
+                    fontSize={10}
+                    tick={{ fontSize: 10 }}
+                  />
+                  <YAxis 
+                    stroke="#6b7280"
+                    fontSize={10}
+                    domain={[0, 100]}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(value) => `${value}%`}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="yes" 
+                    stroke="#10b981" 
+                    strokeWidth={2}
+                    dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="no" 
+                    stroke="#ef4444" 
+                    strokeWidth={2}
+                    dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
             
-            {/* Pannello Quote Attuali sotto il grafico */}
+            {/* Pannello Quote Attuali - sempre visibile */}
             <div className="flex justify-center">
               <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                 <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 text-center">

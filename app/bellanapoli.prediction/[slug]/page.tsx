@@ -294,7 +294,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         console.log('Wallet disconnesso, reindirizzamento alla homepage...');
         router.push('/');
       }
-    }, 2000); // 2 secondi di delay
+    }, 5000); // 5 secondi di delay per dare tempo al sistema di caricare l'autenticazione
 
     return () => clearTimeout(timeoutId);
   }, [isAuthenticated, address, router]);
@@ -1384,7 +1384,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
             {/* Grafico andamento quote */}
             <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                📊 Grafico delle Predictions
+                <span className="hidden sm:inline">📊 Grafico delle Predictions</span>
+                <span className="sm:hidden">📊 Dati sulle Predictions</span>
               </h3>
               {prediction ? (
                 <QuoteChart 

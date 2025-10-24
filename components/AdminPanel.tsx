@@ -50,7 +50,69 @@ export default function AdminPanel() {
     isPredictionEnded
   } = useContracts();
 
-  // Debug: log dei valori (rimosso per produzione)
+  // Stato per le percentuali basate sul numero di scommesse
+  const [betCountPercentages, setBetCountPercentages] = useState<Record<string, {yes: number, no: number}>>({});
+  
+  // Funzione per recuperare le percentuali basate sul numero di scommesse
+  const loadBetCountPercentages = async () => {
+    if (pools.length === 0) return;
+    
+    try {
+      const percentages: Record<string, {yes: number, no: number}> = {};
+      
+      // Trova solo le pool che hanno prediction nel database
+      const poolAddresses = pools.map(pool => pool.address);
+      const { data: predictions } = await supabase
+        .from('predictions')
+        .select('id, pool_address')
+        .in('pool_address', poolAddresses);
+      
+      if (predictions && predictions.length > 0) {
+        // Crea una mappa delle pool con prediction
+        const poolToPrediction = new Map();
+        predictions.forEach((prediction: any) => {
+          poolToPrediction.set(prediction.pool_address, prediction.id);
+        });
+        
+        // Processa solo le pool che hanno prediction nel database
+        for (const pool of pools) {
+          const predictionId = poolToPrediction.get(pool.address);
+          if (predictionId) {
+            // Recupera le scommesse per questa prediction
+            const { data: bets } = await supabase
+              .from('bets')
+              .select('position')
+              .eq('prediction_id', predictionId);
+            
+            if (bets && bets.length > 0) {
+              const yesCount = bets.filter((bet: any) => bet.position === 'yes').length;
+              const noCount = bets.filter((bet: any) => bet.position === 'no').length;
+              const totalCount = yesCount + noCount;
+              
+              if (totalCount > 0) {
+                percentages[pool.address] = {
+                  yes: (yesCount / totalCount) * 100,
+                  no: (noCount / totalCount) * 100
+                };
+              }
+            }
+          }
+        }
+      }
+      
+      setBetCountPercentages(percentages);
+      console.log('📊 Bet count percentages from database:', percentages);
+    } catch (error) {
+      console.error('Errore caricamento percentuali bet count:', error);
+    }
+  };
+
+  // Carica le percentuali quando le pool cambiano
+  useEffect(() => {
+    if (pools.length > 0) {
+      loadBetCountPercentages();
+    }
+  }, [pools]);
 
   // Funzione per capitalizzare la prima lettera e formattare per frontend
   const capitalizeFirst = (str: string) => {
@@ -103,7 +165,20 @@ export default function AdminPanel() {
   };
 
   // Protezione aggiuntiva: se non è admin, non mostra nulla
-  if (!loading && !isAdmin) {
+  // Aggiungi un delay per evitare controlli prematuri durante il refresh
+  const [showAccessDenied, setShowAccessDenied] = useState(false);
+  
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (!loading && !isAdmin) {
+        setShowAccessDenied(true);
+      }
+    }, 3000); // 3 secondi di delay per dare tempo all'autenticazione
+    
+    return () => clearTimeout(timeoutId);
+  }, [loading, isAdmin]);
+  
+  if (showAccessDenied) {
     console.log('🚫 AdminPanel: Accesso negato - loading:', loading, 'isAdmin:', isAdmin);
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -697,7 +772,74 @@ export default function AdminPanel() {
           {predictions.map((prediction) => (
             <div key={prediction.id}>
               <div className="p-6">
-                <div className="flex items-start justify-between">
+                {/* Layout mobile: badge, titolo, descrizione, dati, pulsanti uno per riga */}
+                <div className="block sm:hidden p-6">
+                  {/* Badge status e categoria */}
+                  <div className="flex gap-2 mb-3">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      prediction.status === 'attiva' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        : prediction.status === 'in_attesa'
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                        : prediction.status === 'in_pausa'
+                        ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                        : prediction.status === 'risolta'
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                        : prediction.status === 'cancellata'
+                        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                        : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                    }`}>
+                      {capitalizeFirst(prediction.status)}
+                    </span>
+                    <span className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary dark:bg-primary/20">
+                      {prediction.category}
+                    </span>
+                  </div>
+                  
+                  {/* Titolo */}
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    {prediction.title}
+                  </h3>
+                  
+                  {/* Descrizione */}
+                  <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                    {prediction.description}
+                  </p>
+                  
+                  {/* Dati */}
+                  <div className="text-sm text-gray-500 dark:text-gray-500 mb-4">
+                    <span>Scadenza: {new Date(prediction.closing_date).toLocaleDateString('it-IT')}</span>
+                    <span className="mx-2">•</span>
+                    <span>Creata: {new Date(prediction.created_at).toLocaleDateString('it-IT')}</span>
+                  </div>
+                  
+                  {/* Pulsanti uno per riga centrati */}
+                  <div className="space-y-2">
+                    {prediction.status === 'in_attesa' && (
+                      <button
+                        onClick={() => handleActivateContract(prediction)}
+                        className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 text-sm font-medium"
+                      >
+                        Attiva Contract
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleEdit(prediction)}
+                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
+                    >
+                      Modifica
+                    </button>
+                    <button
+                      onClick={() => handleDelete(prediction.id)}
+                      className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 text-sm font-medium"
+                    >
+                      Elimina
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Layout desktop: originale */}
+                <div className="hidden sm:flex items-start justify-between p-6">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -979,9 +1121,176 @@ export default function AdminPanel() {
               ) : (
                 <div className="space-y-4">
                   {filteredPools.map((pool) => (
-                    <div key={pool.address} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1">
+                    <div key={pool.address} className="border border-gray-200 dark:border-gray-700 rounded-lg">
+                      {/* Layout mobile: badge, titolo, descrizione, dati, pulsanti uno per riga */}
+                      <div className="block sm:hidden p-4">
+                        {/* Badge status */}
+                        <div className="flex gap-2 mb-3">
+                          {(() => {
+                            const isActive = predictions.some(prediction => 
+                              prediction.pool_address === pool.address && 
+                              prediction.status === 'attiva'
+                            );
+                            return isActive ? (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                                🟢 Attiva
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
+                                🔴 Orfana
+                              </span>
+                            );
+                          })()}
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            isBettingOpen(pool.closingDate) 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+                          }`}>
+                            {isBettingOpen(pool.closingDate) ? 'Scommesse Aperte' : 'Scommesse Chiuse'}
+                          </span>
+                          {pool.winnerSet ? (
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              pool.winner 
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                                : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                            }`}>
+                              Risultato: {pool.winner ? 'YES' : 'NO'}
+                            </span>
+                          ) : isPredictionEnded(pool.closingBid) ? (
+                            <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
+                              In Attesa Risoluzione
+                            </span>
+                          ) : null}
+                        </div>
+                        
+                        {/* Titolo */}
+                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
+                          {pool.title}
+                        </h4>
+                        
+                        {/* Descrizione */}
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                          {pool.description}
+                        </p>
+                        
+                        {/* Dati */}
+                        <div className="space-y-1 text-sm text-gray-500 dark:text-gray-500 mb-3">
+                          <div>Categoria: {pool.category}</div>
+                          <div>Chiusura: {formatItalianTime(pool.closingDate)}</div>
+                          <div>Scadenza: {formatItalianTime(pool.closingBid)}</div>
+                          <div>{pool.bettorCount} Predictions</div>
+                          <div className="font-medium text-gray-900 dark:text-white">
+                            {(() => {
+                              // Usa le percentuali basate sul numero di scommesse se disponibili
+                              const betCountData = betCountPercentages[pool.address];
+                              
+                              if (betCountData) {
+                                return `YES: ${betCountData.yes.toFixed(1)}% | NO: ${betCountData.no.toFixed(1)}%`;
+                              } else {
+                                // Fallback ai dati del contratto
+                                const totalYes = Number(pool.totalYes) / 1e18;
+                                const totalNo = Number(pool.totalNo) / 1e18;
+                                const total = totalYes + totalNo;
+                                
+                                if (total === 0) return "YES: 0% | NO: 0%";
+                                const yesPercent = ((totalYes / total) * 100).toFixed(1);
+                                const noPercent = ((totalNo / total) * 100).toFixed(1);
+                                return `YES: ${yesPercent}% | NO: ${noPercent}%`;
+                              }
+                            })()}
+                          </div>
+                        </div>
+                        
+                        {/* Pulsanti uno per riga centrati */}
+                        <div className="space-y-2">
+                          {/* Controlli Risoluzione */}
+                          {!pool.winnerSet && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  const reason = prompt('Motivo per la risoluzione anticipata:');
+                                  if (reason) {
+                                    emergencyResolvePrediction(pool.address, true, reason);
+                                  }
+                                }}
+                                className="w-full px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+                              >
+                                ✅ Resolve YES
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const reason = prompt('Motivo per la risoluzione anticipata:');
+                                  if (reason) {
+                                    emergencyResolvePrediction(pool.address, false, reason);
+                                  }
+                                }}
+                                className="w-full px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
+                              >
+                                ❌ Resolve NO
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const reason = prompt('Motivo per la cancellazione del pool:');
+                                  if (reason) {
+                                    cancelPoolPrediction(pool.address, reason);
+                                  }
+                                }}
+                                className="w-full px-4 py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 transition-colors"
+                              >
+                                ❌ Cancel Pool
+                              </button>
+                            </>
+                          )}
+                          
+                          {/* Controlli Scommesse */}
+                          {!pool.winnerSet && (
+                            <>
+                              <button
+                                onClick={() => stopBetting(pool.address)}
+                                className="w-full px-4 py-2 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700 transition-colors"
+                              >
+                                🛑 Stop Betting
+                              </button>
+                              <button
+                                onClick={() => resumeBetting(pool.address)}
+                                className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                              >
+                                ▶️ Resume Betting
+                              </button>
+                            </>
+                          )}
+                          
+                          {/* Risoluzione Normale */}
+                          {!pool.winnerSet && isPredictionEnded(pool.closingBid) && (
+                            <>
+                              <button
+                                onClick={() => resolvePrediction(pool.address, true)}
+                                className="w-full px-4 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors"
+                              >
+                                Resolve YES
+                              </button>
+                              <button
+                                onClick={() => resolvePrediction(pool.address, false)}
+                                className="w-full px-4 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors"
+                              >
+                                Resolve NO
+                              </button>
+                            </>
+                          )}
+                          
+                          {/* BSCScan */}
+                          <button
+                            onClick={() => window.open(`https://testnet.bscscan.com/address/${pool.address}`, '_blank')}
+                            className="w-full px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
+                          >
+                            View on BSCScan
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Layout desktop: originale */}
+                      <div className="hidden sm:block p-4">
+                        <div className="mb-3">
                           <div className="flex items-center space-x-2 mb-1">
                             <h4 className="font-semibold text-gray-900 dark:text-white">
                               {pool.title}
@@ -1002,21 +1311,61 @@ export default function AdminPanel() {
                               );
                             })()}
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                             {pool.description}
                           </p>
-                          <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-500">
+                          <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-500 mb-3">
                             <span>Categoria: {pool.category}</span>
                             <span>Chiusura: {formatItalianTime(pool.closingDate)}</span>
                             <span>Scadenza: {formatItalianTime(pool.closingBid)}</span>
+                            <span>{pool.bettorCount} Predictions</span>
                           </div>
+                          
+                          {/* Percentuali sotto il testo - basate sul numero di scommesse */}
+                          <div className="flex justify-center space-x-6 mb-3">
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-green-600">
+                                {(() => {
+                                  // Usa le percentuali basate sul numero di scommesse se disponibili
+                                  const betCountData = betCountPercentages[pool.address];
+                                  
+                                  if (betCountData) {
+                                    return `${betCountData.yes.toFixed(1)}%`;
+                                  } else {
+                                    // Fallback ai dati del contratto
+                                    const totalYes = Number(pool.totalYes) / 1e18;
+                                    const totalNo = Number(pool.totalNo) / 1e18;
+                                    const total = totalYes + totalNo;
+                                    
+                                    if (total === 0) return "0%";
+                                    const yesPercent = ((totalYes / total) * 100).toFixed(1);
+                                    return `${yesPercent}%`;
+                                  }
+                                })()}
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm text-gray-500 dark:text-gray-500 mb-1">
-                            {pool.bettorCount} scommettitori
+                              <div className="text-xs text-gray-500">YES</div>
                           </div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            YES: {pool.totalYes} BNB | NO: {pool.totalNo} BNB
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-red-600">
+                                {(() => {
+                                  // Usa le percentuali basate sul numero di scommesse se disponibili
+                                  const betCountData = betCountPercentages[pool.address];
+                                  
+                                  if (betCountData) {
+                                    return `${betCountData.no.toFixed(1)}%`;
+                                  } else {
+                                    // Fallback ai dati del contratto
+                                    const totalYes = Number(pool.totalYes) / 1e18;
+                                    const totalNo = Number(pool.totalNo) / 1e18;
+                                    const total = totalYes + totalNo;
+                                    
+                                    if (total === 0) return "0%";
+                                    const noPercent = ((totalNo / total) * 100).toFixed(1);
+                                    return `${noPercent}%`;
+                                  }
+                                })()}
+                              </div>
+                              <div className="text-xs text-gray-500">NO</div>
                           </div>
                         </div>
                       </div>
@@ -1131,6 +1480,7 @@ export default function AdminPanel() {
                           >
                             View on BSCScan
                           </button>
+                        </div>
                         </div>
                       </div>
                     </div>

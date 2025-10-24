@@ -18,16 +18,17 @@ interface Prediction {
 
 interface PredictionListProps {
   selectedCategory: string;
+  searchQuery: string;
 }
 
-export default function PredictionList({ selectedCategory }: PredictionListProps) {
+export default function PredictionList({ selectedCategory, searchQuery }: PredictionListProps) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadPredictions();
-  }, [selectedCategory]);
+  }, [selectedCategory, searchQuery]);
 
   const loadPredictions = async () => {
     try {
@@ -37,10 +38,13 @@ export default function PredictionList({ selectedCategory }: PredictionListProps
       let predictionsData: any[] = [];
       let limit = 15; // Default per "Novità"
 
+      // Se c'è una query di ricerca, filtra per titolo
+      const hasSearchQuery = searchQuery.trim().length > 0;
+
       if (selectedCategory === 'trending') {
         // Trending: top 5 con maggiori puntate
         limit = 5;
-        const { data, error } = await supabase
+        let query = supabase
           .from('predictions')
           .select(`
             id,
@@ -53,6 +57,12 @@ export default function PredictionList({ selectedCategory }: PredictionListProps
           `)
           .in('status', ['attiva', 'in_attesa'])
           .order('created_at', { ascending: false });
+
+        if (hasSearchQuery) {
+          query = query.ilike('title', `%${searchQuery.trim()}%`);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -82,7 +92,7 @@ export default function PredictionList({ selectedCategory }: PredictionListProps
       } else if (selectedCategory === 'all') {
         // Novità: ultime 15 prediction
         limit = 15;
-        const { data, error } = await supabase
+        let query = supabase
           .from('predictions')
           .select(`
             id,
@@ -96,6 +106,12 @@ export default function PredictionList({ selectedCategory }: PredictionListProps
           .in('status', ['attiva', 'in_attesa'])
           .order('created_at', { ascending: false })
           .limit(limit);
+
+        if (hasSearchQuery) {
+          query = query.ilike('title', `%${searchQuery.trim()}%`);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -120,7 +136,7 @@ export default function PredictionList({ selectedCategory }: PredictionListProps
 
       } else {
         // Categoria specifica: tutte le prediction di quella categoria
-        const { data, error } = await supabase
+        let query = supabase
           .from('predictions')
           .select(`
             id,
@@ -134,6 +150,12 @@ export default function PredictionList({ selectedCategory }: PredictionListProps
           .in('status', ['attiva', 'in_attesa'])
           .eq('category', selectedCategory)
           .order('created_at', { ascending: false });
+
+        if (hasSearchQuery) {
+          query = query.ilike('title', `%${searchQuery.trim()}%`);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -221,6 +243,14 @@ export default function PredictionList({ selectedCategory }: PredictionListProps
 
   if (predictions.length === 0) {
     const getEmptyMessage = () => {
+      // Se c'è una ricerca attiva
+      if (searchQuery.trim()) {
+        return {
+          title: '🔍 Nessun risultato trovato',
+          description: `Non ci sono prediction che contengono "${searchQuery.trim()}"`
+        };
+      }
+      
       if (selectedCategory === 'trending') {
         return {
           title: null, // Nessun titolo per Trending

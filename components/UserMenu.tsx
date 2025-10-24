@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useWeb3Auth } from '@/hooks/useWeb3Auth';
 import { useRouter } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount, useBalance } from 'wagmi';
 
 export default function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,6 +22,12 @@ export default function UserMenu() {
     isAuthenticated,
     user 
   } = useWeb3Auth();
+
+  // Hook per ottenere chain e saldo
+  const { chain } = useAccount();
+  const { data: balance } = useBalance({
+    address: address as `0x${string}`,
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -124,15 +131,36 @@ export default function UserMenu() {
       {/* Dropdown Menu */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
-          {/* Header con indirizzo wallet */}
+          {/* Header con indirizzo wallet, chain e saldo */}
           {isConnected && address && (
-            <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 space-y-2">
+              {/* Indirizzo wallet */}
               <div className="flex items-center space-x-2">
                 <div className={`w-2 h-2 rounded-full ${isAuthenticated ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
                 <span className="text-sm text-gray-600 dark:text-gray-400 font-mono">
                   {address.slice(0, 6)}...{address.slice(-4)}
                 </span>
               </div>
+              
+              {/* Chain */}
+              {chain && (
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-xs text-gray-500 dark:text-gray-500 font-medium">
+                    {chain.name}
+                  </span>
+                </div>
+              )}
+              
+              {/* Saldo */}
+              {balance && (
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-xs text-gray-500 dark:text-gray-500 font-medium">
+                    {parseFloat(balance.formatted).toFixed(4)} {balance.symbol}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
