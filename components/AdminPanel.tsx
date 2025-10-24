@@ -170,7 +170,7 @@ export default function AdminPanel() {
   
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (!loading && !isAdmin) {
+  if (!loading && !isAdmin) {
         setShowAccessDenied(true);
       }
     }, 3000); // 3 secondi di delay per dare tempo all'autenticazione
@@ -823,6 +823,14 @@ export default function AdminPanel() {
                         Attiva Contract
                       </button>
                     )}
+                    {prediction.status === 'attiva' && (
+                      <button
+                        onClick={() => handleActivateContract(prediction)}
+                        className="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors duration-200 text-sm font-medium"
+                      >
+                        Redeploy Contract
+                      </button>
+                    )}
                     <button
                       onClick={() => handleEdit(prediction)}
                       className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
@@ -883,6 +891,14 @@ export default function AdminPanel() {
                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 text-sm font-medium"
                       >
                         Attiva Contract
+                      </button>
+                    )}
+                    {prediction.status === 'attiva' && (
+                      <button
+                        onClick={() => handleActivateContract(prediction)}
+                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors duration-200 text-sm font-medium"
+                      >
+                        Redeploy Contract
                       </button>
                     )}
                     <button

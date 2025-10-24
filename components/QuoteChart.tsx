@@ -97,12 +97,18 @@ export default function QuoteChart({
                     <span className="text-sm font-bold text-green-600 dark:text-green-400">
                       {yesPercentage.toFixed(1)}%
                     </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      ({Math.round((yesPercentage / 100) * betCount)})
+                    </span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                     <span className="text-sm text-gray-700 dark:text-gray-300">No</span>
                     <span className="text-sm font-bold text-red-600 dark:text-red-400">
                       {noPercentage.toFixed(1)}%
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      ({Math.round((noPercentage / 100) * betCount)})
                     </span>
                   </div>
                 </div>

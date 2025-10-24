@@ -1320,9 +1320,9 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                 Dettagli evento
               </h3>
               <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Puoi scommettere entro il:</span>
-                  <span className="text-gray-900 dark:text-white font-medium">
+                <div className="flex flex-col sm:flex-row sm:justify-between">
+                  <span className="text-gray-600 dark:text-gray-400 text-left">Puoi scommettere entro il:</span>
+                  <span className="text-gray-900 dark:text-white font-medium text-left sm:text-right">
                     {prediction.closing_date ? new Date(prediction.closing_date).toLocaleDateString('it-IT', {
                       day: 'numeric',
                       month: 'long',
@@ -1334,9 +1334,9 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                     }) : 'Non specificato'}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Scadenza:</span>
-                  <span className="text-gray-900 dark:text-white font-medium">
+                <div className="flex flex-col sm:flex-row sm:justify-between">
+                  <span className="text-gray-600 dark:text-gray-400 text-left">Scadenza:</span>
+                  <span className="text-gray-900 dark:text-white font-medium text-left sm:text-right">
                     {prediction.closing_bid ? new Date(prediction.closing_bid).toLocaleDateString('it-IT', {
                       day: 'numeric',
                       month: 'long',
@@ -1348,11 +1348,11 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                     }) : 'Non specificato'}
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex items-center space-x-2">
                   <span className="text-gray-600 dark:text-gray-400">Categoria:</span>
                   <span className="text-gray-900 dark:text-white font-medium">{prediction.category}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex items-center space-x-2">
                   <span className="text-gray-600 dark:text-gray-400">Stato:</span>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                     prediction.status === 'attiva' 
