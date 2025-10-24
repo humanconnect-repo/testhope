@@ -683,7 +683,7 @@ export default function AdminPanel() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Data Chiusura Prediction *
+                  Data Chiusura Scommesse *
                 </label>
                 <input
                   type="datetime-local"
@@ -692,11 +692,14 @@ export default function AdminPanel() {
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   required
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Fino a quando si può scommettere
+                </p>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Data Chiusura Scommesse *
+                  Data Chiusura Prediction *
                 </label>
                 <input
                   type="datetime-local"
@@ -706,7 +709,7 @@ export default function AdminPanel() {
                   required
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Fino a quando si può scommettere (diverso dalla chiusura della prediction)
+                  Quando finisce l'evento della prediction
                 </p>
               </div>
             </div>
@@ -999,7 +1002,7 @@ export default function AdminPanel() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Data Chiusura Prediction *
+                            Data Chiusura Scommesse *
                           </label>
                           <input
                             type="datetime-local"
@@ -1008,11 +1011,14 @@ export default function AdminPanel() {
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                             required
                           />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Fino a quando si può scommettere
+                          </p>
                         </div>
                         
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Data Chiusura Scommesse *
+                            Data Chiusura Prediction *
                           </label>
                           <input
                             type="datetime-local"
@@ -1021,6 +1027,9 @@ export default function AdminPanel() {
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                             required
                           />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Quando finisce l'evento della prediction
+                          </p>
                         </div>
                       </div>
 
