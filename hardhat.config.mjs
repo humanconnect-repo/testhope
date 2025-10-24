@@ -5,7 +5,7 @@ import "@nomicfoundation/hardhat-verify";
 /** @type import('hardhat/config').HardhatUserConfig */
 const config = {
   solidity: {
-    version: "0.8.19",
+    version: "0.8.24",
     settings: {
       optimizer: {
         enabled: true,
@@ -21,16 +21,18 @@ const config = {
   },
   networks: {
     bnbTestnet: {
+      type: "http",
       url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
       chainId: 97,
       gasPrice: 20000000000,
-      accounts: [process.env.PRIVATE_KEY || ""],
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
     bnbMainnet: {
+      type: "http",
       url: "https://bsc-dataseed.binance.org/",
       chainId: 56,
       gasPrice: 20000000000,
-      accounts: [process.env.PRIVATE_KEY || ""],
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
   },
   etherscan: {

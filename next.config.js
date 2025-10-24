@@ -9,6 +9,23 @@ const nextConfig = {
         'idb-keyval': 'idb-keyval',
       });
     }
+    
+    // Risolve il problema del MetaMask SDK con React Native modules
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      '@react-native-async-storage/async-storage': false,
+      'react-native': false,
+      'react-native-web': false,
+      'react-native-get-random-values': false,
+    };
+    
+    // Ignora i moduli React Native durante il build
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@react-native-async-storage/async-storage': false,
+      'react-native': false,
+    };
+    
     return config;
   },
   // Ignora gli errori di indexedDB durante il build

@@ -222,6 +222,8 @@ export default function AdminPanel() {
   const [contractAddress, setContractAddress] = useState<string>('');
   const [transactionError, setTransactionError] = useState<string>('');
   const [showOrphanPools, setShowOrphanPools] = useState<boolean>(false);
+  const [showBSCScanModal, setShowBSCScanModal] = useState<boolean>(false);
+  const [generatedContractCode, setGeneratedContractCode] = useState<string>('');
 
   // Carica le prediction esistenti
   useEffect(() => {
@@ -406,6 +408,506 @@ export default function AdminPanel() {
       console.error('Error deleting prediction:', error);
       alert('Errore nell\'eliminazione della prediction: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
     }
+  };
+
+  // Genera il codice del contratto per BSCScan
+  const generateContractCode = (prediction: any) => {
+    const closingDateTimestamp = Math.floor(new Date(prediction.closing_date).getTime() / 1000);
+    const closingBidTimestamp = Math.floor(new Date(prediction.closing_bid).getTime() / 1000);
+    
+    // Funzione helper per pulire le stringhe per Solidity
+    const cleanString = (str: string) => {
+      return str
+        .replace(/"/g, '\\"')  // Escape delle virgolette
+        .replace(/[^\x20-\x7E]/g, '')  // Rimuove caratteri non ASCII (accenti, simboli, etc.)
+        .trim();
+    };
+    
+    const contractCode = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+// ============ OPENZEPPELIN CONTRACTS ============
+
+/**
+ * @dev Provides information about the current execution context, including the
+ * sender of the transaction and its data. While these are generally available
+ * via msg.sender and msg.data, they should not be accessed in such a direct
+ * manner, since when dealing with meta-transactions the account sending and
+ * paying for execution may not be the actual sender (as far as an application
+ * is concerned).
+ *
+ * This contract is only required for intermediate, library-like contracts.
+ */
+abstract contract Context {
+    function _msgSender() internal view virtual returns (address) {
+        return msg.sender;
+    }
+
+    function _msgData() internal view virtual returns (bytes calldata) {
+        return msg.data;
+    }
+}
+
+/**
+ * @dev Contract module which provides a basic access control mechanism, where
+ * there is an account (an owner) that can be granted exclusive access to
+ * specific functions.
+ *
+ * By default, the owner account will be the one that deploys the contract. This
+ * can later be changed with {transferOwnership}.
+ *
+ * This module is used through inheritance. It will make available the modifier
+ * \`onlyOwner\`, which can be applied to your functions to restrict their use to
+ * the owner.
+ */
+abstract contract Ownable is Context {
+    address private _owner;
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    /**
+     * @dev Initializes the contract setting the deployer as the initial owner.
+     */
+    constructor() {
+        _transferOwnership(_msgSender());
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() virtual {
+        _checkOwner();
+        _;
+    }
+
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    function owner() public view virtual returns (address) {
+        return _owner;
+    }
+
+    /**
+     * @dev Throws if the sender is not the owner.
+     */
+    function _checkOwner() internal view virtual {
+        require(owner() == _msgSender(), "Ownable: caller is not the owner");
+    }
+
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * \`onlyOwner\` functions. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will leave the contract without an owner,
+     * thereby disabling any functionality that is only available to the owner.
+     */
+    function renounceOwnership() public virtual onlyOwner {
+        _transferOwnership(address(0));
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (\`newOwner\`).
+     * Can only be called by the current owner.
+     */
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        _transferOwnership(newOwner);
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (\`newOwner\`).
+     * Internal function without access restriction.
+     */
+    function _transferOwnership(address newOwner) internal virtual {
+        address oldOwner = _owner;
+        _owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
+    }
+}
+
+/**
+ * @dev Contract module that helps prevent reentrant calls to a function.
+ *
+ * Inheriting from \`ReentrancyGuard\` will make the {nonReentrant} modifier
+ * available, which can be applied to functions to make sure there are no nested
+ * (reentrant) calls to them.
+ *
+ * Note that because there is a single \`nonReentrant\` guard, functions marked as
+ * \`nonReentrant\` may not call one another. This can be worked around by making
+ * those functions \`private\`, and then adding \`external\` \`nonReentrant\` entry
+ * points to them.
+ *
+ * TIP: If you would like to learn more about reentrancy and alternative ways
+ * to protect against it, check out our blog post
+ * https://blog.openzeppelin.com/reentrancy-after-istanbul/[Reentrancy After Istanbul].
+ */
+abstract contract ReentrancyGuard {
+    // Booleans are more expensive than uint256 or any type that takes up a full
+    // word because each write operation emits an extra SLOAD to first read the
+    // slot's contents, replace the bits taken up by the boolean, and then write
+    // back. This is the compiler's defense against contract upgrades and
+    // pointer aliasing, and it cannot be disabled.
+
+    // The values being non-zero value makes deployment a bit more expensive,
+    // but in exchange the refund on every call to nonReentrant will be lower in
+    // amount. Since refunds are capped to a percentage of the total
+    // transaction's gas, it is best to keep them low in cases like this one, to
+    // increase the likelihood of the full refund coming into effect.
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+
+    uint256 private _status;
+
+    constructor() {
+        _status = _NOT_ENTERED;
+    }
+
+    /**
+     * @dev Prevents a contract from calling itself, directly or indirectly.
+     * Calling a \`nonReentrant\` function from another \`nonReentrant\`
+     * function is not supported. It is possible to prevent this from happening
+     * by making the \`nonReentrant\` function external, and making it call a
+     * \`private\` function that does the actual work.
+     */
+    modifier nonReentrant() {
+        _nonReentrantBefore();
+        _;
+        _nonReentrantAfter();
+    }
+
+    function _nonReentrantBefore() private {
+        // On the first call to nonReentrant, _status will be _NOT_ENTERED
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+
+        // Any calls to nonReentrant after this point will fail
+        _status = _ENTERED;
+    }
+
+    function _nonReentrantAfter() private {
+        // By storing the original value once again, a refund is triggered (see
+        // https://eips.ethereum.org/EIPS/eip-2200)
+        _status = _NOT_ENTERED;
+    }
+
+    /**
+     * @dev Returns true if the reentrancy guard is currently set to "entered", which indicates there is a
+     * \`nonReentrant\` function in the call stack.
+     */
+    function _reentrancyGuardEntered() internal view returns (bool) {
+        return _status == _ENTERED;
+    }
+}
+
+// ============ PREDICTION POOL CONTRACT ============
+
+contract PredictionPool is Ownable, ReentrancyGuard {
+    
+    // ============ STATE VARIABLES ============
+    
+    /// @dev Pool metadata
+    string public title;
+    string public description;
+    string public category;
+    uint256 public closingDate;    // When betting closes
+    uint256 public closingBid;     // When the prediction event ends
+    address payable public factory;        // Factory contract address
+    
+    /// @dev Pool state
+    bool public isClosed = false;
+    bool public winnerSet = false;
+    bool public winner;            // true = Yes, false = No
+    bool public emergencyStop = false;  // Emergency stop for betting
+    bool public cancelled = false;      // Pool cancelled - refunds available
+    
+    /// @dev Betting totals
+    uint256 public totalYes;
+    uint256 public totalNo;
+    uint256 public totalBets;
+    
+    /// @dev User betting data
+    mapping(address => Bet) public userBets;
+    address[] public bettors;
+    
+    /// @dev Claiming data
+    mapping(address => bool) public hasClaimed;
+    uint256 public totalClaimed;
+    
+    /// @dev Fee configuration
+    address public constant FEE_WALLET = 0x8E49800F0AA47e68ba9e46D97481679D03379294;
+    uint256 public constant FEE_PERCENTAGE = 150; // 1.5%
+    
+    // ============ STRUCTS ============
+    
+    struct Bet {
+        bool choice;        // true = Yes, false = No
+        uint256 amount;     // Amount bet
+        uint256 timestamp;  // When bet was placed
+        bool claimed;       // Whether rewards have been claimed
+    }
+    
+    // ============ EVENTS ============
+    
+    event BetPlaced(address indexed user, bool choice, uint256 amount, string predictionTitle, string userChoice);
+    event PoolClosed();
+    event WinnerSet(bool winner);
+    event RewardsClaimed(address indexed user, uint256 amount);
+    event EmergencyStop();
+    event PoolCancelled();
+    
+    // ============ MODIFIERS ============
+    
+    modifier bettingOpen() {
+        require(!isClosed, "Betting is closed");
+        require(!emergencyStop, "Emergency stop activated");
+        require(!cancelled, "Pool has been cancelled");
+        require(block.timestamp <= closingDate, "Betting period has ended");
+        _;
+    }
+    
+    
+    // ============ CONSTRUCTOR ============
+    
+    constructor(
+        string memory _title,
+        string memory _description,
+        string memory _category,
+        uint256 _closingDate,
+        uint256 _closingBid,
+        address _factory
+    ) {
+        title = _title;
+        description = _description;
+        category = _category;
+        closingDate = _closingDate;
+        closingBid = _closingBid;
+        factory = payable(_factory);
+    }
+    
+    // ============ BETTING FUNCTIONS ============
+    
+    /**
+     * @dev Place a bet on the prediction
+     * @param _choice true for Yes, false for No
+     */
+    function placeBet(bool _choice) external payable bettingOpen nonReentrant {
+        require(msg.value > 0, "Bet amount must be greater than 0");
+        require(userBets[msg.sender].amount == 0, "User has already placed a bet");
+        
+        // Record the bet
+        userBets[msg.sender] = Bet({
+            choice: _choice,
+            amount: msg.value,
+            timestamp: block.timestamp,
+            claimed: false
+        });
+        
+        // Add to bettors list if first bet
+        if (userBets[msg.sender].amount == msg.value) {
+            bettors.push(msg.sender);
+        }
+        
+        // Update totals
+        if (_choice) {
+            totalYes += msg.value;
+        } else {
+            totalNo += msg.value;
+        }
+        totalBets += 1;
+        
+        emit BetPlaced(msg.sender, _choice, msg.value, title, _choice ? "YES" : "NO");
+    }
+    
+    // ============ ADMIN FUNCTIONS ============
+    
+    /**
+     * @dev Close betting (only owner)
+     */
+    function closeBetting() external onlyOwner {
+        require(!isClosed, "Betting is already closed");
+        isClosed = true;
+        emit PoolClosed();
+    }
+    
+    /**
+     * @dev Set the winner (only owner)
+     * @param _winner true for Yes, false for No
+     */
+    function setWinner(bool _winner) external onlyOwner {
+        require(isClosed, "Betting must be closed first");
+        require(!winnerSet, "Winner has already been set");
+        
+        winner = _winner;
+        winnerSet = true;
+        emit WinnerSet(_winner);
+    }
+    
+    /**
+     * @dev Emergency stop betting (only owner)
+     */
+    function emergencyStopBetting() external onlyOwner {
+        emergencyStop = true;
+        emit EmergencyStop();
+    }
+    
+    /**
+     * @dev Cancel pool and enable refunds (only owner)
+     */
+    function cancelPool() external onlyOwner {
+        require(!cancelled, "Pool is already cancelled");
+        cancelled = true;
+        emit PoolCancelled();
+    }
+    
+    // ============ HELPER FUNCTIONS ============
+    
+    /**
+     * @dev Get bet description for wallet display
+     */
+    function getBetDescription() external view returns (string memory) {
+        return string(abi.encodePacked("Bet on: ", title));
+    }
+    
+    /**
+     * @dev Get betting status for wallet display
+     */
+    function getBettingStatus() external view returns (string memory) {
+        if (cancelled) return "Pool Cancelled";
+        if (emergencyStop) return "Emergency Stop";
+        if (isClosed) return "Betting Closed";
+        if (block.timestamp > closingDate) return "Betting Period Ended";
+        return "Betting Open";
+    }
+    
+    /**
+     * @dev Check if user can bet
+     */
+    function canUserBet(address _user) external view returns (bool canBet, string memory reason) {
+        if (cancelled) return (false, "Pool has been cancelled");
+        if (emergencyStop) return (false, "Emergency stop activated");
+        if (isClosed) return (false, "Betting is closed");
+        if (block.timestamp > closingDate) return (false, "Betting period has ended");
+        if (userBets[_user].amount > 0) return (false, "User has already placed a bet");
+        return (true, "User can place a bet");
+    }
+    
+    /**
+     * @dev Check if betting is currently open
+     */
+    function isBettingOpen() external view returns (bool) {
+        return !isClosed && !emergencyStop && !cancelled && block.timestamp <= closingDate;
+    }
+    
+    // ============ CLAIM FUNCTIONS ============
+    
+    /**
+     * @dev Claim rewards for winners
+     */
+    function claimRewards() external nonReentrant {
+        require(winnerSet, "Winner has not been set yet");
+        require(!cancelled, "Pool has been cancelled - use claimRefund instead");
+        require(userBets[msg.sender].amount > 0, "No bet placed");
+        require(!userBets[msg.sender].claimed, "Rewards already claimed");
+        require(userBets[msg.sender].choice == winner, "Not a winner");
+        
+        // Calculate reward
+        uint256 betAmount = userBets[msg.sender].amount;
+        uint256 totalWinningBets = winner ? totalYes : totalNo;
+        uint256 totalLosingBets = winner ? totalNo : totalYes;
+        
+        uint256 feeAmount = (totalLosingBets * FEE_PERCENTAGE) / 10000;
+        uint256 rewardPool = totalLosingBets - feeAmount;
+        uint256 userReward = (betAmount * rewardPool) / totalWinningBets;
+        
+        userBets[msg.sender].claimed = true;
+        totalClaimed += userReward;
+        
+        payable(msg.sender).transfer(userReward);
+        emit RewardsClaimed(msg.sender, userReward);
+    }
+    
+    /**
+     * @dev Claim refund for cancelled pool
+     */
+    function claimRefund() external nonReentrant {
+        require(cancelled, "Pool has not been cancelled");
+        require(userBets[msg.sender].amount > 0, "No bet placed");
+        require(!userBets[msg.sender].claimed, "Refund already claimed");
+        
+        uint256 refundAmount = userBets[msg.sender].amount;
+        userBets[msg.sender].claimed = true;
+        
+        payable(msg.sender).transfer(refundAmount);
+        emit RewardsClaimed(msg.sender, refundAmount);
+    }
+    
+    // ============ VIEW FUNCTIONS ============
+    
+    /**
+     * @dev Get pool statistics
+     */
+    function getPoolStats() external view returns (
+        uint256 _totalYes,
+        uint256 _totalNo,
+        uint256 _totalBets,
+        bool _isClosed,
+        bool _winnerSet,
+        bool _winner
+    ) {
+        return (totalYes, totalNo, totalBets, isClosed, winnerSet, winner);
+    }
+    
+    /**
+     * @dev Get user bet information
+     */
+    function getUserBet(address _user) external view returns (
+        bool choice,
+        uint256 amount,
+        uint256 timestamp,
+        bool claimed
+    ) {
+        Bet memory bet = userBets[_user];
+        return (bet.choice, bet.amount, bet.timestamp, bet.claimed);
+    }
+    
+    /**
+     * @dev Get all bettors
+     */
+    function getAllBettors() external view returns (address[] memory) {
+        return bettors;
+    }
+    
+    // ============ FEE FUNCTIONS ============
+    
+    /**
+     * @dev Withdraw fees to fee wallet (only owner)
+     */
+    function withdrawFees() external onlyOwner {
+        require(winnerSet, "Winner must be set first");
+        require(!cancelled, "Cannot withdraw fees from cancelled pool");
+        
+        uint256 totalLosingBets = winner ? totalNo : totalYes;
+        uint256 feeAmount = (totalLosingBets * FEE_PERCENTAGE) / 10000;
+        
+        if (feeAmount > 0) {
+            payable(FEE_WALLET).transfer(feeAmount);
+        }
+    }
+    
+    // ============ FALLBACK ============
+    
+    receive() external payable {
+        // Accept ETH transfers
+    }
+}`;
+
+    return contractCode;
+  };
+
+  // Apre il modal per generare il codice BSCScan
+  const handleGenerateBSCScanCode = (prediction: any) => {
+    const code = generateContractCode(prediction);
+    setGeneratedContractCode(code);
+    setShowBSCScanModal(true);
   };
 
   const handleActivateContract = async (prediction: any) => {
@@ -866,6 +1368,12 @@ export default function AdminPanel() {
                     >
                       Elimina
                     </button>
+                    <button
+                      onClick={() => handleGenerateBSCScanCode(prediction)}
+                      className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 text-sm font-medium"
+                    >
+                      Codice BSCScan
+                    </button>
                   </div>
                 </div>
                 
@@ -943,6 +1451,12 @@ export default function AdminPanel() {
                       className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 text-sm font-medium"
                     >
                       Elimina
+                    </button>
+                    <button
+                      onClick={() => handleGenerateBSCScanCode(prediction)}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 text-sm font-medium"
+                    >
+                      Codice BSCScan
                     </button>
                   </div>
                 </div>
@@ -1555,6 +2069,85 @@ export default function AdminPanel() {
         contractAddress={contractAddress}
         error={transactionError}
       />
+
+      {/* Modal BSCScan Code */}
+      {showBSCScanModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="relative bg-white dark:bg-dark-card rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 mx-4 max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Codice Contratto per BSCScan
+              </h3>
+              <button
+                onClick={() => setShowBSCScanModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">
+                  📋 Istruzioni per BSCScan
+                </h4>
+                <ol className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-decimal list-inside">
+                  <li>Vai su <a href="https://testnet.bscscan.com/verifyContract" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">BSCScan Verify Contract</a></li>
+                  <li>Incolla l'indirizzo del contratto deployato</li>
+                  <li>Seleziona "Solidity (Single file)"</li>
+                  <li>Copia e incolla il codice qui sotto</li>
+                  <li>Compilatore: <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">v0.8.19+commit.7dd6d404</code></li>
+                  <li>Ottimizzazione: <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">200 runs</code></li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Codice Solidity Completo:
+                </label>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedContractCode);
+                    alert('Codice copiato negli appunti!');
+                  }}
+                  className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                >
+                  📋 Copia
+                </button>
+              </div>
+              <textarea
+                value={generatedContractCode}
+                readOnly
+                className="w-full h-96 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm font-mono text-gray-900 dark:text-gray-100 resize-none"
+                style={{ fontSize: '12px', lineHeight: '1.4' }}
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowBSCScanModal(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Chiudi
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedContractCode);
+                  alert('Codice copiato negli appunti!');
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Copia Codice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

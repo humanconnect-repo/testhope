@@ -246,16 +246,23 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   };
 
   useEffect(() => {
+    // Non ricaricare durante il processo di betting
+    if (showBettingModal || bettingLoading) {
+      return;
+    }
+    
     loadPredictionData();
     loadRecentBets(true); // Refresh forzato al caricamento iniziale
     
     // Polling manuale ogni 5 minuti per aggiornamenti
     const interval = setInterval(() => {
-      loadRecentBets(true); // Refresh forzato ogni 5 minuti
+      if (!showBettingModal && !bettingLoading) {
+        loadRecentBets(true); // Refresh forzato ogni 5 minuti
+      }
     }, 300000); // 5 minuti
     
     return () => clearInterval(interval);
-  }, [params.slug]);
+  }, [params.slug, showBettingModal, bettingLoading]);
 
   // useEffect per caricare i commenti quando prediction è disponibile
   useEffect(() => {
@@ -789,18 +796,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         throw new Error('Importo non valido');
       }
 
-      // Validazione aggiuntiva con contratto (se disponibile)
-      if (poolAddress) {
-        try {
-          const { canUserBet } = await import('@/lib/contracts');
-          const betCheck = await canUserBet(poolAddress, address!);
-          if (!betCheck.canBet) {
-            throw new Error(betCheck.reason);
-          }
-        } catch (contractError) {
-          console.warn('Contract validation failed, proceeding with basic validation:', contractError);
-        }
-      }
+      // Validazione frontend sufficiente - il contratto impedisce doppie scommesse
       
 
       updateBettingStepStatus('preparation', 'completed');
@@ -973,9 +969,30 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                 {prediction.title}
               </h1>
 
-              <p className="text-gray-600 dark:text-gray-400 text-lg leading-relaxed">
+              <p className="text-gray-600 dark:text-gray-400 text-lg leading-relaxed mb-4">
                 {prediction.description}
               </p>
+
+              {/* Pool Address - solo se attiva */}
+              {prediction.status === 'attiva' && poolAddress && (
+                <div className="inline-flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 border border-gray-200 dark:border-gray-700">
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Pool:</span>
+                  <code className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded font-mono text-gray-800 dark:text-gray-200">
+                    {poolAddress.slice(0, 6)}...{poolAddress.slice(-4)}
+                  </code>
+                  <a
+                    href={`https://testnet.bscscan.com/address/${poolAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                    title="Visualizza su BSCScan"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1620,7 +1637,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
               {/* Tooltip */}
               <div className="mt-4">
                 <p className="text-sm text-white dark:text-gray-200 text-center">
-                  <span className="font-medium">Tooltip:</span> se procedi e poi annulli la TX dal tuo wallet controlla che non rimanga in sospeso e di non firmarla dopo per sbaglio.
+                  <span className="font-medium">Tooltip:</span> se procedi alla schermata successiva ma poi annulli la TX controlla che la TX non rimanga in sospeso nel wallet e di non firmarla dopo per sbaglio.
                 </p>
               </div>
             </div>
@@ -1637,7 +1654,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                 onClick={confirmBet}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
-                Conferma
+                 Procedi
               </button>
             </div>
           </div>

@@ -46,7 +46,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
     uint256 public totalClaimed;
     
     /// @dev Fee configuration
-    address public constant FEE_WALLET = 0x8e49800f0aa47e68ba9e46d97481679d03379294;
+    address public constant FEE_WALLET = 0x8E49800F0AA47e68ba9e46D97481679D03379294;
     uint256 public constant FEE_PERCENTAGE = 150; // 1.5%
     uint256 public constant BASIS_POINTS = 10000; // 100%
     
@@ -403,7 +403,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
      * @dev Returns human-readable information about this bet for wallet display
      * @return description String describing what the user is doing
      */
-    function getBetDescription() external view returns (string memory description) {
+    function getBetDescription() external view returns (string memory) {
         return string(abi.encodePacked(
             "Place a bet on: ", title,
             " | Category: ", category,
