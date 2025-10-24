@@ -53,6 +53,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             category,
             closing_date,
             status,
+            image_url,
             created_at
           `)
           .in('status', ['attiva', 'in_attesa'])
@@ -101,6 +102,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             category,
             closing_date,
             status,
+            image_url,
             created_at
           `)
           .in('status', ['attiva', 'in_attesa'])
@@ -145,6 +147,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             category,
             closing_date,
             status,
+            image_url,
             created_at
           `)
           .in('status', ['attiva', 'in_attesa'])
@@ -328,6 +331,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             category={prediction.category}
             status={prediction.status}
             totalBets={prediction.total_bets || 0}
+            imageUrl={prediction.image_url}
           />
         ))}
       </div>

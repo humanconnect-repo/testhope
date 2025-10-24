@@ -5,6 +5,7 @@ import { useContracts } from '@/hooks/useContracts';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import TransactionProgressModal, { TransactionStep } from './TransactionProgressModal';
+import ImageUpload from './ImageUpload';
 
 interface Prediction {
   id: string;
@@ -16,6 +17,7 @@ interface Prediction {
   closing_bid: string;
   status: 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata';
   rules: string;
+  image_url?: string;
   pool_address?: string; // Indirizzo del contratto smart contract
   created_at: string;
   updated_at: string;
@@ -29,6 +31,7 @@ interface PredictionFormData {
   closing_bid: string;
   status: 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata';
   rules: string;
+  image_url?: string;
 }
 
 export default function AdminPanel() {
@@ -206,8 +209,9 @@ export default function AdminPanel() {
     category: '',
     closing_date: '',
     closing_bid: '',
-    status: 'attiva',
-    rules: ''
+    status: 'in_attesa',
+    rules: '',
+    image_url: ''
   });
 
   // Stati per il modal di transazione
@@ -242,7 +246,7 @@ export default function AdminPanel() {
     try {
       const { data, error } = await supabase
         .from('predictions')
-        .select('*')
+        .select('id, title, description, slug, category, closing_date, closing_bid, status, rules, image_url, pool_address, created_at, updated_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -307,7 +311,7 @@ export default function AdminPanel() {
             closing_bid: predictionData.closing_bid,
             status: predictionData.status,
             rules: predictionData.rules,
-            admin_wallet_address: userAddress  // Ripristinato per compatibilità
+            image_url: predictionData.image_url
           });
 
         if (rpcError) {
@@ -329,7 +333,8 @@ export default function AdminPanel() {
           closing_bid: predictionData.closing_bid,
           status: predictionData.status,
           rules: predictionData.rules,
-          admin_wallet_address: userAddress
+          admin_wallet_address: userAddress,
+          image_url: predictionData.image_url
         });
 
         if (error) throw error;
@@ -366,7 +371,8 @@ export default function AdminPanel() {
       closing_date: new Date(prediction.closing_date).toISOString().slice(0, 16),
       closing_bid: prediction.closing_bid ? new Date(prediction.closing_bid).toISOString().slice(0, 16) : '',
       status: prediction.status,
-      rules: prediction.rules || ''
+      rules: prediction.rules || '',
+      image_url: prediction.image_url || ''
     });
     // Non aprire il form generale, solo quello inline
   };
@@ -520,8 +526,9 @@ export default function AdminPanel() {
       category: '',
       closing_date: '',
       closing_bid: '',
-      status: 'attiva',
-      rules: ''
+      status: 'in_attesa',
+      rules: '',
+      image_url: ''
     });
     setShowForm(false);
     setEditingPrediction(null);
@@ -704,6 +711,18 @@ export default function AdminPanel() {
               </div>
             </div>
 
+            {/* Upload immagine */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Immagine Prediction
+              </label>
+              <ImageUpload
+                onImageUploaded={(imageUrl) => setFormData({...formData, image_url: imageUrl})}
+                currentImageUrl={formData.image_url}
+                className="w-full"
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -711,9 +730,10 @@ export default function AdminPanel() {
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value as 'attiva' | 'in_pausa' | 'risolta' | 'cancellata'})}
+                  onChange={(e) => setFormData({...formData, status: e.target.value as 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata'})}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
+                  <option value="in_attesa">In Attesa</option>
                   <option value="attiva">Attiva</option>
                   <option value="in_pausa">In Pausa</option>
                   <option value="risolta">Risolta</option>

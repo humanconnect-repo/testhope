@@ -14,6 +14,7 @@ interface PredictionCardProps {
   category: string;
   status?: string;
   totalBets?: number;
+  imageUrl?: string;
 }
 
 export default function PredictionCard({ 
@@ -24,7 +25,8 @@ export default function PredictionCard({
   noPercentage, 
   category,
   status,
-  totalBets = 0
+  totalBets = 0,
+  imageUrl
 }: PredictionCardProps) {
   const { isConnected } = useWeb3Auth();
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -69,9 +71,26 @@ export default function PredictionCard({
           {title}
         </h3>
 
-        {/* Status e Data di chiusura */}
-        <div className="mb-3 space-y-1">
-          <div className="flex items-center justify-between">
+        {/* Layout con immagine a sinistra e info a destra */}
+        <div className="mb-3 flex items-start justify-between">
+          {/* Immagine a sinistra */}
+          {imageUrl && (
+            <div className="flex-shrink-0">
+              <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm">
+                <img
+                  src={imageUrl}
+                  alt={title}
+                  className="w-full h-full object-cover"
+                  onLoad={() => console.log('✅ Immagine caricata:', imageUrl)}
+                  onError={() => console.error('❌ Errore caricamento immagine:', imageUrl)}
+                />
+              </div>
+            </div>
+          )}
+          
+          {/* Info completamente a destra */}
+          <div className="flex flex-col items-end space-y-1">
+            {/* Status */}
             <span className={`text-xs font-medium ${
               status === 'attiva' 
                 ? 'text-green-600 dark:text-green-400' 
@@ -92,16 +111,22 @@ export default function PredictionCard({
                status === 'cancellata' ? '🔴 CANCELLATA' :
                '🟢 ATTIVA'}
             </span>
+            
+            {/* Volumi */}
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
               Volumi: <span className="font-bold text-primary">{totalBets.toFixed(4)} BNB</span>
             </span>
           </div>
-          {status !== 'attiva' && status !== 'in_attesa' && (
+        </div>
+
+        {/* Data di chiusura (solo se non attiva/in_attesa) */}
+        {status !== 'attiva' && status !== 'in_attesa' && (
+          <div className="mb-3">
             <div className="flex items-center">
               <span className="text-xs text-gray-700 dark:text-gray-300">{closingDate}</span>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Percentuali */}
         <div className="space-y-2 flex-grow">

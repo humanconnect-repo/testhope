@@ -46,7 +46,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
     uint256 public totalClaimed;
     
     /// @dev Fee configuration
-    address public constant FEE_WALLET = 0x17EE2ca31a6811F5d4198bCE9afd1C1db3837A38;
+    address public constant FEE_WALLET = 0x8e49800f0aa47e68ba9e46d97481679d03379294;
     uint256 public constant FEE_PERCENTAGE = 150; // 1.5%
     uint256 public constant BASIS_POINTS = 10000; // 100%
     
@@ -66,7 +66,9 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         uint256 amount,
         bool choice,
         uint256 totalYes,
-        uint256 totalNo
+        uint256 totalNo,
+        string predictionTitle,
+        string userChoice
     );
     
     event WinnerSet(bool winner);
@@ -117,8 +119,13 @@ contract PredictionPool is Ownable, ReentrancyGuard {
     // ============ EXTERNAL FUNCTIONS ============
     
     /**
-     * @dev Places a bet on Yes or No
-     * @param _choice true for Yes, false for No
+     * @dev Places a bet on the prediction pool
+     * @param _choice true for "Yes" prediction, false for "No" prediction
+     * @notice This function allows users to bet BNB on whether the prediction will be true or false
+     * @notice The bet amount is sent as msg.value (in BNB)
+     * @notice Users can only place one bet per pool
+     * @notice Betting is only allowed before the closing date
+     * @notice Fee: 1.5% of losing pot goes to fee wallet
      */
     function placeBet(bool _choice) external payable bettingOpen {
         require(msg.value > 0, "Bet amount must be greater than 0");
@@ -148,7 +155,15 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         
         totalBets += msg.value;
         
-        emit BetPlaced(msg.sender, msg.value, _choice, totalYes, totalNo);
+        emit BetPlaced(
+            msg.sender, 
+            msg.value, 
+            _choice, 
+            totalYes, 
+            totalNo,
+            title,
+            _choice ? "YES" : "NO"
+        );
     }
     
     /**
@@ -382,6 +397,51 @@ contract PredictionPool is Ownable, ReentrancyGuard {
      */
     function isBettingCurrentlyOpen() external view returns (bool) {
         return TimeConfig.isBettingOpen(closingDate) && !emergencyStop && !isClosed && !cancelled;
+    }
+    
+    /**
+     * @dev Returns human-readable information about this bet for wallet display
+     * @return description String describing what the user is doing
+     */
+    function getBetDescription() external view returns (string memory description) {
+        return string(abi.encodePacked(
+            "Place a bet on: ", title,
+            " | Category: ", category,
+            " | Betting closes: ", closingDate
+        ));
+    }
+    
+    /**
+     * @dev Returns the current betting status for wallet display
+     * @return status String describing if betting is open
+     */
+    function getBettingStatus() external view returns (string memory status) {
+        if (emergencyStop) return "Betting is currently paused by admin";
+        if (cancelled) return "This pool has been cancelled";
+        if (block.timestamp > closingDate) return "Betting period has ended";
+        return "Betting is open - you can place your bet";
+    }
+    
+    /**
+     * @dev Returns if the user can place a bet with detailed reason
+     * @param _user Address of the user
+     * @return canBet true if user can bet
+     * @return reason reason why user cannot bet (if applicable)
+     */
+    function canUserBet(address _user) external view returns (bool canBet, string memory reason) {
+        if (userBets[_user].amount > 0) {
+            return (false, "You have already placed a bet in this pool");
+        }
+        if (emergencyStop) {
+            return (false, "Betting has been paused by admin");
+        }
+        if (cancelled) {
+            return (false, "This pool has been cancelled");
+        }
+        if (block.timestamp > closingDate) {
+            return (false, "Betting period has ended");
+        }
+        return (true, "You can place your bet");
     }
     
     /**

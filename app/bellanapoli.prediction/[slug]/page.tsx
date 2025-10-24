@@ -26,6 +26,7 @@ interface PredictionData {
   closing_date: string;
   closing_bid: string;
   rules: string;
+  image_url?: string;
   yes_percentage: number;
   no_percentage: number;
   total_bets: number;
@@ -76,13 +77,13 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     {
       id: 'preparation',
       title: 'Preparazione Prediction',
-      description: 'Validazione parametri e preparazione transazione...',
+      description: `Validazione scommessa: ${selectedPosition === 'yes' ? 'SÌ' : 'NO'} per ${betAmount} BNB`,
       status: 'pending'
     },
     {
       id: 'wallet',
-      title: 'Invio al Wallet',
-      description: 'Invio transazione al wallet per firma...',
+      title: 'Firma Transazione',
+      description: `Firma la transazione nel wallet per scommettere ${betAmount} BNB`,
       status: 'pending'
     },
     {
@@ -778,6 +779,19 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       if (isNaN(amount) || amount <= 0) {
         throw new Error('Importo non valido');
       }
+
+      // Validazione aggiuntiva con contratto (se disponibile)
+      if (poolAddress) {
+        try {
+          const { canUserBet } = await import('@/lib/contracts');
+          const betCheck = await canUserBet(poolAddress, address);
+          if (!betCheck.canBet) {
+            throw new Error(betCheck.reason);
+          }
+        } catch (contractError) {
+          console.warn('Contract validation failed, proceeding with basic validation:', contractError);
+        }
+      }
       
 
       updateBettingStepStatus('preparation', 'completed');
@@ -924,13 +938,30 @@ export default function PredictionPage({ params }: { params: { slug: string } })
             </span>
           </div>
 
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-            {prediction.title}
-          </h1>
+          {/* Immagine e contenuto */}
+          <div className="flex flex-col lg:flex-row gap-6 mb-6">
+            {/* Immagine */}
+            {prediction.image_url && (
+              <div className="flex-shrink-0">
+                <img
+                  src={prediction.image_url}
+                  alt={prediction.title}
+                  className="w-48 h-48 lg:w-64 lg:h-64 object-cover rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
+                />
+              </div>
+            )}
+            
+            {/* Testo */}
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                {prediction.title}
+              </h1>
 
-          <p className="text-gray-600 dark:text-gray-400 text-lg leading-relaxed mb-6">
-            {prediction.description}
-          </p>
+              <p className="text-gray-600 dark:text-gray-400 text-lg leading-relaxed">
+                {prediction.description}
+              </p>
+            </div>
+          </div>
 
           {/* Percentuali */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

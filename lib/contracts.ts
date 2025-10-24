@@ -399,6 +399,46 @@ export async function isPoolCancelled(poolAddress: string): Promise<boolean> {
   }
 }
 
+// Get bet description from pool contract
+export async function getBetDescription(poolAddress: string): Promise<string> {
+  try {
+    const pool = await getPool(poolAddress);
+    return await pool.getBetDescription();
+  } catch (error) {
+    console.warn('Error getting bet description:', error);
+    return 'Place a bet on prediction pool';
+  }
+}
+
+// Get betting status from pool contract
+export async function getBettingStatus(poolAddress: string): Promise<string> {
+  try {
+    const pool = await getPool(poolAddress);
+    return await pool.getBettingStatus();
+  } catch (error) {
+    console.warn('Error getting betting status:', error);
+    return 'Unable to check betting status';
+  }
+}
+
+// Check if user can bet with detailed reason
+export async function canUserBet(poolAddress: string, userAddress: string): Promise<{ canBet: boolean; reason: string }> {
+  try {
+    const pool = await getPool(poolAddress);
+    const result = await pool.canUserBet(userAddress);
+    return {
+      canBet: result[0],
+      reason: result[1]
+    };
+  } catch (error) {
+    console.warn('Error checking if user can bet:', error);
+    return {
+      canBet: false,
+      reason: 'Unable to check betting eligibility'
+    };
+  }
+}
+
 // Place a bet on a pool
 export async function placeBet(poolAddress: string, choice: boolean, amount: string): Promise<{ hash: string; receipt: any }> {
   try {
@@ -410,8 +450,11 @@ export async function placeBet(poolAddress: string, choice: boolean, amount: str
     const amountWei = ethers.parseEther(amount);
     console.log('🔍 Contract placeBet:', { amount, amountWei: amountWei.toString() });
     
-    // Call placeBet function
-    const tx = await (pool.connect(signer) as any).placeBet(choice, { value: amountWei });
+    // Call placeBet function with improved metadata for wallet display
+    const tx = await (pool.connect(signer) as any).placeBet(choice, { 
+      value: amountWei,
+      gasLimit: 200000, // Explicit gas limit for better wallet estimation
+    });
     const receipt = await tx.wait();
     
     return {

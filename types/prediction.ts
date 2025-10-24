@@ -16,6 +16,7 @@ export interface Prediction {
   status: PredictionStatus;
   contract_address?: string;
   rules?: string;
+  image_url?: string;
   created_at: string;
   updated_at: string;
 }
@@ -28,4 +29,5 @@ export interface PredictionFormData {
   closing_bid: string;
   status: PredictionStatus;
   rules: string;
+  image_url?: string;
 }
