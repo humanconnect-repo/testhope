@@ -11,6 +11,7 @@ interface Prediction {
   category: string;
   closing_date: string;
   status: 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata';
+  image_url?: string;
   yes_percentage: number;
   no_percentage: number;
   total_bets: number;
