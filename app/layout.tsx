@@ -24,7 +24,7 @@ export default function RootLayout({
               
               // Polyfill di sicurezza per indexedDB durante SSR
               if (typeof window === 'undefined') {
-                global.indexedDB = {} as IDBFactory;
+                global.indexedDB = {};
               }
               
               // Filtri console per errori non bloccanti
