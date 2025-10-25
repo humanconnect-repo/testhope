@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import '../styles/animations.css'
-import Web3Provider from '@/components/Web3Provider'
+import Web3Provider from '../components/Web3Provider'
 
 export const metadata: Metadata = {
   title: 'Bella Napoli - Scommetti sul futuro, con stile degen italiano',

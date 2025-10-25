@@ -1,8 +1,8 @@
 "use client";
-import AdminPanel from '@/components/AdminPanel';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import { useAdmin } from '@/hooks/useAdmin';
+import AdminPanel from '../../components/AdminPanel';
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
+import { useAdmin } from '../../hooks/useAdmin';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 

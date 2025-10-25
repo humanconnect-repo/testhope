@@ -1,9 +1,9 @@
 "use client";
 import { useState } from 'react';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import PredictionList from '@/components/PredictionList';
-import CategoryTabs from '@/components/CategoryTabs';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+import PredictionList from '../components/PredictionList';
+import CategoryTabs from '../components/CategoryTabs';
 
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState('all');
