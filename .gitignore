@@ -46,6 +46,7 @@ backup/
 cache/
 # artifacts/  # Commented out to include artifacts in git for Vercel
 typechain-types/
+types/
 
 # Supabase
 supabase/.branches

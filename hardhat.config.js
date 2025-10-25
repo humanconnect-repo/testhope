@@ -48,6 +48,13 @@ const config = {
       }
     ]
   },
+  typechain: {
+    outDir: "types/ethers-contracts",
+    target: "ethers-v6",
+    alwaysGenerateOverloads: false,
+    externalArtifacts: ["externalArtifacts/*.json"],
+    dontOverrideCompile: false
+  },
 };
 
 export default config;
