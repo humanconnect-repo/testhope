@@ -103,7 +103,7 @@ Thumbs.db
 
 # Hardhat files
 cache/
-artifacts/
+# artifacts/
 
 # Custom exclusions for this project
 # contractweb3/ - Commented out to allow live operations
