@@ -36,7 +36,8 @@
     "glob": "^10.0.0",
     "@walletconnect/ethereum-provider": "^2.22.4",
     "@walletconnect/sign-client": "^2.22.4",
-    "@walletconnect/universal-provider": "^2.22.4"
+    "@walletconnect/universal-provider": "^2.22.4",
+    "@reown/appkit": "^1.8.11"
   },
   "devDependencies": {
     "@types/node": "^24.7.0",
