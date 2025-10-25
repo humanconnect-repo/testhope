@@ -12,6 +12,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.3",
     "@rainbow-me/rainbowkit": "^2.2.9",
+    "@reown/appkit": "^1.8.11",
     "@supabase/supabase-js": "^2.74.0",
     "@tanstack/react-query": "^5.90.2",
     "@wagmi/connectors": "^6.1.0",
