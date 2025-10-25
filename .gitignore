@@ -112,6 +112,9 @@ guide/
 scripts/
 test/
 
+# Development files
+package-dev.json
+
 # Deployment info (contains sensitive data)
 deployment-info.json
 
