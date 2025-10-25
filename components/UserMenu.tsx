@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
-import { useWeb3Auth } from '@/hooks/useWeb3Auth';
+import { useWeb3Auth } from '../hooks/useWeb3Auth';
 import { useRouter } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useBalance } from 'wagmi';

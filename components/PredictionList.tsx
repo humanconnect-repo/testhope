@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect } from 'react';
 import PredictionCard from './PredictionCard';
-import { supabase } from '@/lib/supabase';
-import { formatItalianDateShort, getClosingDateText } from '@/lib/dateUtils';
+import { supabase } from '../lib/supabase';
+import { formatItalianDateShort, getClosingDateText } from '../lib/dateUtils';
 
 interface Prediction {
   id: string;

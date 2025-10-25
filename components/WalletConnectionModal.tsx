@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import { useWeb3Auth } from '@/hooks/useWeb3Auth';
+import { useWeb3Auth } from '../hooks/useWeb3Auth';
 
 interface WalletConnectionModalProps {
   isOpen: boolean;

@@ -4,7 +4,7 @@ import {
   isBettingCurrentlyOpen,
   canClaimRefund,
   isPoolCancelled
-} from '@/lib/contracts';
+} from '../lib/contracts';
 
 export interface PoolState {
   canBet: boolean;

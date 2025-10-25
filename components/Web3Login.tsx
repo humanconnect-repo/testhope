@@ -1,7 +1,7 @@
 "use client";
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import UserMenu from './UserMenu'
-import { useWeb3Auth } from '@/hooks/useWeb3Auth'
+import { useWeb3Auth } from '../hooks/useWeb3Auth'
 import { useState, useEffect } from 'react'
 
 export default function Web3Login() {

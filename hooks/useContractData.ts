@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getRecentBetsFromContract, getPoolStatsFromContract } from '@/lib/contracts';
+import { getRecentBetsFromContract, getPoolStatsFromContract } from '../lib/contracts';
 
 export interface ContractBet {
   userAddress: string;

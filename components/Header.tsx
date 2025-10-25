@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import Web3Login from './Web3Login';
-import { useAdmin } from '@/hooks/useAdmin';
+import { useAdmin } from '../hooks/useAdmin';
 import Link from 'next/link';
 import Image from 'next/image';
 

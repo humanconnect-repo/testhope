@@ -1,6 +1,6 @@
 "use client";
 import { useAccount, useSignMessage, useDisconnect } from 'wagmi'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '../lib/supabase'
 import { useState, useEffect } from 'react'
 
 export const useWeb3Auth = () => {

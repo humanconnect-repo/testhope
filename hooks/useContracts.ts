@@ -18,7 +18,7 @@ import {
   formatItalianTime,
   isBettingOpen,
   isPredictionEnded
-} from '@/lib/contracts';
+} from '../lib/contracts';
 
 export interface PoolSummary {
   address: string;

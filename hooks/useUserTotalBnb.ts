@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../lib/supabase';
 
 export function useUserTotalBnb(userId: string | null) {
   const [totalBnb, setTotalBnb] = useState<number>(0);

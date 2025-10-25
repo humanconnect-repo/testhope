@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
-import { useWeb3Auth } from '@/hooks/useWeb3Auth'
+import { supabase } from '../lib/supabase'
+import { useWeb3Auth } from '../hooks/useWeb3Auth'
 import Avatar from './Avatar'
 
 interface Profile {

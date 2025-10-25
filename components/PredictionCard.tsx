@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useWeb3Auth } from '@/hooks/useWeb3Auth';
+import { useWeb3Auth } from '../hooks/useWeb3Auth';
 import WalletConnectionModal from './WalletConnectionModal';
 
 interface PredictionCardProps {

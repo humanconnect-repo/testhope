@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useWeb3Auth } from './useWeb3Auth';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../lib/supabase';
 
 export const useAdmin = () => {
   const { user, isConnected } = useWeb3Auth();

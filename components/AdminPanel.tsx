@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { useAdmin } from '@/hooks/useAdmin';
-import { useContracts } from '@/hooks/useContracts';
-import { supabase } from '@/lib/supabase';
+import { useAdmin } from '../hooks/useAdmin';
+import { useContracts } from '../hooks/useContracts';
+import { supabase } from '../lib/supabase';
 import Link from 'next/link';
 import TransactionProgressModal, { TransactionStep } from './TransactionProgressModal';
 import ImageUpload from './ImageUpload';
@@ -929,7 +929,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
       console.log('🚀 Attivando contract per prediction:', prediction.id);
       
       // Importa le funzioni di contratto
-      const { createPool } = await import('@/lib/contracts');
+      const { createPool } = await import('../lib/contracts');
       
       // Converti le date a timestamp UTC
       const closingDateUtc = Math.floor(new Date(prediction.closing_date).getTime() / 1000);
