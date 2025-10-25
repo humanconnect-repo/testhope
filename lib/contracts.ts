@@ -8,35 +8,21 @@ const FACTORY_ABI = [
   "function getAllPools() view returns (address[])",
   "function getPoolCount() view returns (uint256)",
   "function getPoolInfo(address) view returns (tuple(string title,string description,string category,uint256 closingDate,uint256 closingBid,address creator,bool isActive,uint256 createdAt))",
-  "event PoolCreated(address indexed poolAddress, string title, string category, address indexed creator, uint256 closingDate, uint256 closingBid)"
+  "function setPoolWinner(address,bool)",
+  "function emergencyResolvePool(address,bool,string)",
+  "function setPoolEmergencyStop(address,bool)",
+  "function cancelPoolPrediction(address,string)",
+  "function closePool(address)",
+  "function collectFees(address) returns (uint256)",
+  "event PoolCreated(address indexed poolAddress, string title, string category, address indexed creator, uint256 closingDate, uint256 closingBid)",
+  "event PoolWinnerSet(address indexed poolAddress, bool winner)",
+  "event PoolEmergencyResolved(address indexed poolAddress, bool winner, string reason)",
+  "event PoolEmergencyStopToggled(address indexed poolAddress, bool stopped)",
+  "event PoolCancelled(address indexed poolAddress, string reason)"
 ];
 
-const POOL_ABI = [
-  "function owner() view returns (address)",
-  "function getPoolInfo() view returns (string,string,string,uint256,uint256)",
-  "function getPoolStats() view returns (uint256,uint256,uint256,uint256,bool,bool,bool)",
-  "function getFeeInfo() view returns (address,uint256,uint256,bool)",
-  "function getRedistributionInfo() view returns (uint256,uint256,uint256,uint256,uint256)",
-  "function getBettors() view returns (address[])",
-  "function getUserBet(address) view returns (tuple(uint256 amount, bool choice, bool claimed, uint256 timestamp))",
-  "function placeBet(bool) payable",
-  "function setWinner(bool)",
-  "function setEmergencyStop(bool)",
-  "function emergencyResolve(bool,string)",
-  "function isBettingCurrentlyOpen() view returns (bool)",
-  "function emergencyStop() view returns (bool)",
-  "function cancelPool(string)",
-  "function claimRefund()",
-  "function canClaimRefund(address) view returns (bool)",
-  "function cancelled() view returns (bool)",
-  "event WinnerSet(bool winner)",
-  "event FeeTransferred(address indexed feeWallet, uint256 amount)",
-  "event RewardClaimed(address indexed user, uint256 amount)",
-  "event EmergencyStopToggled(bool stopped)",
-  "event EmergencyResolution(bool winner, string reason)",
-  "event PoolCancelled(string reason)",
-  "event RefundClaimed(address indexed user, uint256 amount)"
-];
+// Usa l'ABI del contratto deployato invece di quello hardcoded
+const POOL_ABI = PredictionPoolABI.abi;
 
 // Indirizzo della factory (da configurare dopo il deploy)
 const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_FACTORY_ADDRESS || '';
@@ -73,8 +59,8 @@ export async function isFactoryOwner(): Promise<boolean> {
       return false;
     }
     
-    // Usa un provider read-only per evitare problemi di connessione
-    const provider = new ethers.JsonRpcProvider("https://data-seed-prebsc-1-s1.binance.org:8545/");
+    // Usa un provider read-only per evitare problemi di connessione (stesso RPC del deploy)
+    const provider = new ethers.JsonRpcProvider("https://bsc-testnet.publicnode.com");
     const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
     
     const owner: string = await factory.owner();
@@ -160,62 +146,62 @@ export async function listPools(): Promise<string[]> {
   }
   
   try {
-    // Usa provider read-only per le operazioni di lettura
-    const provider = new ethers.JsonRpcProvider("https://data-seed-prebsc-1-s1.binance.org:8545/");
+    console.log('🔍 Caricamento pool dal factory:', FACTORY_ADDRESS);
+    // Usa provider read-only per le operazioni di lettura (stesso RPC del deploy)
+    const provider = new ethers.JsonRpcProvider("https://bsc-testnet.publicnode.com");
     const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
-    return await factory.getAllPools();
+    const pools = await factory.getAllPools();
+    console.log('📋 Pool trovate:', pools.length, pools);
+    return pools;
   } catch (error) {
-    console.error('Errore caricamento pools:', error);
+    console.error('❌ Errore caricamento pools:', error);
     return [];
   }
 }
 
-// Informazioni dettagliate di un pool
+// Informazioni dettagliate di un pool (semplificato)
 export async function getPoolSummary(address: string) {
   try {
-    // Usa provider read-only per le operazioni di lettura
-    const provider = new ethers.JsonRpcProvider("https://data-seed-prebsc-1-s1.binance.org:8545/");
-    const pool = new ethers.Contract(address, POOL_ABI, provider);
+    console.log('🔍 getPoolSummary per:', address);
     
-    const [title, description, category, closingDate, closingBid] = await pool.getPoolInfo();
-    const [totalYes, totalNo, totalBets, bettorCount, isClosed, winnerSet, winner] = await pool.getPoolStats();
-    const [feeWallet, feeBps, feeCalc, feeSent] = await pool.getFeeInfo();
-    const [winningPot, losingPot, feeAmount, netLosingPot, totalRedistribution] = await pool.getRedistributionInfo();
-    
-    return {
+    // Restituisce solo l'indirizzo - i dettagli li prendiamo dal database
+    const result = {
       address,
-      title,
-      description,
-      category,
-      closingDate: Number(closingDate),
-      closingBid: Number(closingBid),
-      totalYes: totalYes.toString(),
-      totalNo: totalNo.toString(),
-      totalBets: totalBets.toString(),
-      bettorCount: Number(bettorCount),
-      isClosed,
-      winnerSet,
-      winner,
-      feeWallet,
-      feeBps: Number(feeBps),
-      feeCalc: feeCalc.toString(),
-      feeSent,
-      winningPot: winningPot.toString(),
-      losingPot: losingPot.toString(),
-      feeAmount: feeAmount.toString(),
-      netLosingPot: netLosingPot.toString(),
-      totalRedistribution: totalRedistribution.toString()
+      title: '', // Sarà popolato dal database
+      description: '', // Sarà popolato dal database
+      category: '', // Sarà popolato dal database
+      closingDate: 0, // Sarà popolato dal database
+      closingBid: 0, // Sarà popolato dal database
+      totalYes: "0",
+      totalNo: "0", 
+      totalBets: "0",
+      bettorCount: 0,
+      isClosed: false,
+      winnerSet: false,
+      winner: false,
+      feeWallet: '',
+      feeBps: 0,
+      feeCalc: "0",
+      feeSent: false,
+      winningPot: "0",
+      losingPot: "0",
+      feeAmount: "0",
+      netLosingPot: "0",
+      totalRedistribution: "0"
     };
+    
+    console.log('✅ Pool summary semplificato creato:', result);
+    return result;
   } catch (error) {
-    console.error('Errore caricamento pool summary:', error);
+    console.error('❌ Errore caricamento pool summary:', address, error);
     throw error;
   }
 }
 
 // Imposta il risultato di una prediction
 export async function resolvePool(address: string, winnerYes: boolean) {
-  const pool = await getPool(address);
-  const tx = await pool.setWinner(winnerYes);
+  const factory = await getFactory();
+  const tx = await factory.setPoolWinner(address, winnerYes);
   await tx.wait();
   return tx.hash;
 }
@@ -251,25 +237,26 @@ export function isPredictionEnded(closingBid: number): boolean {
 
 // Emergency stop betting
 export async function setEmergencyStop(poolAddress: string, stop: boolean) {
-  const pool = await getPool(poolAddress);
-  const tx = await pool.setEmergencyStop(stop);
+  const factory = await getFactory();
+  const tx = await factory.setPoolEmergencyStop(poolAddress, stop);
   await tx.wait();
   return tx.hash;
 }
 
 // Emergency resolve prediction
 export async function emergencyResolve(poolAddress: string, winner: boolean, reason: string) {
-  const pool = await getPool(poolAddress);
-  const tx = await pool.emergencyResolve(winner, reason);
+  const factory = await getFactory();
+  const tx = await factory.emergencyResolvePool(poolAddress, winner, reason);
   await tx.wait();
   return tx.hash;
 }
 
+// DEPRECATED: Usa la logica del database + tempo invece di chiamare il contratto
 // Check if betting is currently open (including emergency stop)
 export async function isBettingCurrentlyOpen(poolAddress: string): Promise<boolean> {
   try {
     const pool = await getPool(poolAddress);
-    return await pool.isBettingCurrentlyOpen();
+    return await pool.isBettingOpen(); // Corretto: isBettingOpen invece di isBettingCurrentlyOpen
   } catch (error) {
     console.warn('Errore nel controllo stato scommesse:', error);
     return true; // Default: scommesse aperte
@@ -284,8 +271,8 @@ export async function getEmergencyStopStatus(poolAddress: string): Promise<boole
 
 // Cancel pool and allow refunds
 export async function cancelPool(poolAddress: string, reason: string) {
-  const pool = await getPool(poolAddress);
-  const tx = await pool.cancelPool(reason);
+  const factory = await getFactory();
+  const tx = await factory.cancelPoolPrediction(poolAddress, reason);
   await tx.wait();
   return tx.hash;
 }

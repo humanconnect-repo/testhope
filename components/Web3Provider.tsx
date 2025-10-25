@@ -2,7 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
 import { config } from '../lib/wagmi'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 
 // Lazy import di RainbowKit per evitare errori indexedDB durante SSR
@@ -15,17 +15,21 @@ const RainbowKitProvider = dynamic(
 )
 
 export default function Web3Provider({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient())
+  // Memoizza il QueryClient per evitare re-creazioni
+  const queryClient = useMemo(() => new QueryClient(), [])
+  
+  // Memoizza la configurazione per evitare re-inizializzazioni
+  const memoizedConfig = useMemo(() => config, [])
 
   return (
-    <WagmiProvider config={config}>
+    <WagmiProvider config={memoizedConfig}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
           appInfo={{
             appName: 'Bella Napoli',
             learnMoreUrl: 'https://rainbowkit.com',
           }}
-          initialChain={config.chains[0]}
+          initialChain={memoizedConfig.chains[0]}
           showRecentTransactions={false}
           modalSize="compact"
           coolMode={true}

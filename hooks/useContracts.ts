@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useWeb3Auth } from './useWeb3Auth';
+import { supabase } from '../lib/supabase';
 import { 
   isFactoryOwner as checkIsFactoryOwner, 
   listPools, 
@@ -75,26 +76,76 @@ export const useContracts = () => {
 
   // Carica tutti i pool
   const loadPools = async () => {
-    if (!isFactoryOwner) return;
+    if (!isFactoryOwner) {
+      console.log('❌ Non sei owner della factory, skip caricamento pool');
+      return;
+    }
 
     try {
+      console.log('🚀 Inizio caricamento pool...');
       setLoading(true);
       setError(null);
       const poolAddresses = await listPools();
-      const poolSummaries = await Promise.all(
-        poolAddresses.map(async (address) => {
-          try {
-            return await getPoolSummary(address);
-          } catch (err) {
-            console.error(`Errore caricamento pool ${address}:`, err);
-            return null;
-          }
-        })
-      );
+      console.log('📋 Indirizzi pool ricevuti:', poolAddresses);
       
-      setPools(poolSummaries.filter(Boolean) as PoolSummary[]);
+      // Carica le predictions dal database per popolare i dati
+      const { data: predictions, error: predictionsError } = await supabase
+        .from('predictions')
+        .select('*')
+        .eq('status', 'attiva');
+      
+      if (predictionsError) {
+        console.error('❌ Errore caricamento predictions:', predictionsError);
+        setError('Errore caricamento predictions');
+        return;
+      }
+      
+      console.log('📊 Predictions caricate dal DB:', predictions);
+      
+      // Crea le pool summary usando i dati del database
+      const poolSummaries = poolAddresses.map(address => {
+        // Trova la prediction corrispondente
+        const prediction = predictions?.find(p => p.pool_address === address);
+        
+        if (!prediction) {
+          console.log('⚠️ Nessuna prediction trovata per pool:', address);
+          return null;
+        }
+        
+        console.log('✅ Prediction trovata per pool:', address, prediction.title);
+        
+        // Crea il pool summary con i dati del database
+        return {
+          address,
+          title: prediction.title,
+          description: prediction.description,
+          category: prediction.category,
+          closingDate: new Date(prediction.closing_date).getTime() / 1000, // Converti in timestamp
+          closingBid: new Date(prediction.closing_bid).getTime() / 1000, // Converti in timestamp
+          totalYes: "0", // Dal contratto se necessario
+          totalNo: "0", // Dal contratto se necessario
+          totalBets: "0", // Dal contratto se necessario
+          bettorCount: 0,
+          isClosed: false,
+          winnerSet: false,
+          winner: false,
+          feeWallet: '',
+          feeBps: 0,
+          feeCalc: "0",
+          feeSent: false,
+          winningPot: "0",
+          losingPot: "0",
+          feeAmount: "0",
+          netLosingPot: "0",
+          totalRedistribution: "0"
+        };
+      });
+      
+      const validPools = poolSummaries.filter(Boolean) as PoolSummary[];
+      console.log('✅ Pool caricate con successo:', validPools.length, validPools);
+      setPools(validPools);
     } catch (err) {
-      console.error('Errore caricamento pools:', err);
+      console.error('❌ Errore caricamento pools:', err);
       setError('Errore caricamento pools');
     } finally {
       setLoading(false);

@@ -227,6 +227,10 @@ contract BellaNapoliPredictionFactory is Ownable, ReentrancyGuard {
     event PoolCreated(address indexed poolAddress, string title, string category, address indexed creator, uint256 closingDate, uint256 closingBid);
     event PoolClosed(address indexed poolAddress, bool isActive);
     event FeesCollected(address indexed poolAddress, uint256 amount);
+    event PoolWinnerSet(address indexed poolAddress, bool winner);
+    event PoolEmergencyResolved(address indexed poolAddress, bool winner, string reason);
+    event PoolEmergencyStopToggled(address indexed poolAddress, bool stopped);
+    event PoolCancelled(address indexed poolAddress, string reason);
 
     constructor() Ownable() {}
 
@@ -275,6 +279,36 @@ contract BellaNapoliPredictionFactory is Ownable, ReentrancyGuard {
         totalFeesCollected += feeAmount;
         emit FeesCollected(_poolAddress, feeAmount);
         return feeAmount;
+    }
+
+    // ============ POOL MANAGEMENT FUNCTIONS ============
+    
+    function setPoolWinner(address _poolAddress, bool _winner) external onlyOwner {
+        require(poolInfo[_poolAddress].creator != address(0), "Pool does not exist");
+        PredictionPool pool = PredictionPool(payable(_poolAddress));
+        pool.setWinner(_winner);
+        emit PoolWinnerSet(_poolAddress, _winner);
+    }
+    
+    function emergencyResolvePool(address _poolAddress, bool _winner, string memory _reason) external onlyOwner {
+        require(poolInfo[_poolAddress].creator != address(0), "Pool does not exist");
+        PredictionPool pool = PredictionPool(payable(_poolAddress));
+        pool.emergencyResolve(_winner, _reason);
+        emit PoolEmergencyResolved(_poolAddress, _winner, _reason);
+    }
+    
+    function setPoolEmergencyStop(address _poolAddress, bool _stop) external onlyOwner {
+        require(poolInfo[_poolAddress].creator != address(0), "Pool does not exist");
+        PredictionPool pool = PredictionPool(payable(_poolAddress));
+        pool.setEmergencyStop(_stop);
+        emit PoolEmergencyStopToggled(_poolAddress, _stop);
+    }
+    
+    function cancelPoolPrediction(address _poolAddress, string memory _reason) external onlyOwner {
+        require(poolInfo[_poolAddress].creator != address(0), "Pool does not exist");
+        PredictionPool pool = PredictionPool(payable(_poolAddress));
+        pool.cancelPool(_reason);
+        emit PoolCancelled(_poolAddress, _reason);
     }
 
     function withdrawFees() external onlyOwner {

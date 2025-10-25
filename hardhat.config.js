@@ -1,5 +1,4 @@
 import 'dotenv/config';
-import "@nomicfoundation/hardhat-ignition-viem";
 import "@nomicfoundation/hardhat-ethers";
 
 /** @type import('hardhat/config').HardhatUserConfig */

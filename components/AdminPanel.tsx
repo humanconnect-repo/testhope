@@ -19,6 +19,7 @@ interface Prediction {
   rules: string;
   image_url?: string;
   pool_address?: string; // Indirizzo del contratto smart contract
+  notes?: string;
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +33,7 @@ interface PredictionFormData {
   status: 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata';
   rules: string;
   image_url?: string;
+  notes?: string;
 }
 
 export default function AdminPanel() {
@@ -104,7 +106,6 @@ export default function AdminPanel() {
       }
       
       setBetCountPercentages(percentages);
-      console.log('📊 Bet count percentages from database:', percentages);
     } catch (error) {
       console.error('Errore caricamento percentuali bet count:', error);
     }
@@ -182,7 +183,6 @@ export default function AdminPanel() {
   }, [loading, isAdmin]);
   
   if (showAccessDenied) {
-    console.log('🚫 AdminPanel: Accesso negato - loading:', loading, 'isAdmin:', isAdmin);
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
@@ -232,23 +232,85 @@ export default function AdminPanel() {
     }
   }, [isAdmin]);
 
+  // Funzione helper per determinare lo status del container betting
+  const getBettingContainerStatus = (pool: any, prediction: any) => {
+    const now = Math.floor(Date.now() / 1000);
+    const closingDate = pool.closingDate;
+    const closingBid = pool.closingBid;
+    
+    // Prima controlla il status del database
+    switch (prediction?.status) {
+      case 'in_pausa':
+        return {
+          type: 'closed_waiting',
+          message: 'Pool chiusa - In attesa risultati',
+          status: 'Predictions chiuse - In attesa risultati'
+        };
+      
+      case 'risolta':
+        return {
+          type: 'resolved',
+          message: 'Pool finita - Risultati disponibili',
+          status: 'Prediction risolta'
+        };
+      
+      case 'cancellata':
+        return {
+          type: 'cancelled',
+          message: 'Prediction cancellata - Attendi info in questa pagina',
+          status: 'Prediction cancellata'
+        };
+      
+      case 'attiva':
+        // Se status è attiva, controlla il range temporale
+        if (now < closingDate) {
+          return {
+            type: 'open',
+            message: 'Fai la tua prediction',
+            status: 'Predictions aperte'
+          };
+        } else if (now >= closingDate && now < closingBid) {
+          return {
+            type: 'closed_waiting',
+            message: 'Non puoi più scommettere, attendi la scadenza della prediction',
+            status: 'Predictions chiuse - In attesa risultati'
+          };
+        } else {
+          return {
+            type: 'ended',
+            message: 'In attesa dei risultati',
+            status: 'Prediction terminata'
+          };
+        }
+      
+      default:
+        return {
+          type: 'unknown',
+          message: 'Status sconosciuto',
+          status: 'Status sconosciuto'
+        };
+    }
+  };
+
   // Filtra i pool per mostrare solo quelli attivi o tutti
   const filteredPools = pools.filter(pool => {
     if (showOrphanPools) {
       return true; // Mostra tutti i pool
     }
     // Mostra solo pool che hanno una prediction attiva corrispondente
-    return predictions.some(prediction => 
+    const hasActivePrediction = predictions.some(prediction => 
       prediction.pool_address === pool.address && 
       prediction.status === 'attiva'
     );
+    return hasActivePrediction;
   });
+  
 
   const loadPredictions = async () => {
     try {
       const { data, error } = await supabase
         .from('predictions')
-        .select('id, title, description, slug, category, closing_date, closing_bid, status, rules, image_url, pool_address, created_at, updated_at')
+        .select('id, title, description, slug, category, closing_date, closing_bid, status, rules, image_url, pool_address, notes, created_at, updated_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -313,7 +375,8 @@ export default function AdminPanel() {
             closing_bid: predictionData.closing_bid,
             status: predictionData.status,
             rules: predictionData.rules,
-            image_url: predictionData.image_url
+            image_url: predictionData.image_url,
+            notes: predictionData.notes
           });
 
         if (rpcError) {
@@ -374,7 +437,8 @@ export default function AdminPanel() {
       closing_bid: prediction.closing_bid ? new Date(prediction.closing_bid).toISOString().slice(0, 16) : '',
       status: prediction.status,
       rules: prediction.rules || '',
-      image_url: prediction.image_url || ''
+      image_url: prediction.image_url || '',
+      notes: prediction.notes || ''
     });
     // Non aprire il form generale, solo quello inline
   };
@@ -383,8 +447,6 @@ export default function AdminPanel() {
     if (!confirm('Sei sicuro di voler eliminare questa prediction?')) return;
 
     try {
-      console.log('🗑️ Eliminando prediction con ID:', id);
-      console.log('👤 Admin wallet:', userAddress);
 
       // Usa la funzione RPC per eliminare (solo admin)
       const { data, error } = await supabase.rpc('delete_prediction_admin', {
@@ -401,7 +463,6 @@ export default function AdminPanel() {
         throw new Error('La prediction non è stata trovata o non è stata eliminata');
       }
 
-      console.log('✅ Prediction eliminata con successo');
       alert('Prediction eliminata con successo!');
       loadPredictions();
     } catch (error) {
@@ -926,7 +987,6 @@ contract PredictionPool is Ownable, ReentrancyGuard {
       updateStepStatus('prepare', 'loading');
       setCurrentStep(1);
       
-      console.log('🚀 Attivando contract per prediction:', prediction.id);
       
       // Importa le funzioni di contratto
       const { createPool } = await import('../lib/contracts');
@@ -935,12 +995,6 @@ contract PredictionPool is Ownable, ReentrancyGuard {
       const closingDateUtc = Math.floor(new Date(prediction.closing_date).getTime() / 1000);
       const closingBidUtc = Math.floor(new Date(prediction.closing_bid).getTime() / 1000);
       
-      console.log('📅 Date convertite:', {
-        closing_date: prediction.closing_date,
-        closing_bid: prediction.closing_bid,
-        closingDateUtc,
-        closingBidUtc
-      });
       
       updateStepStatus('prepare', 'completed');
       
@@ -957,8 +1011,6 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         closingBidUtc
       });
       
-      console.log('✅ Contract creato con indirizzo:', result.address);
-      console.log('📋 Hash transazione:', result.hash);
       
       setContractAddress(result.address);
       setTransactionHash(result.hash);
@@ -984,9 +1036,17 @@ contract PredictionPool is Ownable, ReentrancyGuard {
       });
       
       if (error) {
-        console.error('❌ Errore aggiornamento database:', error);
+        console.error('❌ Errore RPC:', error);
         updateStepStatus('database', 'error', error.message);
         setTransactionError(`Contract creato ma errore aggiornamento database: ${error.message}`);
+        return;
+      }
+      
+      // Controlla il risultato JSON della funzione RPC
+      if (data && !data.success) {
+        console.error('❌ Errore attivazione contract:', data.message);
+        updateStepStatus('database', 'error', data.message);
+        setTransactionError(`Contract creato ma errore attivazione: ${data.message}`);
         return;
       }
       
@@ -996,7 +1056,6 @@ contract PredictionPool is Ownable, ReentrancyGuard {
       updateStepStatus('complete', 'completed');
       setCurrentStep(5);
       
-      console.log('✅ Prediction attivata con successo');
       
       // Ricarica le prediction
       await loadPredictions();
@@ -1260,6 +1319,19 @@ contract PredictionPool is Ownable, ReentrancyGuard {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Note e Aggiornamenti
+              </label>
+              <textarea
+                value={formData.notes || ''}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                rows={3}
+                placeholder="Inserisci note e aggiornamenti per questa prediction..."
+              />
+            </div>
+
             <div className="flex gap-4">
               <button
                 type="submit"
@@ -1333,9 +1405,31 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                   
                   {/* Dati */}
                   <div className="text-sm text-gray-500 dark:text-gray-500 mb-4">
-                    <span>Scadenza: {new Date(prediction.closing_date).toLocaleDateString('it-IT')}</span>
-                    <span className="mx-2">•</span>
-                    <span>Creata: {new Date(prediction.created_at).toLocaleDateString('it-IT')}</span>
+                    <div className="flex flex-col gap-1">
+                      <div>
+                        <span>Scadenza: {new Date(prediction.closing_date).toLocaleDateString('it-IT')}</span>
+                        <span className="mx-2">•</span>
+                        <span>Creata: {new Date(prediction.created_at).toLocaleDateString('it-IT')}</span>
+                      </div>
+                      {prediction.pool_address && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Contract:</span>
+                          <a
+                            href={`https://testnet.bscscan.com/address/${prediction.pool_address}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                          >
+                            <span className="font-mono">
+                              {prediction.pool_address.slice(0, 6)}...{prediction.pool_address.slice(-4)}
+                            </span>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Pulsanti uno per riga centrati */}
@@ -1417,9 +1511,31 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                   </p>
                   
                   <div className="text-sm text-gray-500 dark:text-gray-500 mb-4">
-                    <span>Scadenza: {new Date(prediction.closing_date).toLocaleDateString('it-IT')}</span>
-                    <span className="mx-2">•</span>
-                    <span>Creata: {new Date(prediction.created_at).toLocaleDateString('it-IT')}</span>
+                    <div className="flex flex-col gap-1">
+                      <div>
+                        <span>Scadenza: {new Date(prediction.closing_date).toLocaleDateString('it-IT')}</span>
+                        <span className="mx-2">•</span>
+                        <span>Creata: {new Date(prediction.created_at).toLocaleDateString('it-IT')}</span>
+                      </div>
+                      {prediction.pool_address && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Contract:</span>
+                          <a
+                            href={`https://testnet.bscscan.com/address/${prediction.pool_address}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                          >
+                            <span className="font-mono">
+                              {prediction.pool_address.slice(0, 6)}...{prediction.pool_address.slice(-4)}
+                            </span>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Pulsanti centrati */}
@@ -1586,6 +1702,19 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         />
                       </div>
 
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Note e Aggiornamenti
+                        </label>
+                        <textarea
+                          value={formData.notes || ''}
+                          onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                          rows={2}
+                          placeholder="Inserisci note e aggiornamenti per questa prediction..."
+                        />
+                      </div>
+
                       <div className="flex gap-3">
                         <button
                           type="submit"
@@ -1653,7 +1782,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                     Pool di Predictions On-Chain
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {filteredPools.length} pool {showOrphanPools ? 'totali' : 'attivi'} trovati
+                    {filteredPools.length} pool {showOrphanPools ? 'totali' : 'attive'} trovate
                   </p>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -1709,11 +1838,19 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                             );
                           })()}
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            isBettingOpen(pool.closingDate) 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+                            (() => {
+                              const prediction = predictions.find(p => p.pool_address === pool.address);
+                              const containerStatus = getBettingContainerStatus(pool, prediction);
+                              return containerStatus.type === 'open' 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                                : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
+                            })()
                           }`}>
-                            {isBettingOpen(pool.closingDate) ? 'Scommesse Aperte' : 'Scommesse Chiuse'}
+                            {(() => {
+                              const prediction = predictions.find(p => p.pool_address === pool.address);
+                              const containerStatus = getBettingContainerStatus(pool, prediction);
+                              return containerStatus.status;
+                            })()}
                           </span>
                           {pool.winnerSet ? (
                             <span className={`px-2 py-1 rounded text-xs font-medium ${
@@ -1728,6 +1865,17 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                               In Attesa Risoluzione
                             </span>
                           ) : null}
+                        </div>
+                        
+                        {/* Indirizzo Pool */}
+                        <div className="mb-2">
+                          <button
+                            onClick={() => navigator.clipboard.writeText(pool.address)}
+                            className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                            title="Clicca per copiare"
+                          >
+                            {pool.address}
+                          </button>
                         </div>
                         
                         {/* Titolo */}
@@ -1858,6 +2006,17 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                       {/* Layout desktop: originale */}
                       <div className="hidden sm:block p-4">
                         <div className="mb-3">
+                          {/* Indirizzo Pool */}
+                          <div className="mb-2">
+                            <button
+                              onClick={() => navigator.clipboard.writeText(pool.address)}
+                              className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                              title="Clicca per copiare"
+                            >
+                              {pool.address}
+                            </button>
+                          </div>
+                          
                           <div className="flex items-center space-x-2 mb-1">
                             <h4 className="font-semibold text-gray-900 dark:text-white">
                               {pool.title}
@@ -1941,11 +2100,19 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                       <div className="flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex items-center space-x-4">
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            isBettingOpen(pool.closingDate) 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+                            (() => {
+                              const prediction = predictions.find(p => p.pool_address === pool.address);
+                              const containerStatus = getBettingContainerStatus(pool, prediction);
+                              return containerStatus.type === 'open' 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                                : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
+                            })()
                           }`}>
-                            {isBettingOpen(pool.closingDate) ? 'Scommesse Aperte' : 'Scommesse Chiuse'}
+                            {(() => {
+                              const prediction = predictions.find(p => p.pool_address === pool.address);
+                              const containerStatus = getBettingContainerStatus(pool, prediction);
+                              return containerStatus.status;
+                            })()}
                           </span>
                           
                           {pool.winnerSet ? (

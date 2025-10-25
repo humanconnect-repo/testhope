@@ -29,10 +29,16 @@ export default function RootLayout({
               
               // Filtri console per errori non bloccanti
               if (typeof window !== 'undefined') {
-                // Filtra warning Lit
+                // Filtra warning Lit, WalletConnect e Webpack
                 const originalWarn = console.warn;
                 console.warn = (...args) => {
-                  if (typeof args[0] === "string" && args[0].includes("Lit is in dev mode")) return;
+                  if (typeof args[0] === "string" && (
+                    args[0].includes("Lit is in dev mode") ||
+                    args[0].includes("Multiple versions of Lit loaded") ||
+                    args[0].includes("WalletConnect Core is already initialized") ||
+                    args[0].includes("webpack.cache.PackFileCacheStrategy") ||
+                    args[0].includes("Caching failed for pack")
+                  )) return;
                   originalWarn(...args);
                 };
                 
@@ -51,10 +57,16 @@ export default function RootLayout({
                   originalError(...args);
                 };
                 
-                // Disabilita warning Lit
+                // Disabilita warning Lit e configurazione
                 window.litDisableBundleWarning = true;
                 if (window.litConfig) {
                   window.litConfig.devMode = false;
+                }
+                
+                // Disabilita dev mode di Lit globalmente
+                if (typeof window !== 'undefined') {
+                  window.litDisableBundleWarning = true;
+                  window.litConfig = { devMode: false };
                 }
               }
             `,

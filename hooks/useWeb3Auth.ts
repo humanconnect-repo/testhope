@@ -20,7 +20,6 @@ export const useWeb3Auth = () => {
 
       // Se l'utente è già autenticato, non ricontrollare
       if (user && user.user_metadata?.wallet_address === address) {
-        console.log('✅ Utente già autenticato, skip controllo')
         return
       }
 
@@ -53,16 +52,13 @@ export const useWeb3Auth = () => {
               }
             }
             setUser(mockUser)
-            console.log('✅ Utente autenticato dal database (con firma):', address, existingProfile)
           } else {
             // Se esiste un profilo ma senza firma, richiedi la firma
             setUser(null)
-            console.log('🔐 Profilo esistente ma senza firma - richiesta firma:', address, existingProfile)
           }
         } else {
           // Se non esiste, mostra il pulsante per firmare
           setUser(null)
-          console.log('🔐 Wallet connesso ma non autenticato - richiesta firma:', address)
         }
       } catch (error) {
         console.error('Errore durante controllo utente:', error)
@@ -95,17 +91,12 @@ Chain ID: 97
 Nonce: ${Math.random().toString(36).substring(2, 15)}
 Issued At: ${new Date().toISOString()}`
       
-      console.log('🔐 Richiesta firma per wallet:', address)
       
       // 2. Firma il messaggio
       const signature = await signMessageAsync({ message })
-      console.log('✅ Messaggio firmato con successo')
       
           // 3. Crea o aggiorna il profilo utente
-          console.log('💾 Salvando profilo per wallet:', address)
-          
           // Usa la funzione RPC per creare/aggiornare il profilo
-          console.log('🔄 Usando funzione RPC per upsert profilo...')
           
           const { data: profileId, error: rpcError } = await supabase
             .rpc('upsert_profile', {
@@ -133,7 +124,6 @@ Issued At: ${new Date().toISOString()}`
             throw new Error(`Errore Supabase: ${profileError.message}`)
           }
 
-          console.log('✅ Profilo salvato con successo:', profileData)
 
           // 4. Crea l'oggetto utente con i dati del profilo
           const profile = profileData // profileData è già un oggetto singolo, non un array
@@ -150,7 +140,6 @@ Issued At: ${new Date().toISOString()}`
           }
 
           setUser(mockUser)
-          console.log('🎉 Login effettuato con successo!', mockUser)
       
     } catch (error) {
       console.error('❌ Errore durante il login:', error)
@@ -164,7 +153,6 @@ Issued At: ${new Date().toISOString()}`
     try {
       setUser(null)
       disconnect()
-      console.log('Logout effettuato')
     } catch (error) {
       console.error('Errore durante il logout:', error)
     }
@@ -198,7 +186,6 @@ Issued At: ${new Date().toISOString()}`
           }
         }
         setUser(mockUser)
-        console.log('🔄 Utente aggiornato:', existingProfile)
       }
     } catch (error) {
       console.error('Errore durante refresh utente:', error)

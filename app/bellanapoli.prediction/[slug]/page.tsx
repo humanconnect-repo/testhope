@@ -32,6 +32,7 @@ interface PredictionData {
   total_bets: number;
   created_at: string;
   updated_at: string;
+  notes?: string;
 }
 
 interface BetData {
@@ -64,6 +65,213 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   const [poolAddress, setPoolAddress] = useState<string>('');
   const [bettingLoading, setBettingLoading] = useState(false);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
+
+  // Memoizza i dati del pool per evitare re-render infiniti
+  const poolData = useMemo(() => ({
+    status: prediction?.status,
+    closingDate: prediction?.closing_date ? new Date(prediction.closing_date).getTime() / 1000 : 0,
+    closingBid: prediction?.closing_bid ? new Date(prediction.closing_bid).getTime() / 1000 : 0,
+    winnerSet: prediction?.status === 'risolta',
+    winner: false, // Da leggere dal contratto
+    userBet: null, // Sarà aggiornato quando userHasBet sarà disponibile
+    emergencyStop: prediction?.status === 'in_pausa'
+  }), [prediction?.status, prediction?.closing_date, prediction?.closing_bid]);
+
+  // Hook per stato del pool (legge dal smart contract)
+  const poolState = usePoolState(poolAddress, poolData);
+
+  // Funzione helper per determinare lo stato basato su contratto + database
+  const getPredictionStatus = useMemo(() => {
+    return (prediction: PredictionData | null) => {
+      if (!prediction) {
+        return {
+          status: 'unknown',
+          displayText: 'Sconosciuto',
+          emoji: '❓',
+          bgColor: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+        };
+      }
+
+      // Se abbiamo un pool address e poolState, usa quello come priorità assoluta
+      if (poolAddress && poolState) {
+        if (poolState.isPaused) {
+          return {
+            status: 'in_pausa',
+            displayText: 'In pausa',
+            emoji: '🟡',
+            bgColor: 'bg-yellow-50 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+          };
+        } else if (poolState.isActive) {
+          return {
+            status: 'attiva',
+            displayText: 'Attiva',
+            emoji: '🟢',
+            bgColor: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+          };
+        } else if (poolState.statusText === 'SCOMMESSE CHIUSE') {
+          return {
+            status: 'attiva',
+            displayText: 'Attiva (Scommesse chiuse)',
+            emoji: '🟡',
+            bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+          };
+        } else if (poolState.statusText === 'ATTESA RISULTATI') {
+          return {
+            status: 'risolta',
+            displayText: 'In attesa risultati',
+            emoji: '🏆',
+            bgColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+          };
+        }
+      }
+
+      // Fallback alla logica del database
+      switch (prediction.status) {
+        case 'in_attesa':
+          return {
+            status: 'in_attesa',
+            displayText: 'In attesa',
+            emoji: '🟡',
+            bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+          };
+        case 'attiva':
+          return {
+            status: 'attiva',
+            displayText: 'Attiva',
+            emoji: '🟢',
+            bgColor: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+          };
+        case 'in_pausa':
+          return {
+            status: 'in_pausa',
+            displayText: 'In pausa',
+            emoji: '🟡',
+            bgColor: 'bg-yellow-50 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+          };
+        case 'risolta':
+          return {
+            status: 'risolta',
+            displayText: 'Risolta',
+            emoji: '🏆',
+            bgColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+          };
+        case 'cancellata':
+          return {
+            status: 'cancellata',
+            displayText: 'Cancellata',
+            emoji: '❌',
+            bgColor: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+          };
+        default:
+          return {
+            status: 'unknown',
+            displayText: 'Sconosciuto',
+            emoji: '❓',
+            bgColor: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+          };
+      }
+    };
+  }, [poolAddress, poolState]);
+
+  // Funzione helper per determinare lo status del container betting (memoizzata)
+  const getBettingContainerStatus = useMemo(() => {
+    return (prediction: PredictionData | null) => {
+      if (!prediction) {
+        return {
+          type: 'unknown',
+          message: 'Status sconosciuto',
+          status: 'Status sconosciuto'
+        };
+      }
+
+      // Se abbiamo un pool address e poolState, usa quello come priorità assoluta
+      if (poolAddress && poolState) {
+        if (poolState.isPaused) {
+          return {
+            type: 'paused',
+            message: 'Prediction in pausa',
+            status: 'Prediction in pausa',
+            highlightText: 'Prediction in pausa'
+          };
+        } else if (poolState.isActive) {
+          return {
+            type: 'open',
+            message: 'Fai la tua prediction',
+            status: 'Predictions aperte'
+          };
+        } else if (poolState.statusText === 'SCOMMESSE CHIUSE') {
+          return {
+            type: 'closed_waiting',
+            message: 'Non puoi più scommettere, attendi la scadenza della prediction',
+            status: 'Predictions chiuse - In attesa risultati'
+          };
+        } else if (poolState.statusText === 'ATTESA RISULTATI') {
+          return {
+            type: 'ended',
+            message: 'In attesa dei risultati',
+            status: 'Prediction terminata'
+          };
+        }
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      const closingDate = new Date(prediction.closing_date).getTime() / 1000;
+      const closingBid = new Date(prediction.closing_bid).getTime() / 1000;
+      
+      // Fallback: controlla il status del database
+      switch (prediction.status) {
+        case 'in_pausa':
+          return {
+            type: 'closed_waiting',
+            message: 'Pool chiusa - In attesa risultati',
+            status: 'Predictions chiuse - In attesa risultati'
+          };
+        
+        case 'risolta':
+          return {
+            type: 'resolved',
+            message: 'Pool finita - Risultati disponibili',
+            status: 'Prediction risolta'
+          };
+        
+        case 'cancellata':
+          return {
+            type: 'cancelled',
+            message: 'Prediction cancellata - Attendi info in questa pagina',
+            status: 'Prediction cancellata'
+          };
+        
+        case 'attiva':
+          // Se status è attiva, controlla il range temporale
+          if (now < closingDate) {
+            return {
+              type: 'open',
+              message: 'Fai la tua prediction',
+              status: 'Predictions aperte'
+            };
+          } else if (now >= closingDate && now < closingBid) {
+            return {
+              type: 'closed_waiting',
+              message: 'Non puoi più scommettere, attendi la scadenza della prediction',
+              status: 'Predictions chiuse - In attesa risultati'
+            };
+          } else {
+            return {
+              type: 'ended',
+              message: 'In attesa dei risultati',
+              status: 'Prediction terminata'
+            };
+          }
+        
+        default:
+          return {
+            type: 'unknown',
+            message: 'Status sconosciuto',
+            status: 'Status sconosciuto'
+          };
+      }
+    };
+  }, [poolAddress, poolState]); // Dipende da poolAddress e poolState
   
   // Stati per il modal di scommessa
   const [showBettingModal, setShowBettingModal] = useState(false);
@@ -123,13 +331,6 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   // Hook per i dati del contratto (disabilita polling durante scommessa e caricamento)
   const { recentBets: contractBets, poolStats: contractStats, loading: contractLoading } = useContractData(poolAddress, bettingLoading || loading);
 
-  // Hook per stato del pool (legge dal smart contract)
-  const poolState = usePoolState(poolAddress, {
-    winnerSet: prediction?.status === 'risolta',
-    winner: false, // Da leggere dal contratto
-    userBet: null, // Da leggere dal contratto
-    emergencyStop: prediction?.status === 'in_pausa'
-  });
 
   // Funzione per controllare se si può ancora scommettere
   const canStillBet = useMemo(() => {
@@ -267,7 +468,6 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   // useEffect per caricare i commenti quando prediction è disponibile
   useEffect(() => {
     if (prediction) {
-      console.log('useEffect: Prediction available, loading comments...');
       loadComments();
       checkUserHasBet();
     }
@@ -276,7 +476,6 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   // useEffect per controllare le scommesse quando user diventa disponibile
   useEffect(() => {
     if (user?.id && prediction) {
-      console.log('useEffect: User available, checking bets...');
       checkUserHasBet();
     }
   }, [user?.id, prediction]);
@@ -292,7 +491,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         // Non ricaricare automaticamente, aspetta il polling di 5 minuti
       }
     }
-  }, [contractBets, contractStats, lastDataHash]);
+  }, [contractBets, contractStats]); // Rimosso lastDataHash dalle dipendenze per evitare loop
 
   // useEffect per reindirizzare alla homepage se il wallet si disconnette
   useEffect(() => {
@@ -300,7 +499,6 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     const timeoutId = setTimeout(() => {
       // Se l'utente era connesso e ora non lo è più, reindirizza alla homepage
       if (isAuthenticated === false && address === undefined) {
-        console.log('Wallet disconnesso, reindirizzamento alla homepage...');
         router.push('/');
       }
     }, 5000); // 5 secondi di delay per dare tempo al sistema di caricare l'autenticazione
@@ -649,8 +847,6 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       return;
     }
 
-    console.log('checkUserHasBet: Checking bets for user:', user.id, 'prediction:', prediction.id);
-
     try {
       // Controlla se l'utente ha già scommesso in questa prediction usando user_id
       const { data: userBets, error } = await supabase
@@ -659,15 +855,12 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         .eq('prediction_id', prediction.id)
         .eq('user_id', user?.id);
 
-      console.log('checkUserHasBet: Query result:', userBets, 'error:', error);
-
       if (error) {
         console.warn('Error checking user bets:', error);
         setUserHasBet(false);
         setUserBetInfo(null);
       } else {
         const hasBet = userBets && userBets.length > 0;
-        console.log('checkUserHasBet: User has bet:', hasBet);
         setUserHasBet(hasBet);
         
         if (hasBet && userBets[0]) {
@@ -692,8 +885,6 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   const handleDeleteComment = async (commentId: string) => {
     if (!isAdmin || !commentId) return;
 
-    console.log('Deleting comment with ID:', commentId);
-
     try {
       const { error } = await supabase
         .from('comments')
@@ -704,7 +895,6 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         console.error('Error deleting comment:', error);
         alert('Errore nell\'eliminazione del commento');
       } else {
-        console.log('Comment deleted successfully');
         // Ricarica i commenti per aggiornare la lista
         await loadComments();
       }
@@ -764,7 +954,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       return;
     }
 
-    if (!canStillBet) {
+    if (getBettingContainerStatus(prediction).type !== 'open') {
       alert('Le scommesse sono chiuse per questa prediction');
       return;
     }
@@ -816,7 +1006,6 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       setCurrentBettingStep(3);
 
       // La conferma è già inclusa nel result.receipt
-      console.log('Transazione confermata:', result.receipt);
       
       updateBettingStepStatus('blockchain', 'completed');
 
@@ -928,25 +1117,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
               {prediction.category}
             </span>
             {/* Status della prediction */}
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              prediction.status === 'in_attesa'
-                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-                : prediction.status === 'attiva' 
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                : prediction.status === 'in_pausa'
-                ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400'
-                : prediction.status === 'risolta'
-                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                : prediction.status === 'cancellata'
-                ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
-            }`}>
-              {prediction.status === 'in_attesa' ? '🟡 In attesa' : 
-               prediction.status === 'attiva' ? '🟢 Attiva' :
-               prediction.status === 'in_pausa' ? '🟠 In pausa' :
-               prediction.status === 'risolta' ? '🏆 Risolta' :
-               prediction.status === 'cancellata' ? '❌ Cancellata' :
-               'Sconosciuto'}
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPredictionStatus(prediction).bgColor}`}>
+              {getPredictionStatus(prediction).emoji} {getPredictionStatus(prediction).displayText}
             </span>
           </div>
 
@@ -1037,11 +1209,68 @@ export default function PredictionPage({ params }: { params: { slug: string } })
           {/* Box per scommettere */}
           <div className="lg:col-span-1">
             <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6 sticky top-24">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
-                {prediction?.status === 'in_attesa' ? 'Prediction in attesa' : 
-                 prediction?.status === 'attiva' ? 'Fai la tua prediction' : 
-                 'Piazza la tua scommessa'}
-              </h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {(() => {
+                    const containerStatus = getBettingContainerStatus(prediction);
+                    if (containerStatus.highlightText) {
+                      const parts = containerStatus.message.split(containerStatus.highlightText);
+                      return (
+                        <>
+                          {parts[0]}
+                          <span className="text-yellow-500 font-extrabold text-2xl drop-shadow-lg" style={{
+                            textShadow: '2px 2px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000'
+                          }}>
+                            {containerStatus.highlightText}
+                          </span>
+                          {parts[1]}
+                        </>
+                      );
+                    }
+                    return containerStatus.message;
+                  })()}
+                </h3>
+                {poolAddress && poolState && (
+                  <button
+                    onClick={() => poolState.refreshContractState?.()}
+                    disabled={poolState.isRefreshing}
+                    className="w-10 h-10 flex items-center justify-center rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors"
+                    title="Aggiorna stato contratto"
+                  >
+                    <span className="text-lg">
+                      {poolState.isRefreshing ? '⏳' : '↻'}
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              {/* Stato del contratto */}
+              {poolAddress && poolState && (
+                <div className="mb-4 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-gray-600 dark:text-gray-400">
+                      Stato Contratto:
+                    </span>
+                    <span className={`font-bold ${
+                      poolState.statusText === 'ATTIVA' ? 'text-green-600' :
+                      poolState.statusText === 'SCOMMESSE CHIUSE' ? 'text-yellow-600' :
+                      poolState.statusText === 'ATTESA RISULTATI' ? 'text-blue-600' :
+                      'text-gray-600'
+                    }`}>
+                      {poolState.statusIcon} {poolState.statusText}
+                    </span>
+                  </div>
+                  {poolState.lastUpdate && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center justify-between">
+                      <span>Ultimo aggiornamento: {new Date(poolState.lastUpdate).toLocaleTimeString('it-IT')}</span>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <span className="text-xs">Live</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Avviso se l'utente ha già scommesso */}
               {userHasBet && (
@@ -1064,184 +1293,221 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                 </div>
               )}
 
-              {/* Avviso se non si può più scommettere */}
-              {!canStillBet && !userHasBet && (
-                <div className={`mb-6 p-4 rounded-lg border ${
-                  prediction?.status === 'in_pausa'
-                    ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-                    : prediction?.status === 'in_attesa'
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                }`}>
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className={`h-5 w-5 ${
-                        prediction?.status === 'in_pausa' 
-                          ? 'text-yellow-400' 
-                          : prediction?.status === 'in_attesa'
-                          ? 'text-yellow-400'
-                          : 'text-red-400'
-                      }`} viewBox="0 0 20 20" fill="currentColor">
-                        {prediction?.status === 'in_attesa' ? (
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                        ) : (
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              {/* Avviso basato sullo status del container */}
+              {(() => {
+                const containerStatus = getBettingContainerStatus(prediction);
+                
+                // Mostra avviso solo se non è "open" (scommesse aperte)
+                if (containerStatus.type === 'open') return null;
+                
+                return (
+                  <div className={`mb-6 p-4 rounded-lg border ${
+                    containerStatus.type === 'paused'
+                      ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                      : containerStatus.type === 'closed_waiting'
+                      ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                      : containerStatus.type === 'resolved'
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                      : containerStatus.type === 'cancelled'
+                      ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                      : containerStatus.type === 'ended'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                      : 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800'
+                  }`}>
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <svg className={`h-5 w-5 ${
+                          containerStatus.type === 'paused'
+                            ? 'text-yellow-500'
+                            : containerStatus.type === 'closed_waiting'
+                            ? 'text-yellow-400'
+                            : containerStatus.type === 'resolved'
+                            ? 'text-green-400'
+                            : containerStatus.type === 'cancelled'
+                            ? 'text-red-400'
+                            : containerStatus.type === 'ended'
+                            ? 'text-blue-400'
+                            : 'text-gray-400'
+                        }`} viewBox="0 0 20 20" fill="currentColor">
+                          {containerStatus.type === 'resolved' ? (
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          ) : containerStatus.type === 'cancelled' ? (
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          ) : (
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          )}
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className={`text-sm font-medium ${
+                          containerStatus.type === 'paused'
+                            ? 'text-yellow-500 font-bold text-lg'
+                            : containerStatus.type === 'closed_waiting'
+                            ? 'text-yellow-800 dark:text-yellow-200'
+                            : containerStatus.type === 'resolved'
+                            ? 'text-green-800 dark:text-green-200'
+                            : containerStatus.type === 'cancelled'
+                            ? 'text-red-800 dark:text-red-200'
+                            : containerStatus.type === 'ended'
+                            ? 'text-blue-800 dark:text-blue-200'
+                            : 'text-gray-800 dark:text-gray-200'
+                        }`}>
+                          {containerStatus.type === 'paused' ? 'ATTENDI la scadenza della Prediction' : containerStatus.status}
+                        </h3>
+                        {containerStatus.type !== 'paused' && (
+                          <div className={`mt-2 text-sm ${
+                            containerStatus.type === 'closed_waiting'
+                              ? 'text-yellow-700 dark:text-yellow-300'
+                              : containerStatus.type === 'resolved'
+                              ? 'text-green-700 dark:text-green-300'
+                              : containerStatus.type === 'cancelled'
+                              ? 'text-red-700 dark:text-red-300'
+                              : containerStatus.type === 'ended'
+                              ? 'text-blue-700 dark:text-blue-300'
+                              : 'text-gray-700 dark:text-gray-300'
+                          }`}>
+                            <p>{containerStatus.message}</p>
+                          </div>
                         )}
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <h3 className={`text-sm font-medium ${
-                        prediction?.status === 'in_pausa' || prediction?.status === 'in_attesa'
-                          ? 'text-yellow-800 dark:text-yellow-200'
-                          : poolAddress && poolState && (!poolState.isActive || poolState.isPaused)
-                          ? 'text-orange-800 dark:text-orange-200'
-                          : 'text-red-800 dark:text-red-200'
-                      }`}>
-                        {prediction?.status === 'in_attesa' 
-                          ? 'Il contratto per questa Prediction è in attesa di essere deployato.'
-                          : poolAddress && poolState && (!poolState.isActive || poolState.isPaused)
-                          ? 'Le scommesse sono chiuse per questa prediction'
-                          : 'Prediction chiusa'
-                        }
-                      </h3>
-                      <div className={`mt-2 text-sm ${
-                        prediction?.status === 'in_pausa'
-                          ? 'text-yellow-700 dark:text-yellow-300'
-                          : prediction?.status === 'in_attesa'
-                          ? 'text-blue-700 dark:text-blue-300'
-                          : 'text-red-700 dark:text-red-300'
-                      }`}>
-                        <p>
-                          {poolState.isActive
-                            ? 'Seleziona la tua posizione e inserisci l\'importo per scommettere.'
-                            : poolState.isPaused
-                            ? 'Pool temporaneamente in pausa. Le scommesse sono bloccate.'
-                            : poolState.isCancelled
-                            ? 'Pool cancellato. I rimborsi sono disponibili.'
-                            : poolState.isResolved
-                            ? 'Pool risolto. I rewards sono disponibili per i vincitori.'
-                            : prediction?.status === 'in_attesa'
-                            ? 'Non è ancora possibile scommettere su questa prediction.'
-                            : 'Non è più possibile scommettere su questa prediction.'
-                          }
-                        </p>
                       </div>
                     </div>
+                  </div>
+                );
+              })()}
+
+              {/* Area Aggiornamenti - Mostra quando le scommesse sono chiuse */}
+              {getBettingContainerStatus(prediction).type !== 'open' && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                    Aggiornamenti:
+                  </h4>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    {prediction?.notes ? (
+                      <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                        {prediction.notes}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+                        Nessun aggiornamento disponibile al momento.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
-              <div className="space-y-4 mb-6">
-                <button
-                  onClick={() => setSelectedPosition('yes')}
-                  disabled={!canStillBet || userHasBet}
-                  className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-                    !canStillBet || userHasBet
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
-                      : selectedPosition === 'yes'
-                      ? 'bg-yes-button text-white'
-                      : 'bg-yes-button/10 text-yes-button hover:bg-yes-button/20'
-                  }`}
-                >
-                  Sì ({prediction.yes_percentage}%)
-                </button>
-                <button
-                  onClick={() => setSelectedPosition('no')}
-                  disabled={!canStillBet || userHasBet}
-                  className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-                    !canStillBet || userHasBet
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
-                      : selectedPosition === 'no'
-                      ? 'bg-no-button text-white'
-                      : 'bg-no-button/10 text-no-button hover:bg-no-button/20'
-                  }`}
-                >
-                  No ({prediction.no_percentage}%)
-                </button>
-              </div>
+              {/* Area Scommesse - Mostra solo quando le scommesse sono aperte */}
+              {getBettingContainerStatus(prediction).type === 'open' && (
+                <>
+                  <div className="space-y-4 mb-6">
+                    <button
+                      onClick={() => setSelectedPosition('yes')}
+                      disabled={userHasBet}
+                      className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+                        userHasBet
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
+                          : selectedPosition === 'yes'
+                          ? 'bg-yes-button text-white'
+                          : 'bg-yes-button/10 text-yes-button hover:bg-yes-button/20'
+                      }`}
+                    >
+                      Sì ({prediction.yes_percentage}%)
+                    </button>
+                    <button
+                      onClick={() => setSelectedPosition('no')}
+                      disabled={userHasBet}
+                      className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+                        userHasBet
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
+                          : selectedPosition === 'no'
+                          ? 'bg-no-button text-white'
+                          : 'bg-no-button/10 text-no-button hover:bg-no-button/20'
+                      }`}
+                    >
+                      No ({prediction.no_percentage}%)
+                    </button>
+                  </div>
 
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Importo (BNB)
-                  </label>
-                  {isAuthenticated && (
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      Saldo: {balanceLoading ? '...' : `${bnbBalance} BNB`}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Importo (BNB)
+                      </label>
+                      {isAuthenticated && (
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          Saldo: {balanceLoading ? '...' : `${bnbBalance} BNB`}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <input
-                  type="number"
-                  value={betAmount}
-                  onChange={(e) => setBetAmount(e.target.value)}
-                  placeholder="0.00"
-                  step="0.001"
-                  min="0"
-                  disabled={!canStillBet || userHasBet}
-                  className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                    !canStillBet || userHasBet
-                      ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white'
-                  }`}
-                />
-                
-                {/* Preview del controvalore in Euro */}
-                {betAmount && bnbPrice && !priceLoading && (
-                  <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        Controvalore in Euro:
-                      </span>
-                      <span className="text-lg font-bold text-gray-900 dark:text-white">
-                        €{euroValue}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      1 BNB = €{bnbPrice.toFixed(2)}
-                    </div>
+                    <input
+                      type="number"
+                      value={betAmount}
+                      onChange={(e) => setBetAmount(e.target.value)}
+                      placeholder="0.00"
+                      step="0.001"
+                      min="0"
+                      disabled={userHasBet}
+                      className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                        userHasBet
+                          ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                          : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white'
+                      }`}
+                    />
+                    
+                    {/* Preview del controvalore in Euro */}
+                    {betAmount && bnbPrice && !priceLoading && (
+                      <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            Controvalore in Euro:
+                          </span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white">
+                            €{euroValue}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          1 BNB = €{bnbPrice.toFixed(2)}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {priceLoading && (
+                      <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        Caricamento prezzo BNB...
+                      </div>
+                    )}
+                    
+                    {priceError && (
+                      <div className="mt-2 text-sm text-red-500">
+                        Errore nel caricamento del prezzo
+                      </div>
+                    )}
                   </div>
-                )}
-                
-                {priceLoading && (
-                  <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    Caricamento prezzo BNB...
-                  </div>
-                )}
-                
-                {priceError && (
-                  <div className="mt-2 text-sm text-red-500">
-                    Errore nel caricamento del prezzo
-                  </div>
-                )}
-              </div>
 
-              <button
-                onClick={handleBet}
-                disabled={!selectedPosition || !betAmount || !canStillBet || bettingLoading || !isAuthenticated || userHasBet}
-                className={`w-full font-medium py-3 px-4 rounded-lg border transition-colors duration-200 ${
-                  !canStillBet || userHasBet
-                    ? prediction?.status === 'in_attesa'
-                      ? 'bg-yellow-300 text-yellow-800 cursor-not-allowed border-yellow-400 dark:bg-yellow-700 dark:text-yellow-200 dark:border-yellow-600'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600'
-                    : !selectedPosition || !betAmount || !isAuthenticated
-                    ? 'bg-gray-300 disabled:cursor-not-allowed text-white border-gray-200 dark:bg-gray-800 dark:border-gray-600'
-                    : bettingLoading
-                    ? 'bg-blue-500 text-white border-blue-500 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700 text-white border-green-600'
-                }`}
-              >
-                {!isAuthenticated 
-                  ? 'Connettiti per scommettere'
-                  : !canStillBet 
-                    ? (prediction?.status === 'in_attesa' ? 'In attesa' : 'Scommessa chiusa')
-                    : userHasBet
+                  <button
+                    onClick={handleBet}
+                    disabled={!selectedPosition || !betAmount || bettingLoading || !isAuthenticated || userHasBet}
+                    className={`w-full font-medium py-3 px-4 rounded-lg border transition-colors duration-200 ${
+                      userHasBet
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600'
+                        : !selectedPosition || !betAmount || !isAuthenticated
+                        ? 'bg-gray-300 disabled:cursor-not-allowed text-white border-gray-200 dark:bg-gray-800 dark:border-gray-600'
+                        : bettingLoading
+                        ? 'bg-blue-500 text-white border-blue-500 cursor-not-allowed'
+                        : 'bg-green-600 hover:bg-green-700 text-white border-green-600'
+                    }`}
+                  >
+                    {bettingLoading ? 'Elaborazione...' : 
+                     userHasBet
                       ? 'Hai già scommesso'
-                      : bettingLoading
-                        ? 'Piazzando prediction...'
-                        : (poolAddress ? 'Conferma prediction' : 'Conferma prediction')
-                }
-              </button>
+                      : !isAuthenticated
+                      ? 'Connetti Wallet'
+                      : !selectedPosition || !betAmount
+                      ? 'Seleziona posizione e importo'
+                      : 'Piazza la tua scommessa'
+                    }
+                  </button>
+                </>
+              )}
             </div>
 
             {/* La tua Prediction - appare solo se userBetInfo esiste */}
@@ -1420,22 +1686,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-gray-600 dark:text-gray-400">Stato:</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    prediction.status === 'in_attesa'
-                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                      : prediction.status === 'attiva' 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                      : prediction.status === 'in_pausa'
-                      ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                      : prediction.status === 'risolta'
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                      : prediction.status === 'cancellata'
-                      ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                      : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                  }`}>
-                    {prediction.status === 'in_attesa' ? 'In attesa' : 
-                     prediction.status === 'in_pausa' ? 'In pausa' :
-                     prediction.status.charAt(0).toUpperCase() + prediction.status.slice(1)}
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPredictionStatus(prediction).bgColor}`}>
+                    {getPredictionStatus(prediction).emoji} {getPredictionStatus(prediction).displayText}
                   </span>
                 </div>
                 {prediction.rules && (
