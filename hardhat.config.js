@@ -1,28 +1,25 @@
 import 'dotenv/config';
-import hardhatToolboxMochaEthers from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
+import "@nomicfoundation/hardhat-ignition-viem";
+import "@nomicfoundation/hardhat-ethers";
 
 /** @type import('hardhat/config').HardhatUserConfig */
-const config = {
-  plugins: [hardhatToolboxMochaEthers],
+export default {
   solidity: {
     version: "0.8.24",
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200,
-      },
-    },
-  },
-  paths: {
-    sources: "./contractweb3",
-    tests: "./test",
-    cache: "./cache",
-    artifacts: "./artifacts"
+        runs: 200
+      }
+    }
   },
   networks: {
+    hardhat: {
+      type: "edr-simulated"
+    },
     bnbTestnet: {
       type: "http",
-      url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
+      url: "https://bsc-testnet.publicnode.com",
       chainId: 97,
       gasPrice: 20000000000,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
@@ -36,25 +33,18 @@ const config = {
     },
   },
   etherscan: {
-    apiKey: process.env.BSCSCAN_API_KEY || "",
+    apiKey: {
+      bscTestnet: process.env.BSCSCAN_API_KEY || "",
+    },
     customChains: [
       {
         network: "bnbTestnet",
         chainId: 97,
         urls: {
-          apiURL: "https://api.bscscan.com/api",
+          apiURL: "https://api-testnet.bscscan.com/api",
           browserURL: "https://testnet.bscscan.com"
         }
       }
     ]
-  },
-  typechain: {
-    outDir: "types/ethers-contracts",
-    target: "ethers-v6",
-    alwaysGenerateOverloads: false,
-    externalArtifacts: ["externalArtifacts/*.json"],
-    dontOverrideCompile: false
-  },
+  }
 };
-
-export default config;
