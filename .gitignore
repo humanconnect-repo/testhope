@@ -106,7 +106,7 @@ cache/
 artifacts/
 
 # Custom exclusions for this project
-contractweb3/
+# contractweb3/ - Commented out to allow live operations
 docs/
 guide/
 scripts/
