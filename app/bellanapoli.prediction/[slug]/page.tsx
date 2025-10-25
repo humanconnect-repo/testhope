@@ -1,12 +1,12 @@
 "use client";
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useBNBPrice } from '@/hooks/useBNBPrice';
-import { usePoolState } from '@/hooks/usePoolState';
-import { useWeb3Auth } from '@/hooks/useWeb3Auth';
-import { useBNBBalance } from '@/hooks/useBNBBalance';
-import { useContractData } from '@/hooks/useContractData';
-import { useAdmin } from '@/hooks/useAdmin';
+import { useBNBPrice } from '../../../hooks/useBNBPrice';
+import { usePoolState } from '../../../hooks/usePoolState';
+import { useWeb3Auth } from '../../../hooks/useWeb3Auth';
+import { useBNBBalance } from '../../../hooks/useBNBBalance';
+import { useContractData } from '../../../hooks/useContractData';
+import { useAdmin } from '../../../hooks/useAdmin';
 import { placeBet } from '@/lib/contracts';
 import { supabase } from '@/lib/supabase';
 import { validateComment } from '@/lib/profanityFilter';

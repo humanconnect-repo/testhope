@@ -1,5 +1,5 @@
 {
-  "buildCommand": "rm -f package.json && cp package-vercel.json package.json && npm install --legacy-peer-deps && npm run build",
+  "buildCommand": "rm -rf .next && rm -f package.json && cp package-vercel.json package.json && npm install --legacy-peer-deps && npm run build",
   "installCommand": "rm -f package.json && cp package-vercel.json package.json && npm install --legacy-peer-deps",
   "framework": "nextjs",
   "functions": {
