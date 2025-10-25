@@ -4,7 +4,7 @@ hardhat.config.ts
 # artifacts/ - Commented out to allow frontend access to ABI files
 cache/
 contracts/
-ignition/
+# ignition/ - Commented out to prevent TypeScript errors
 scripts/
 test/
 

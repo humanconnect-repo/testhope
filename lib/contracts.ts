@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import PredictionPoolABI from '../artifacts/contractweb3/PredictionPool.sol/PredictionPool.json';
+import PredictionPoolABI from '../artifacts/contracts/BellaNapoliPredictionFactory.sol/PredictionPool.json';
 
 // ABI minimi per i contratti
 const FACTORY_ABI = [
