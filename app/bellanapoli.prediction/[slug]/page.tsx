@@ -7,13 +7,13 @@ import { useWeb3Auth } from '../../../hooks/useWeb3Auth';
 import { useBNBBalance } from '../../../hooks/useBNBBalance';
 import { useContractData } from '../../../hooks/useContractData';
 import { useAdmin } from '../../../hooks/useAdmin';
-import { placeBet } from '@/lib/contracts';
-import { supabase } from '@/lib/supabase';
-import { validateComment } from '@/lib/profanityFilter';
-import BettingProgressModal, { BettingStep } from '@/components/BettingProgressModal';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import QuoteChart from '@/components/QuoteChart';
+import { placeBet } from '../../../lib/contracts';
+import { supabase } from '../../../lib/supabase';
+import { validateComment } from '../../../lib/profanityFilter';
+import BettingProgressModal, { BettingStep } from '../../../components/BettingProgressModal';
+import Header from '../../../components/Header';
+import Footer from '../../../components/Footer';
+import QuoteChart from '../../../components/QuoteChart';
 import Link from 'next/link';
 
 interface PredictionData {
