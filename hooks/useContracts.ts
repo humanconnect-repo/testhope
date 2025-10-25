@@ -105,7 +105,7 @@ export const useContracts = () => {
       // Crea le pool summary usando i dati del database
       const poolSummaries = poolAddresses.map(address => {
         // Trova la prediction corrispondente
-        const prediction = predictions?.find(p => p.pool_address === address);
+        const prediction = predictions?.find((p: any) => p.pool_address === address);
         
         if (!prediction) {
           console.log('⚠️ Nessuna prediction trovata per pool:', address);
