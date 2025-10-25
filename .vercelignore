@@ -1,7 +1,7 @@
 # Hardhat files
 hardhat.config.js
 hardhat.config.ts
-artifacts/
+# artifacts/ - Commented out to allow frontend access to ABI files
 cache/
 contracts/
 ignition/
