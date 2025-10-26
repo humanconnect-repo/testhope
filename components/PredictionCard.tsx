@@ -1,8 +1,9 @@
 "use client";
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWeb3Auth } from '../hooks/useWeb3Auth';
+import { usePoolState } from '../hooks/usePoolState';
 import WalletConnectionModal from './WalletConnectionModal';
 
 interface PredictionCardProps {
@@ -15,6 +16,7 @@ interface PredictionCardProps {
   status?: string;
   totalBets?: number;
   imageUrl?: string;
+  poolAddress?: string;
 }
 
 export default function PredictionCard({ 
@@ -26,12 +28,130 @@ export default function PredictionCard({
   category,
   status,
   totalBets = 0,
-  imageUrl
+  imageUrl,
+  poolAddress
 }: PredictionCardProps) {
   const { isConnected } = useWeb3Auth();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Hook per stato del pool (legge dal smart contract)
+  const poolData = useMemo(() => ({
+    status: status,
+    closingDate: 0, // Non necessario per i badge
+    closingBid: 0, // Non necessario per i badge
+    winnerSet: false,
+    winner: false,
+    userBet: null,
+    emergencyStop: status === 'in_pausa'
+  }), [status]);
+
+  const poolState = usePoolState(poolAddress || '', poolData);
+
+  // Funzione helper per determinare lo stato basato su contratto + database
+  const getCardStatus = useMemo(() => {
+    return () => {
+      // Se abbiamo un pool address e poolState, usa quello come priorità assoluta
+      if (poolAddress && poolState && poolState.statusText !== 'CARICAMENTO CONTRATTO') {
+        if (poolState.isPaused) {
+          return {
+            status: 'in_pausa',
+            displayText: 'IN PAUSA',
+            emoji: '🟡',
+            textColor: 'text-yellow-600 dark:text-yellow-400'
+          };
+        } else if (poolState.isActive) {
+          return {
+            status: 'attiva',
+            displayText: 'ATTIVA',
+            emoji: '🟢',
+            textColor: 'text-green-600 dark:text-green-400'
+          };
+        } else if (poolState.statusText === 'SCOMMESSE CHIUSE') {
+          return {
+            status: 'attiva',
+            displayText: 'ATTIVA',
+            emoji: '🟡',
+            textColor: 'text-yellow-600 dark:text-yellow-400'
+          };
+        } else if (poolState.statusText === 'ATTESA RISULTATI') {
+          return {
+            status: 'risolta',
+            displayText: 'RISOLTA',
+            emoji: '🏆',
+            textColor: 'text-blue-600 dark:text-blue-400'
+          };
+        }
+      }
+
+      // Se non abbiamo dati del contratto, mostra stato di caricamento
+      if (poolAddress && poolState?.statusText === 'CARICAMENTO CONTRATTO') {
+        return {
+          status: 'loading',
+          displayText: 'CARICAMENTO...',
+          emoji: '⏳',
+          textColor: 'text-gray-600 dark:text-gray-400'
+        };
+      }
+
+      // Fallback solo se non abbiamo pool address
+      if (!poolAddress) {
+        switch (status) {
+          case 'in_attesa':
+            return {
+              status: 'in_attesa',
+              displayText: 'IN ATTESA',
+              emoji: '🟡',
+              textColor: 'text-yellow-600 dark:text-yellow-400'
+            };
+          case 'attiva':
+            return {
+              status: 'attiva',
+              displayText: 'ATTIVA',
+              emoji: '🟢',
+              textColor: 'text-green-600 dark:text-green-400'
+            };
+          case 'in_pausa':
+            return {
+              status: 'in_pausa',
+              displayText: 'IN PAUSA',
+              emoji: '🟡',
+              textColor: 'text-yellow-600 dark:text-yellow-400'
+            };
+          case 'risolta':
+            return {
+              status: 'risolta',
+              displayText: 'RISOLTA',
+              emoji: '🏆',
+              textColor: 'text-blue-600 dark:text-blue-400'
+            };
+          case 'cancellata':
+            return {
+              status: 'cancellata',
+              displayText: 'CANCELLATA',
+              emoji: '🔴',
+              textColor: 'text-red-600 dark:text-red-400'
+            };
+          default:
+            return {
+              status: 'attiva',
+              displayText: 'ATTIVA',
+              emoji: '🟢',
+              textColor: 'text-green-600 dark:text-green-400'
+            };
+        }
+      }
+
+      // Se abbiamo pool address ma nessun dato del contratto, mostra errore
+      return {
+        status: 'error',
+        displayText: 'ERRORE',
+        emoji: '❌',
+        textColor: 'text-red-600 dark:text-red-400'
+      };
+    };
+  }, [poolAddress, poolState, status]);
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (!isConnected) {
@@ -91,25 +211,8 @@ export default function PredictionCard({
           {/* Info completamente a destra */}
           <div className="flex flex-col items-end space-y-1">
             {/* Status */}
-            <span className={`text-xs font-medium ${
-              status === 'attiva' 
-                ? 'text-green-600 dark:text-green-400' 
-                : status === 'in_attesa'
-                ? 'text-yellow-600 dark:text-yellow-400'
-                : status === 'in_pausa'
-                ? 'text-orange-600 dark:text-orange-400'
-                : status === 'risolta'
-                ? 'text-blue-600 dark:text-blue-400'
-                : status === 'cancellata'
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-gray-600 dark:text-gray-400'
-            }`}>
-              {status === 'attiva' ? '🟢 ATTIVA' : 
-               status === 'in_attesa' ? '🟡 IN ATTESA' :
-               status === 'in_pausa' ? '🟠 IN PAUSA' :
-               status === 'risolta' ? '🏆 RISOLTA' :
-               status === 'cancellata' ? '🔴 CANCELLATA' :
-               '🟢 ATTIVA'}
+            <span className={`text-xs font-medium ${getCardStatus().textColor}`}>
+              {getCardStatus().emoji} {getCardStatus().displayText}
             </span>
             
             {/* Volumi */}

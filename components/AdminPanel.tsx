@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAdmin } from '../hooks/useAdmin';
 import { useContracts } from '../hooks/useContracts';
 import { supabase } from '../lib/supabase';
+import { isBettingCurrentlyOpen, getEmergencyStopStatus } from '../lib/contracts';
 import Link from 'next/link';
 import TransactionProgressModal, { TransactionStep } from './TransactionProgressModal';
 import ImageUpload from './ImageUpload';
@@ -203,6 +204,7 @@ export default function AdminPanel() {
   const [showForm, setShowForm] = useState(false);
   const [editingPrediction, setEditingPrediction] = useState<Prediction | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [contractStates, setContractStates] = useState<Record<string, { isOpen: boolean; emergencyStop: boolean }>>({});
   const [formData, setFormData] = useState<PredictionFormData>({
     title: '',
     description: '',
@@ -232,7 +234,118 @@ export default function AdminPanel() {
     }
   }, [isAdmin]);
 
+  // Carica gli stati dei contratti per le predictions con pool_address
+  useEffect(() => {
+    const loadContractStates = async () => {
+      const predictionsWithPool = predictions.filter(p => p.pool_address);
+      
+      for (const prediction of predictionsWithPool) {
+        try {
+          const [isOpen, emergencyStop] = await Promise.all([
+            isBettingCurrentlyOpen(prediction.pool_address!),
+            getEmergencyStopStatus(prediction.pool_address!)
+          ]);
+          
+          setContractStates(prev => ({
+            ...prev,
+            [prediction.pool_address!]: { isOpen, emergencyStop }
+          }));
+        } catch (error) {
+          console.warn(`Errore caricamento stato contratto ${prediction.pool_address}:`, error);
+        }
+      }
+    };
+
+    if (predictions.length > 0) {
+      loadContractStates();
+      
+      // Polling ogni 30 secondi
+      const interval = setInterval(loadContractStates, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [predictions]);
+
   // Funzione helper per determinare lo status del container betting
+  // Funzione helper per ottenere lo stato del badge basato su contratto + database
+  const getPredictionBadgeStatus = (prediction: Prediction) => {
+    // Se abbiamo dati del contratto, usa quelli come priorità
+    if (prediction.pool_address && contractStates[prediction.pool_address]) {
+      const contractState = contractStates[prediction.pool_address];
+      
+      if (contractState.emergencyStop) {
+        return {
+          text: 'IN PAUSA',
+          emoji: '🟡',
+          bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+        };
+      } else if (contractState.isOpen) {
+        return {
+          text: 'ATTIVA',
+          emoji: '🟢',
+          bgColor: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+        };
+      } else {
+        // Contratto chiuso ma non in emergency stop
+        const now = Math.floor(Date.now() / 1000);
+        const closingBid = Math.floor(new Date(prediction.closing_bid).getTime() / 1000);
+        
+        if (now < closingBid) {
+          return {
+            text: 'ATTIVA',
+            emoji: '🟡',
+            bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+          };
+        } else {
+          return {
+            text: 'RISOLTA',
+            emoji: '🏆',
+            bgColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+          };
+        }
+      }
+    }
+
+    // Fallback al database
+    switch (prediction.status) {
+      case 'in_attesa':
+        return {
+          text: 'IN ATTESA',
+          emoji: '🟡',
+          bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+        };
+      case 'attiva':
+        return {
+          text: 'ATTIVA',
+          emoji: '🟢',
+          bgColor: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+        };
+      case 'in_pausa':
+        return {
+          text: 'IN PAUSA',
+          emoji: '🟡',
+          bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+        };
+      case 'risolta':
+        return {
+          text: 'RISOLTA',
+          emoji: '🏆',
+          bgColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+        };
+      case 'cancellata':
+        return {
+          text: 'CANCELLATA',
+          emoji: '🔴',
+          bgColor: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+        };
+      default:
+        return {
+          text: 'ATTIVA',
+          emoji: '🟢',
+          bgColor: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+        };
+    }
+  };
+
   const getBettingContainerStatus = (pool: any, prediction: any) => {
     const now = Math.floor(Date.now() / 1000);
     const closingDate = pool.closingDate;
@@ -1373,20 +1486,8 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                 <div className="block sm:hidden p-6">
                   {/* Badge status e categoria */}
                   <div className="flex gap-2 mb-3">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      prediction.status === 'attiva' 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : prediction.status === 'in_attesa'
-                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                        : prediction.status === 'in_pausa'
-                        ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                        : prediction.status === 'risolta'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                        : prediction.status === 'cancellata'
-                        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                    }`}>
-                      {capitalizeFirst(prediction.status)}
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPredictionBadgeStatus(prediction).bgColor}`}>
+                      {getPredictionBadgeStatus(prediction).emoji} {getPredictionBadgeStatus(prediction).text}
                     </span>
                     <span className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary dark:bg-primary/20">
                       {prediction.category}
@@ -1482,20 +1583,8 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         {prediction.title}
                       </h3>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        prediction.status === 'attiva' 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : prediction.status === 'in_attesa'
-                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                          : prediction.status === 'in_pausa'
-                          ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                          : prediction.status === 'risolta'
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                          : prediction.status === 'cancellata'
-                          ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                      }`}>
-                        {capitalizeFirst(prediction.status)}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPredictionBadgeStatus(prediction).bgColor}`}>
+                        {getPredictionBadgeStatus(prediction).emoji} {getPredictionBadgeStatus(prediction).text}
                       </span>
                       <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary dark:bg-primary/20">
                         {prediction.category}

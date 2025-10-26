@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useWeb3Auth } from './useWeb3Auth';
-import { isBettingCurrentlyOpen } from '../lib/contracts';
+import { isBettingCurrentlyOpen, getEmergencyStopStatus } from '../lib/contracts';
 
 export interface PoolState {
   canBet: boolean;
@@ -22,6 +22,7 @@ export interface PoolState {
 export const usePoolState = (poolAddress: string, poolData: any) => {
   const { user } = useWeb3Auth();
   const [contractBettingOpen, setContractBettingOpen] = useState<boolean | null>(null);
+  const [emergencyStop, setEmergencyStop] = useState<boolean | null>(null);
   const [contractLoading, setContractLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -52,12 +53,17 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
                if (!isSilent) {
                  setContractLoading(true);
                }
-               const isOpen = await isBettingCurrentlyOpen(poolAddress);
+               const [isOpen, emergencyStopStatus] = await Promise.all([
+                 isBettingCurrentlyOpen(poolAddress),
+                 getEmergencyStopStatus(poolAddress)
+               ]);
                setContractBettingOpen(isOpen);
+               setEmergencyStop(emergencyStopStatus);
                setLastUpdate(Date.now());
              } catch (error) {
                console.warn('❌ usePoolState: Errore check contratto scommesse:', error);
                setContractBettingOpen(null); // Fallback a null se errore
+               setEmergencyStop(null);
              } finally {
                if (!isSilent) {
                  setContractLoading(false);
@@ -154,10 +160,26 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
           statusIcon: '🏆'
         };
              } else {
-               // LOGICA DEI 3 STATI BASATA SUL CONTRATTO
+               // LOGICA DEI 4 STATI BASATA SUL CONTRATTO
                
-               // Stato 1: Scommesse aperte (contratto permette di scommettere)
-               if (contractBettingOpen === true) {
+               // Stato 1: Emergency Stop attivo (contratto in pausa)
+               if (emergencyStop === true) {
+                 return {
+                   canBet: false,
+                   canClaimRewards: false,
+                   canClaimRefund: false,
+                   isActive: false,
+                   isPaused: true,
+                   isCancelled: false,
+                   isResolved: false,
+                   statusText: 'IN PAUSA',
+                   statusColor: 'text-yellow-600',
+                   statusIcon: '🟡'
+                 };
+               }
+               
+               // Stato 2: Scommesse aperte (contratto permette di scommettere)
+               else if (contractBettingOpen === true) {
                  const hasBet = user && memoizedPoolData.userBet && memoizedPoolData.userBet.amount > 0;
                  
                  return {
@@ -174,14 +196,14 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
                  };
                }
                
-               // Stato 2: Fine scommesse ma prediction non terminata (contratto non permette scommesse ma siamo prima di closingBid)
+               // Stato 3: Fine scommesse ma prediction non terminata (contratto non permette scommesse ma siamo prima di closingBid)
                else if (contractBettingOpen === false && now < closingBid) {
                  return {
                    canBet: false,
                    canClaimRewards: false,
                    canClaimRefund: false,
                    isActive: false,
-                   isPaused: true,
+                   isPaused: false,
                    isCancelled: false,
                    isResolved: false,
                    statusText: 'SCOMMESSE CHIUSE',
@@ -190,7 +212,7 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
                  };
                }
                
-               // Stato 3: Prediction terminata - attesa risultati (contratto non permette scommesse e siamo dopo closingBid)
+               // Stato 4: Prediction terminata - attesa risultati (contratto non permette scommesse e siamo dopo closingBid)
                else if (contractBettingOpen === false && now >= closingBid) {
                  return {
                    canBet: false,
@@ -268,7 +290,7 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
         statusIcon: '❌'
       };
     }
-  }, [poolAddress, memoizedPoolData, user, contractBettingOpen, contractLoading]);
+  }, [poolAddress, memoizedPoolData, user, contractBettingOpen, emergencyStop, contractLoading]);
 
   // Funzione per forzare il refresh dello stato del contratto
   const refreshContractState = useCallback(async () => {
@@ -276,12 +298,17 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
     
     try {
       setIsRefreshing(true);
-      const isOpen = await isBettingCurrentlyOpen(poolAddress);
+      const [isOpen, emergencyStopStatus] = await Promise.all([
+        isBettingCurrentlyOpen(poolAddress),
+        getEmergencyStopStatus(poolAddress)
+      ]);
       setContractBettingOpen(isOpen);
+      setEmergencyStop(emergencyStopStatus);
       setLastUpdate(Date.now());
     } catch (error) {
       console.warn('❌ usePoolState: Errore refresh contratto:', error);
       setContractBettingOpen(null);
+      setEmergencyStop(null);
     } finally {
       setIsRefreshing(false);
     }
