@@ -221,6 +221,48 @@ export const useContracts = () => {
       // Ricarica i pool dopo la risoluzione
       await loadPools();
       
+      // Recupera la prediction dal database e aggiorna lo status
+      const { data: predictionData, error: predictionError } = await supabase
+        .from('predictions')
+        .select('id')
+        .eq('pool_address', poolAddress)
+        .maybeSingle();
+      
+      if (predictionError) {
+        console.error('Errore nel recupero della prediction:', predictionError);
+      } else if (predictionData) {
+        // Salva il log della transazione admin
+        const { error: insertError } = await supabase
+          .from('logadminfunction')
+          .insert({
+            action_type: 'set_winner',
+            tx_hash: txHash,
+            pool_address: poolAddress,
+            prediction_id: predictionData.id,
+            admin_address: user?.address || '',
+            additional_data: { winner: winnerYes }
+          });
+        
+        if (insertError) {
+          console.error('Errore nel salvataggio del log admin:', insertError);
+        } else {
+          console.log('Log admin salvato con successo');
+        }
+        
+        // Aggiorna lo status della prediction a "Risolta"
+        const { data: rpcData, error: updateError } = await supabase
+          .rpc('update_prediction_status', {
+            prediction_id_param: predictionData.id,
+            new_status: 'risolta'
+          });
+        
+        if (updateError) {
+          console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+        } else {
+          console.log('Status della prediction aggiornato a "Risolta"', rpcData);
+        }
+      }
+      
       return txHash;
     } catch (err) {
       console.error('Errore risoluzione prediction:', err);

@@ -45,6 +45,8 @@ contract BellaNapoliPredictionFactory is Ownable, ReentrancyGuard {
         PredictionPool newPool = new PredictionPool(_title, _description, _category, _closingDate, _closingBid, address(this));
         poolAddress = address(newPool);
         
+        // L'ownership della pool è già della Factory (Ownable() usa msg.sender che è la Factory)
+        
         poolInfo[poolAddress] = PoolInfo({
             title: _title,
             description: _description,
@@ -65,6 +67,11 @@ contract BellaNapoliPredictionFactory is Ownable, ReentrancyGuard {
         require(poolInfo[_poolAddress].creator != address(0), "Pool does not exist");
         require(poolInfo[_poolAddress].isActive, "Pool already closed");
         poolInfo[_poolAddress].isActive = false;
+        
+        // Chiama closePool sulla pool effettiva
+        PredictionPool pool = PredictionPool(payable(_poolAddress));
+        pool.closePool();
+        
         emit PoolClosed(_poolAddress, false);
     }
 
