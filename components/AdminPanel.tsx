@@ -3,9 +3,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAdmin } from '../hooks/useAdmin';
 import { useContracts } from '../hooks/useContracts';
 import { supabase } from '../lib/supabase';
-import { isBettingCurrentlyOpen, getEmergencyStopStatus } from '../lib/contracts';
+import { isBettingCurrentlyOpen, getEmergencyStopStatus, isPoolCancelled } from '../lib/contracts';
 import Link from 'next/link';
 import TransactionProgressModal, { TransactionStep } from './TransactionProgressModal';
+import AdminProgressModal, { AdminStep } from './AdminProgressModal';
 import ImageUpload from './ImageUpload';
 
 interface Prediction {
@@ -204,7 +205,7 @@ export default function AdminPanel() {
   const [showForm, setShowForm] = useState(false);
   const [editingPrediction, setEditingPrediction] = useState<Prediction | null>(null);
   const [formLoading, setFormLoading] = useState(false);
-  const [contractStates, setContractStates] = useState<Record<string, { isOpen: boolean; emergencyStop: boolean }>>({});
+  const [contractStates, setContractStates] = useState<Record<string, { isOpen: boolean; emergencyStop: boolean; cancelled: boolean }>>({});
   const [formData, setFormData] = useState<PredictionFormData>({
     title: '',
     description: '',
@@ -227,6 +228,15 @@ export default function AdminPanel() {
   const [showBSCScanModal, setShowBSCScanModal] = useState<boolean>(false);
   const [generatedContractCode, setGeneratedContractCode] = useState<string>('');
 
+  // Stati per il modal admin (Stop/Resume Betting)
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminSteps, setAdminSteps] = useState<AdminStep[]>([]);
+  const [adminCurrentStep, setAdminCurrentStep] = useState(0);
+  const [adminTransactionHash, setAdminTransactionHash] = useState<string>('');
+  const [adminError, setAdminError] = useState<string>('');
+  const [adminOperationType, setAdminOperationType] = useState<'stop' | 'resume' | 'cancel'>('stop');
+  const [adminPoolAddress, setAdminPoolAddress] = useState<string>('');
+
   // Carica le prediction esistenti
   useEffect(() => {
     if (isAdmin) {
@@ -241,14 +251,15 @@ export default function AdminPanel() {
       
       for (const prediction of predictionsWithPool) {
         try {
-          const [isOpen, emergencyStop] = await Promise.all([
+          const [isOpen, emergencyStop, cancelled] = await Promise.all([
             isBettingCurrentlyOpen(prediction.pool_address!),
-            getEmergencyStopStatus(prediction.pool_address!)
+            getEmergencyStopStatus(prediction.pool_address!),
+            isPoolCancelled(prediction.pool_address!)
           ]);
           
           setContractStates(prev => ({
             ...prev,
-            [prediction.pool_address!]: { isOpen, emergencyStop }
+            [prediction.pool_address!]: { isOpen, emergencyStop, cancelled }
           }));
         } catch (error) {
           console.warn(`Errore caricamento stato contratto ${prediction.pool_address}:`, error);
@@ -272,7 +283,14 @@ export default function AdminPanel() {
     if (prediction.pool_address && contractStates[prediction.pool_address]) {
       const contractState = contractStates[prediction.pool_address];
       
-      if (contractState.emergencyStop) {
+      // Prima controlla se la pool è cancellata
+      if (contractState.cancelled) {
+        return {
+          text: 'CANCELLATA',
+          emoji: '🔴',
+          bgColor: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+        };
+      } else if (contractState.emergencyStop) {
         return {
           text: 'IN PAUSA',
           emoji: '🟡',
@@ -352,7 +370,14 @@ export default function AdminPanel() {
     if (contractStates[pool.address]) {
       const contractState = contractStates[pool.address];
       
-      if (contractState.emergencyStop) {
+      // Prima controlla se la pool è cancellata
+      if (contractState.cancelled) {
+        return {
+          text: 'CANCELLATA',
+          emoji: '🔴',
+          bgColor: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+        };
+      } else if (contractState.emergencyStop) {
         return {
           text: 'IN PAUSA',
           emoji: '🟡',
@@ -384,17 +409,28 @@ export default function AdminPanel() {
       }
     }
 
-    // Fallback: controlla se c'è una prediction attiva corrispondente
-    const isActive = predictions.some(prediction => 
-      prediction.pool_address === pool.address && 
-      prediction.status === 'attiva'
+    // Fallback: controlla se c'è una prediction corrispondente
+    const correspondingPrediction = predictions.find(prediction => 
+      prediction.pool_address === pool.address
     );
     
-    return isActive ? {
-      text: 'ATTIVA',
-      emoji: '🟢',
-      bgColor: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-    } : {
+    if (correspondingPrediction) {
+      if (correspondingPrediction.status === 'cancellata') {
+        return {
+          text: 'CANCELLATA',
+          emoji: '🔴',
+          bgColor: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+        };
+      } else if (correspondingPrediction.status === 'attiva') {
+        return {
+          text: 'ATTIVA',
+          emoji: '🟢',
+          bgColor: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+        };
+      }
+    }
+    
+    return {
       text: 'ORFANA',
       emoji: '🔴',
       bgColor: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
@@ -615,7 +651,6 @@ export default function AdminPanel() {
     if (!confirm('Sei sicuro di voler eliminare questa prediction?')) return;
 
     try {
-
       // Usa la funzione RPC per eliminare (solo admin)
       const { data, error } = await supabase.rpc('delete_prediction_admin', {
         prediction_id: id,
@@ -636,6 +671,281 @@ export default function AdminPanel() {
     } catch (error) {
       console.error('Error deleting prediction:', error);
       alert('Errore nell\'eliminazione della prediction: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'));
+    }
+  };
+
+  // Funzione per gestire Stop Betting con modal
+  const handleStopBetting = async (poolAddress: string) => {
+    try {
+      // Imposta i dati per il modal
+      setAdminOperationType('stop');
+      setAdminPoolAddress(poolAddress);
+      setAdminError('');
+      setAdminTransactionHash('');
+      
+      // Inizializza i passi
+      const steps: AdminStep[] = [
+        {
+          id: 'prepare',
+          title: 'Preparazione transazione',
+          description: 'Preparazione della transazione per fermare le scommesse...',
+          status: 'pending'
+        },
+        {
+          id: 'sign',
+          title: 'Firma transazione',
+          description: 'Firma della transazione nel wallet...',
+          status: 'pending'
+        },
+        {
+          id: 'confirm',
+          title: 'Conferma transazione',
+          description: 'Attesa conferma della transazione sulla blockchain...',
+          status: 'pending'
+        },
+        {
+          id: 'complete',
+          title: 'Operazione completata',
+          description: 'Stop betting completato con successo!',
+          status: 'pending'
+        }
+      ];
+      
+      setAdminSteps(steps);
+      setAdminCurrentStep(0);
+      setShowAdminModal(true);
+      
+      // Passo 1: Preparazione
+      await new Promise(resolve => setTimeout(resolve, 100));
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'prepare' ? { ...step, status: 'loading' } : step
+      ));
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Passo 1: Completato, Passo 2: Chiamata alla funzione stopBetting
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'prepare' ? { ...step, status: 'completed' } :
+        step.id === 'sign' ? { ...step, status: 'loading' } : step
+      ));
+      
+      const txHash = await stopBetting(poolAddress);
+      
+      // Passo 2: Completato, Passo 3: Transazione confermata
+      setAdminTransactionHash(txHash);
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'sign' ? { ...step, status: 'completed' } : 
+        step.id === 'confirm' ? { ...step, status: 'loading' } : step
+      ));
+      
+      // Simula attesa conferma (in realtà stopBetting già aspetta la conferma)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Passo 3: Completato, Passo 4: Completato
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'confirm' ? { ...step, status: 'completed' } :
+        step.id === 'complete' ? { ...step, status: 'completed' } : step
+      ));
+      
+      // Imposta il currentStep a steps.length per mostrare il pulsante "Completato"
+      setAdminCurrentStep(steps.length);
+      
+    } catch (error: any) {
+      console.error('Errore stop betting:', error);
+      setAdminError(error.message || 'Errore durante lo stop betting');
+      
+      // Marca solo il passo corrente come errore (senza aggiungere il messaggio di errore nello step)
+      setAdminSteps(prev => prev.map(step => ({
+        ...step,
+        status: step.status === 'loading' ? 'error' : step.status
+      })));
+    }
+  };
+
+  // Funzione per gestire Cancel Pool con modal
+  const handleCancelPool = async (poolAddress: string) => {
+    const reason = prompt('Motivo per la cancellazione del pool:');
+    if (!reason) return;
+    
+    try {
+      // Imposta i dati per il modal
+      setAdminOperationType('cancel'); // Usa il tipo cancel
+      setAdminPoolAddress(poolAddress);
+      setAdminError('');
+      setAdminTransactionHash('');
+      
+      // Inizializza i passi
+      const steps: AdminStep[] = [
+        {
+          id: 'prepare',
+          title: 'Preparazione transazione',
+          description: 'Preparazione della transazione per cancellare il pool...',
+          status: 'pending'
+        },
+        {
+          id: 'sign',
+          title: 'Firma transazione',
+          description: 'Firma della transazione nel wallet...',
+          status: 'pending'
+        },
+        {
+          id: 'confirm',
+          title: 'Conferma transazione',
+          description: 'Conferma della transazione sulla blockchain...',
+          status: 'pending'
+        },
+        {
+          id: 'save_notes',
+          title: 'Salvataggio note',
+          description: 'Salvataggio delle note nel database...',
+          status: 'pending'
+        }
+      ];
+      
+      setAdminSteps(steps);
+      setAdminCurrentStep(0);
+      setShowAdminModal(true);
+      
+      // Passo 1: Preparazione
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setAdminSteps(prev => prev.map(step => step.id === 'prepare' ? { ...step, status: 'completed' } : step));
+      setAdminCurrentStep(1);
+      
+      // Passo 2: Chiama la funzione cancel pool
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setAdminSteps(prev => prev.map(step => step.id === 'sign' ? { ...step, status: 'loading' } : step));
+      
+      const tx = await cancelPoolPrediction(poolAddress, reason);
+      
+      setAdminSteps(prev => prev.map(step => step.id === 'sign' ? { ...step, status: 'completed' } : step));
+      setAdminCurrentStep(2);
+      setAdminTransactionHash(tx.hash);
+      
+      // Passo 3: Attendi conferma
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setAdminSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'loading' } : step));
+      
+      await tx.wait();
+      
+      setAdminSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'completed' } : step));
+      setAdminCurrentStep(3);
+      
+      // Passo 4: Salva le note nel database
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setAdminSteps(prev => prev.map(step => step.id === 'save_notes' ? { ...step, status: 'loading' } : step));
+      
+      const { error: dbError } = await supabase.rpc('update_prediction_notes', {
+        pool_address: poolAddress,
+        notes: `Pool cancellato: ${reason}`
+      });
+      
+      if (dbError) {
+        console.error('Errore nel salvataggio delle note:', dbError);
+        throw dbError;
+      }
+      
+      setAdminSteps(prev => prev.map(step => step.id === 'save_notes' ? { ...step, status: 'completed' } : step));
+      
+      // Completato
+      setAdminCurrentStep(steps.length);
+      
+    } catch (error: any) {
+      console.error('Errore cancellazione pool:', error);
+      setAdminError(`Log funzione Cancel Pool: ${error.message || 'Errore durante la cancellazione del pool'}`);
+      
+      // Marca solo il passo corrente come errore
+      setAdminSteps(prev => prev.map(step => ({
+        ...step,
+        status: step.status === 'loading' ? 'error' : step.status
+      })));
+    }
+  };
+
+  // Funzione per gestire Resume Betting con modal
+  const handleResumeBetting = async (poolAddress: string) => {
+    try {
+      // Imposta i dati per il modal
+      setAdminOperationType('resume');
+      setAdminPoolAddress(poolAddress);
+      setAdminError('');
+      setAdminTransactionHash('');
+      
+      // Inizializza i passi
+      const steps: AdminStep[] = [
+        {
+          id: 'prepare',
+          title: 'Preparazione transazione',
+          description: 'Preparazione della transazione per riprendere le scommesse...',
+          status: 'pending'
+        },
+        {
+          id: 'sign',
+          title: 'Firma transazione',
+          description: 'Firma della transazione nel wallet...',
+          status: 'pending'
+        },
+        {
+          id: 'confirm',
+          title: 'Conferma transazione',
+          description: 'Attesa conferma della transazione sulla blockchain...',
+          status: 'pending'
+        },
+        {
+          id: 'complete',
+          title: 'Operazione completata',
+          description: 'Resume betting completato con successo!',
+          status: 'pending'
+        }
+      ];
+      
+      setAdminSteps(steps);
+      setAdminCurrentStep(0);
+      setShowAdminModal(true);
+      
+      // Passo 1: Preparazione
+      await new Promise(resolve => setTimeout(resolve, 100));
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'prepare' ? { ...step, status: 'loading' } : step
+      ));
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Passo 1: Completato, Passo 2: Chiamata alla funzione resumeBetting
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'prepare' ? { ...step, status: 'completed' } :
+        step.id === 'sign' ? { ...step, status: 'loading' } : step
+      ));
+      
+      const txHash = await resumeBetting(poolAddress);
+      
+      // Passo 2: Completato, Passo 3: Transazione confermata
+      setAdminTransactionHash(txHash);
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'sign' ? { ...step, status: 'completed' } : 
+        step.id === 'confirm' ? { ...step, status: 'loading' } : step
+      ));
+      
+      // Simula attesa conferma (in realtà resumeBetting già aspetta la conferma)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Passo 3: Completato, Passo 4: Completato
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'confirm' ? { ...step, status: 'completed' } :
+        step.id === 'complete' ? { ...step, status: 'completed' } : step
+      ));
+      
+      // Imposta il currentStep a steps.length per mostrare il pulsante "Completato"
+      setAdminCurrentStep(steps.length);
+      
+    } catch (error: any) {
+      console.error('Errore resume betting:', error);
+      setAdminError(error.message || 'Errore durante il resume betting');
+      
+      // Marca solo il passo corrente come errore (senza aggiungere il messaggio di errore nello step)
+      setAdminSteps(prev => prev.map(step => ({
+        ...step,
+        status: step.status === 'loading' ? 'error' : step.status
+      })));
     }
   };
 
@@ -2050,7 +2360,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                                     emergencyResolvePrediction(pool.address, true, reason);
                                   }
                                 }}
-                                className="w-full px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+                                className="w-full px-4 py-2 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
                                 ✅ Resolve YES
                               </button>
@@ -2061,18 +2371,13 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                                     emergencyResolvePrediction(pool.address, false, reason);
                                   }
                                 }}
-                                className="w-full px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
+                                className="w-full px-4 py-2 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
-                                ❌ Resolve NO
+                                🚩 Resolve NO
                               </button>
                               <button
-                                onClick={() => {
-                                  const reason = prompt('Motivo per la cancellazione del pool:');
-                                  if (reason) {
-                                    cancelPoolPrediction(pool.address, reason);
-                                  }
-                                }}
-                                className="w-full px-4 py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 transition-colors"
+                                onClick={() => handleCancelPool(pool.address)}
+                                className="w-full px-4 py-2 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
                                 ❌ Cancel Pool
                               </button>
@@ -2083,14 +2388,14 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                           {!pool.winnerSet && (
                             <>
                               <button
-                                onClick={() => stopBetting(pool.address)}
-                                className="w-full px-4 py-2 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700 transition-colors"
+                                onClick={() => handleStopBetting(pool.address)}
+                                className="w-full px-4 py-2 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
-                                🛑 Stop Betting
+                                🟡 Stop Betting
                               </button>
                               <button
-                                onClick={() => resumeBetting(pool.address)}
-                                className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                                onClick={() => handleResumeBetting(pool.address)}
+                                className="w-full px-4 py-2 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
                                 ▶️ Resume Betting
                               </button>
@@ -2118,9 +2423,9 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                           {/* BSCScan */}
                           <button
                             onClick={() => window.open(`https://testnet.bscscan.com/address/${pool.address}`, '_blank')}
-                            className="w-full px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
+                            className="w-full px-4 py-2 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                           >
-                            View on BSCScan
+                            🔍 View on BSCScan
                           </button>
                         </div>
                       </div>
@@ -2248,7 +2553,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                                     emergencyResolvePrediction(pool.address, true, reason);
                                   }
                                 }}
-                                className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+                                className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
                                 ✅ Resolve YES
                               </button>
@@ -2259,18 +2564,13 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                                     emergencyResolvePrediction(pool.address, false, reason);
                                   }
                                 }}
-                                className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
+                                className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
-                                ❌ Resolve NO
+                                🚩 Resolve NO
                               </button>
                               <button
-                                onClick={() => {
-                                  const reason = prompt('Motivo per la cancellazione del pool:');
-                                  if (reason) {
-                                    cancelPoolPrediction(pool.address, reason);
-                                  }
-                                }}
-                                className="px-3 py-1 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 transition-colors"
+                                onClick={() => handleCancelPool(pool.address)}
+                                className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
                                 ❌ Cancel Pool
                               </button>
@@ -2281,14 +2581,14 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                           {!pool.winnerSet && (
                             <div className="flex gap-2">
                               <button
-                                onClick={() => stopBetting(pool.address)}
-                                className="px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700 transition-colors"
+                                onClick={() => handleStopBetting(pool.address)}
+                                className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
-                                🛑 Stop Betting
+                                🟡 Stop Betting
                               </button>
                               <button
-                                onClick={() => resumeBetting(pool.address)}
-                                className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                                onClick={() => handleResumeBetting(pool.address)}
+                                className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
                                 ▶️ Resume Betting
                               </button>
@@ -2316,9 +2616,9 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                           {/* BSCScan */}
                           <button
                             onClick={() => window.open(`https://testnet.bscscan.com/address/${pool.address}`, '_blank')}
-                            className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
+                            className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                           >
-                            View on BSCScan
+                            🔍 View on BSCScan
                           </button>
                         </div>
                         </div>
@@ -2341,6 +2641,18 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         transactionHash={transactionHash}
         contractAddress={contractAddress}
         error={transactionError}
+      />
+
+      {/* Modal di Progresso Admin (Stop/Resume Betting) */}
+      <AdminProgressModal
+        isOpen={showAdminModal}
+        onClose={() => setShowAdminModal(false)}
+        steps={adminSteps}
+        currentStep={adminCurrentStep}
+        transactionHash={adminTransactionHash}
+        error={adminError}
+        operationType={adminOperationType}
+        poolAddress={adminPoolAddress}
       />
 
       {/* Modal BSCScan Code */}
@@ -2388,7 +2700,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                     navigator.clipboard.writeText(generatedContractCode);
                     alert('Codice copiato negli appunti!');
                   }}
-                  className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                  className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white text-sm rounded hover:bg-blue-500/10 transition-colors"
                 >
                   📋 Copia
                 </button>

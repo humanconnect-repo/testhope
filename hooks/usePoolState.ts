@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useWeb3Auth } from './useWeb3Auth';
-import { isBettingCurrentlyOpen, getEmergencyStopStatus } from '../lib/contracts';
+import { isBettingCurrentlyOpen, getEmergencyStopStatus, isPoolCancelled } from '../lib/contracts';
 
 export interface PoolState {
   canBet: boolean;
@@ -20,9 +20,10 @@ export interface PoolState {
 }
 
 export const usePoolState = (poolAddress: string, poolData: any) => {
-  const { user } = useWeb3Auth();
+  const { user, isConnected } = useWeb3Auth();
   const [contractBettingOpen, setContractBettingOpen] = useState<boolean | null>(null);
   const [emergencyStop, setEmergencyStop] = useState<boolean | null>(null);
+  const [contractCancelled, setContractCancelled] = useState<boolean | null>(null);
   const [contractLoading, setContractLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -50,20 +51,23 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
              }
        
              try {
-               if (!isSilent) {
-                 setContractLoading(true);
-               }
-               const [isOpen, emergencyStopStatus] = await Promise.all([
-                 isBettingCurrentlyOpen(poolAddress),
-                 getEmergencyStopStatus(poolAddress)
-               ]);
-               setContractBettingOpen(isOpen);
-               setEmergencyStop(emergencyStopStatus);
-               setLastUpdate(Date.now());
+              if (!isSilent) {
+                setContractLoading(true);
+              }
+              const [isOpen, emergencyStopStatus, cancelledStatus] = await Promise.all([
+                isBettingCurrentlyOpen(poolAddress),
+                getEmergencyStopStatus(poolAddress),
+                isPoolCancelled(poolAddress)
+              ]);
+              setContractBettingOpen(isOpen);
+              setEmergencyStop(emergencyStopStatus);
+              setContractCancelled(cancelledStatus);
+              setLastUpdate(Date.now());
              } catch (error) {
                console.warn('❌ usePoolState: Errore check contratto scommesse:', error);
                setContractBettingOpen(null); // Fallback a null se errore
                setEmergencyStop(null);
+               setContractCancelled(null);
              } finally {
                if (!isSilent) {
                  setContractLoading(false);
@@ -81,7 +85,7 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
            
            // Cleanup
            return () => clearInterval(interval);
-         }, [poolAddress]);
+         }, [poolAddress, isConnected]);
 
   // Calcola lo stato del pool in modo memoizzato
   const poolState = useMemo(() => {
@@ -125,8 +129,8 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
       // Controlla se l'utente può richiedere rimborsi (disabilitato su BSC per problemi ENS)
       const canRefund = false; // Disabilitato su BSC Testnet per evitare errori ENS
 
-      // Controlla se il pool è cancellato dal database
-      const isCancelled = memoizedPoolData.status === 'cancellata';
+      // Controlla se il pool è cancellato (da database o contratto)
+      const isCancelled = memoizedPoolData.status === 'cancellata' || contractCancelled === true;
       
       if (isCancelled) {
         // Pool cancellato
@@ -290,7 +294,7 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
         statusIcon: '❌'
       };
     }
-  }, [poolAddress, memoizedPoolData, user, contractBettingOpen, emergencyStop, contractLoading]);
+  }, [poolAddress, memoizedPoolData, user, contractBettingOpen, emergencyStop, contractCancelled, contractLoading]);
 
   // Funzione per forzare il refresh dello stato del contratto
   const refreshContractState = useCallback(async () => {

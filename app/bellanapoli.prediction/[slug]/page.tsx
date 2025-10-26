@@ -7,7 +7,7 @@ import { useWeb3Auth } from '../../../hooks/useWeb3Auth';
 import { useBNBBalance } from '../../../hooks/useBNBBalance';
 import { useContractData } from '../../../hooks/useContractData';
 import { useAdmin } from '../../../hooks/useAdmin';
-import { placeBet } from '../../../lib/contracts';
+import { placeBet, claimRefund } from '../../../lib/contracts';
 import { supabase } from '../../../lib/supabase';
 import { validateComment } from '../../../lib/profanityFilter';
 import BettingProgressModal, { BettingStep } from '../../../components/BettingProgressModal';
@@ -64,6 +64,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   const [newComment, setNewComment] = useState('');
   const [poolAddress, setPoolAddress] = useState<string>('');
   const [bettingLoading, setBettingLoading] = useState(false);
+  const [claimRefundLoading, setClaimRefundLoading] = useState(false);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
 
   // Memoizza i dati del pool per evitare re-render infiniti
@@ -94,7 +95,15 @@ export default function PredictionPage({ params }: { params: { slug: string } })
 
       // Se abbiamo un pool address e poolState, usa quello come priorità assoluta
       if (poolAddress && poolState) {
-        if (poolState.isPaused) {
+        // Controlla prima se è cancellata
+        if (poolState.isCancelled || prediction.status === 'cancellata') {
+          return {
+            status: 'cancellata',
+            displayText: 'Cancellata',
+            emoji: '🔴',
+            bgColor: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+          };
+        } else if (poolState.isPaused) {
           return {
             status: 'in_pausa',
             displayText: 'In pausa',
@@ -186,7 +195,14 @@ export default function PredictionPage({ params }: { params: { slug: string } })
 
       // Se abbiamo un pool address e poolState, usa quello come priorità assoluta
       if (poolAddress && poolState) {
-        if (poolState.isPaused) {
+        // Controlla prima se è cancellata
+        if (poolState.isCancelled || prediction.status === 'cancellata') {
+          return {
+            type: 'cancelled',
+            message: 'Puoi fare il claim dei tuoi fondi se avevi fatto una prediction',
+            status: 'Prediction cancellata'
+          };
+        } else if (poolState.isPaused) {
           return {
             type: 'paused',
             message: 'Prediction in pausa',
@@ -1227,7 +1243,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                         </>
                       );
                     }
-                    return containerStatus.message;
+                    return containerStatus.type === 'cancelled' ? containerStatus.status : containerStatus.message;
                   })()}
                 </h3>
                 {poolAddress && poolState && (
@@ -1272,8 +1288,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                 </div>
               )}
 
-              {/* Avviso se l'utente ha già scommesso */}
-              {userHasBet && (
+              {/* Avviso se l'utente ha già scommesso - Non mostrare se la pool è cancellata */}
+              {userHasBet && getBettingContainerStatus(prediction).type !== 'cancelled' && (
                 <div className="mb-6 p-4 rounded-lg border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
@@ -1309,7 +1325,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                       : containerStatus.type === 'resolved'
                       ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                       : containerStatus.type === 'cancelled'
-                      ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                      ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
                       : containerStatus.type === 'ended'
                       ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
                       : 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800'
@@ -1324,7 +1340,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                             : containerStatus.type === 'resolved'
                             ? 'text-green-400'
                             : containerStatus.type === 'cancelled'
-                            ? 'text-red-400'
+                            ? 'text-yellow-400'
                             : containerStatus.type === 'ended'
                             ? 'text-blue-400'
                             : 'text-gray-400'
@@ -1332,7 +1348,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                           {containerStatus.type === 'resolved' ? (
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           ) : containerStatus.type === 'cancelled' ? (
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                           ) : (
                             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                           )}
@@ -1347,21 +1363,21 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                             : containerStatus.type === 'resolved'
                             ? 'text-green-800 dark:text-green-200'
                             : containerStatus.type === 'cancelled'
-                            ? 'text-red-800 dark:text-red-200'
+                            ? 'text-yellow-800 dark:text-yellow-200'
                             : containerStatus.type === 'ended'
                             ? 'text-blue-800 dark:text-blue-200'
                             : 'text-gray-800 dark:text-gray-200'
                         }`}>
-                          {containerStatus.type === 'paused' ? 'ATTENDI la scadenza della Prediction' : containerStatus.status}
+                          {containerStatus.type === 'paused' ? 'ATTENDI la scadenza della Prediction' : containerStatus.type === 'cancelled' ? 'Puoi fare il claim dei tuoi fondi se avevi fatto una prediction' : containerStatus.status}
                         </h3>
-                        {containerStatus.type !== 'paused' && (
+                        {containerStatus.type !== 'paused' && containerStatus.type !== 'cancelled' && (
                           <div className={`mt-2 text-sm ${
                             containerStatus.type === 'closed_waiting'
                               ? 'text-yellow-700 dark:text-yellow-300'
                               : containerStatus.type === 'resolved'
                               ? 'text-green-700 dark:text-green-300'
                               : containerStatus.type === 'cancelled'
-                              ? 'text-red-700 dark:text-red-300'
+                              ? 'text-yellow-700 dark:text-yellow-300'
                               : containerStatus.type === 'ended'
                               ? 'text-blue-700 dark:text-blue-300'
                               : 'text-gray-700 dark:text-gray-300'
@@ -1392,6 +1408,42 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Area Claim Refund - Mostra quando la pool è cancellata */}
+              {getBettingContainerStatus(prediction).type === 'cancelled' && userHasBet && (
+                <div className="space-y-4 mb-6">
+                  {/* Pulsante Claim */}
+                  <button
+                    onClick={async () => {
+                      if (!isAuthenticated || !address || !prediction?.pool_address) {
+                        alert('Devi essere connesso per recuperare i fondi');
+                        return;
+                      }
+                      
+                      try {
+                        setClaimRefundLoading(true);
+                        const txHash = await claimRefund(prediction.pool_address);
+                        alert(`Rimborso richiesto con successo! Hash transazione: ${txHash}`);
+                        // Ricarica i dati per aggiornare lo stato
+                        window.location.reload();
+                      } catch (error: any) {
+                        console.error('Errore nel recupero dei fondi:', error);
+                        alert(`Errore nel recupero dei fondi: ${error.message || 'Errore sconosciuto'}`);
+                      } finally {
+                        setClaimRefundLoading(false);
+                      }
+                    }}
+                    disabled={claimRefundLoading}
+                    className={`w-full font-medium py-3 px-4 rounded-lg transition-colors duration-200 ${
+                      claimRefundLoading
+                        ? 'bg-yellow-400 text-white cursor-not-allowed'
+                        : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                    }`}
+                  >
+                    {claimRefundLoading ? '⏳ Elaborazione...' : '🪙 Recupera i tuoi fondi'}
+                  </button>
                 </div>
               )}
 

@@ -302,7 +302,8 @@ export async function getPoolBettors(poolAddress: string): Promise<string[]> {
 export async function getUserBetFromContract(poolAddress: string, userAddress: string) {
   try {
     const pool = await getPool(poolAddress);
-    const bet = await pool.getUserBet(userAddress);
+    // userBets è un mapping pubblico, quindi possiamo chiamarlo direttamente
+    const bet = await pool.userBets(userAddress);
     return {
       amount: bet.amount.toString(),
       choice: bet.choice, // true = Yes, false = No

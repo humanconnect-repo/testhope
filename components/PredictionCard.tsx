@@ -54,7 +54,15 @@ export default function PredictionCard({
     return () => {
       // Se abbiamo un pool address e poolState, usa quello come priorità assoluta
       if (poolAddress && poolState && poolState.statusText !== 'CARICAMENTO CONTRATTO') {
-        if (poolState.isPaused) {
+        // Controlla prima se è cancellata
+        if (poolState.isCancelled || status === 'cancellata') {
+          return {
+            status: 'cancellata',
+            displayText: 'CANCELLATA',
+            emoji: '🔴',
+            textColor: 'text-red-600 dark:text-red-400'
+          };
+        } else if (poolState.isPaused) {
           return {
             status: 'in_pausa',
             displayText: 'IN PAUSA',
@@ -144,6 +152,15 @@ export default function PredictionCard({
       }
 
       // Se abbiamo pool address ma nessun dato del contratto, mostra errore
+      // Se l'utente non è connesso al wallet, mostra "Status: Connect Wallet"
+      if (!isConnected) {
+        return {
+          status: 'error',
+          displayText: 'Status: prima connetti il Wallet',
+          emoji: '',
+          textColor: 'text-gray-600 dark:text-gray-400'
+        };
+      }
       return {
         status: 'error',
         displayText: 'ERRORE',
@@ -151,7 +168,7 @@ export default function PredictionCard({
         textColor: 'text-red-600 dark:text-red-400'
       };
     };
-  }, [poolAddress, poolState, status]);
+  }, [poolAddress, poolState, status, isConnected]);
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (!isConnected) {
