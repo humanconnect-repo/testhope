@@ -114,6 +114,13 @@ export default function PredictionPage({ params }: { params: { slug: string } })
             emoji: '🔴',
             bgColor: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
           };
+        } else if (poolState.statusText === 'CHIUSA') {
+          return {
+            status: 'chiusa',
+            displayText: 'Chiusa',
+            emoji: '🟡',
+            bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+          };
         } else if (poolState.isPaused) {
           return {
             status: 'in_pausa',
@@ -212,6 +219,12 @@ export default function PredictionPage({ params }: { params: { slug: string } })
             type: 'cancelled',
             message: 'Puoi fare il claim dei tuoi fondi se avevi fatto una prediction !',
             status: 'Prediction cancellata'
+          };
+        } else if (poolState.statusText === 'CHIUSA') {
+          return {
+            type: 'closed_waiting',
+            message: 'Prediction chiusa',
+            status: ''
           };
         } else if (poolState.isPaused) {
           return {
@@ -1310,7 +1323,11 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                         </>
                       );
                     }
-                    return containerStatus.type === 'cancelled' ? containerStatus.status : containerStatus.message;
+                    const text = containerStatus.type === 'cancelled' ? containerStatus.status : containerStatus.message;
+                    if (containerStatus.type === 'closed_waiting') {
+                      return <span className="text-yellow-500 font-bold text-2xl">{text}</span>;
+                    }
+                    return text;
                   })()}
                 </h3>
                 {poolAddress && poolState && (
@@ -1336,6 +1353,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                     </span>
                     <span className={`font-bold ${
                       poolState.statusText === 'ATTIVA' ? 'text-green-600' :
+                      poolState.statusText === 'CHIUSA' ? 'text-yellow-600' :
+                      poolState.statusText === 'IN PAUSA' ? 'text-yellow-600' :
                       poolState.statusText === 'SCOMMESSE CHIUSE' ? 'text-yellow-600' :
                       poolState.statusText === 'ATTESA RISULTATI' ? 'text-blue-600' :
                       'text-gray-600'
@@ -1426,7 +1445,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                           containerStatus.type === 'paused'
                             ? 'text-yellow-500 font-bold text-lg'
                             : containerStatus.type === 'closed_waiting'
-                            ? 'text-yellow-800 dark:text-yellow-200'
+                            ? 'text-yellow-500 font-bold text-lg'
                             : containerStatus.type === 'resolved'
                             ? 'text-green-800 dark:text-green-200'
                             : containerStatus.type === 'cancelled'
@@ -1435,9 +1454,9 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                             ? 'text-blue-800 dark:text-blue-200'
                             : 'text-gray-800 dark:text-gray-200'
                         }`}>
-                          {containerStatus.type === 'paused' ? 'ATTENDI la scadenza della prediction o leggi gli aggiornamenti nel box qui sotto!' : containerStatus.type === 'cancelled' ? 'Puoi fare il claim dei tuoi fondi se avevi fatto una prediction' : containerStatus.status}
+                          {containerStatus.type === 'paused' || containerStatus.type === 'closed_waiting' ? 'Segui gli aggiornamenti e attendi i risultati' : containerStatus.type === 'cancelled' ? 'Puoi fare il claim dei tuoi fondi se avevi fatto una prediction' : containerStatus.status}
                         </h3>
-                        {containerStatus.type !== 'paused' && containerStatus.type !== 'cancelled' && (
+                        {containerStatus.type !== 'paused' && containerStatus.type !== 'cancelled' && containerStatus.type !== 'closed_waiting' && (
                           <div className={`mt-2 text-sm ${
                             containerStatus.type === 'closed_waiting'
                               ? 'text-yellow-700 dark:text-yellow-300'

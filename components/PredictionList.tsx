@@ -59,7 +59,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             pool_address,
             created_at
           `)
-          .in('status', ['attiva', 'in_attesa'])
+          .in('status', ['attiva', 'in_attesa', 'in_pausa'])
           .order('created_at', { ascending: false });
 
         if (hasSearchQuery) {
@@ -109,7 +109,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             pool_address,
             created_at
           `)
-          .in('status', ['attiva', 'in_attesa'])
+          .in('status', ['attiva', 'in_attesa', 'in_pausa'])
           .order('created_at', { ascending: false })
           .limit(limit);
 
@@ -155,7 +155,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             pool_address,
             created_at
           `)
-          .in('status', ['attiva', 'in_attesa'])
+          .in('status', ['attiva', 'in_attesa', 'in_pausa'])
           .eq('category', selectedCategory)
           .order('created_at', { ascending: false });
 

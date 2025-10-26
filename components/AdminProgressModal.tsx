@@ -160,21 +160,21 @@ export default function AdminProgressModal({
   const getOperationColor = () => {
     if (operationType === 'stop') return 'yellow';
     if (operationType === 'cancel') return 'red';
-    if (operationType === 'close') return 'purple';
+    if (operationType === 'close') return 'blue';
     return 'blue';
   };
 
   const getOperationColorClass = () => {
     if (operationType === 'stop') return 'text-yellow-600 dark:text-yellow-400';
     if (operationType === 'cancel') return 'text-red-600 dark:text-red-400';
-    if (operationType === 'close') return 'text-purple-600 dark:text-purple-400';
+    if (operationType === 'close') return 'text-blue-600 dark:text-blue-400';
     return 'text-blue-600 dark:text-blue-400';
   };
 
   const getOperationBgClass = () => {
     if (operationType === 'stop') return 'bg-yellow-600 hover:bg-yellow-700';
     if (operationType === 'cancel') return 'bg-red-600 hover:bg-red-700';
-    if (operationType === 'close') return 'bg-purple-600 hover:bg-purple-700';
+    if (operationType === 'close') return 'bg-blue-600 hover:bg-blue-700';
     return 'bg-blue-600 hover:bg-blue-700';
   };
 

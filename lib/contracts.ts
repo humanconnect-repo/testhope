@@ -204,6 +204,7 @@ export async function getPoolSummary(address: string) {
 
 // Chiude una pool (prima di impostare il winner)
 export async function closePool(address: string) {
+  // Ora chiama la Factory, che a sua volta chiama la pool (con la Factory come owner)
   const factory = await getFactory();
   const tx = await factory.closePool(address);
   await tx.wait();
@@ -383,7 +384,7 @@ export async function getRecentBetsFromContract(poolAddress: string, limit: numb
 export async function getPoolStatsFromContract(poolAddress: string) {
   try {
     const pool = await getPool(poolAddress);
-    const [totalYes, totalNo, totalBets, bettorCount, isClosed, winnerSet, winner] = await pool.getPoolStats();
+    const [totalYes, totalNo, totalBets, bettorCount, isClosed, winnerSet, cancelled] = await pool.getPoolStats();
     
     return {
       totalYes: totalYes.toString(),
@@ -392,7 +393,7 @@ export async function getPoolStatsFromContract(poolAddress: string) {
       bettorCount: Number(bettorCount),
       isClosed,
       winnerSet,
-      winner
+      winner: false // We need to get this separately
     };
   } catch (error) {
     console.error('Error getting pool stats from contract:', error);
@@ -408,6 +409,17 @@ export async function isPoolCancelled(poolAddress: string): Promise<boolean> {
   } catch (error) {
     console.warn('Errore nel controllo cancellazione pool:', error);
     return false; // Default: pool non cancellato
+  }
+}
+
+// Check if pool is closed
+export async function isPoolClosed(poolAddress: string): Promise<boolean> {
+  try {
+    const pool = await getPool(poolAddress);
+    return await pool.isClosed();
+  } catch (error) {
+    console.warn('Errore nel controllo chiusura pool:', error);
+    return false; // Default: pool aperta
   }
 }
 

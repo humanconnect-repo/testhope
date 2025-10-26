@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAdmin } from '../hooks/useAdmin';
 import { useContracts } from '../hooks/useContracts';
 import { supabase } from '../lib/supabase';
-import { isBettingCurrentlyOpen, getEmergencyStopStatus, isPoolCancelled } from '../lib/contracts';
+import { isBettingCurrentlyOpen, getEmergencyStopStatus, isPoolCancelled, isPoolClosed } from '../lib/contracts';
 import Link from 'next/link';
 import TransactionProgressModal, { TransactionStep } from './TransactionProgressModal';
 import AdminProgressModal, { AdminStep } from './AdminProgressModal';
@@ -206,7 +206,7 @@ export default function AdminPanel() {
   const [showForm, setShowForm] = useState(false);
   const [editingPrediction, setEditingPrediction] = useState<Prediction | null>(null);
   const [formLoading, setFormLoading] = useState(false);
-  const [contractStates, setContractStates] = useState<Record<string, { isOpen: boolean; emergencyStop: boolean; cancelled: boolean }>>({});
+  const [contractStates, setContractStates] = useState<Record<string, { isOpen: boolean; emergencyStop: boolean; cancelled: boolean; isClosed: boolean }>>({});
   const [formData, setFormData] = useState<PredictionFormData>({
     title: '',
     description: '',
@@ -257,15 +257,16 @@ export default function AdminPanel() {
       
       for (const prediction of predictionsWithPool) {
         try {
-          const [isOpen, emergencyStop, cancelled] = await Promise.all([
+          const [isOpen, emergencyStop, cancelled, isClosed] = await Promise.all([
             isBettingCurrentlyOpen(prediction.pool_address!),
             getEmergencyStopStatus(prediction.pool_address!),
-            isPoolCancelled(prediction.pool_address!)
+            isPoolCancelled(prediction.pool_address!),
+            isPoolClosed(prediction.pool_address!)
           ]);
           
           setContractStates(prev => ({
             ...prev,
-            [prediction.pool_address!]: { isOpen, emergencyStop, cancelled }
+            [prediction.pool_address!]: { isOpen, emergencyStop, cancelled, isClosed }
           }));
         } catch (error) {
           console.warn(`Errore caricamento stato contratto ${prediction.pool_address}:`, error);
@@ -295,6 +296,12 @@ export default function AdminPanel() {
           text: 'CANCELLATA',
           emoji: '🔴',
           bgColor: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+        };
+      } else if (contractState.isClosed) {
+        return {
+          text: 'CHIUSA',
+          emoji: '🟡',
+          bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
         };
       } else if (contractState.emergencyStop) {
         return {
@@ -382,6 +389,12 @@ export default function AdminPanel() {
           text: 'CANCELLATA',
           emoji: '🔴',
           bgColor: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+        };
+      } else if (contractState.isClosed) {
+        return {
+          text: 'CHIUSA',
+          emoji: '🟡',
+          bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
         };
       } else if (contractState.emergencyStop) {
         return {
@@ -502,15 +515,15 @@ export default function AdminPanel() {
     }
   };
 
-  // Filtra i pool per mostrare solo quelli attivi o tutti
+  // Filtra i pool per mostrare solo quelli attivi/pausa o tutti
   const filteredPools = pools.filter(pool => {
     if (showOrphanPools) {
       return true; // Mostra tutti i pool
     }
-    // Mostra solo pool che hanno una prediction attiva corrispondente
+    // Mostra pool che hanno una prediction attiva o in pausa
     const hasActivePrediction = predictions.some(prediction => 
       prediction.pool_address === pool.address && 
-      prediction.status === 'attiva'
+      (prediction.status === 'attiva' || prediction.status === 'in_pausa')
     );
     return hasActivePrediction;
   });
@@ -798,6 +811,19 @@ export default function AdminPanel() {
         } else {
           console.log('Log admin salvato con successo');
         }
+        
+        // Aggiorna lo status della prediction a "In Pausa"
+        const { data: rpcData, error: updateError } = await supabase
+          .rpc('update_prediction_status', {
+            prediction_id_param: predictionData.id,
+            new_status: 'in_pausa'
+          });
+        
+        if (updateError) {
+          console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+        } else {
+          console.log('Status della prediction aggiornato a "In Pausa"', rpcData);
+        }
       } else {
         console.warn('Nessuna prediction trovata per pool_address:', poolAddress);
       }
@@ -1016,6 +1042,19 @@ export default function AdminPanel() {
         } else {
           console.log('Log admin salvato con successo');
         }
+        
+        // Aggiorna lo status della prediction a "Attiva"
+        const { data: rpcData, error: updateError } = await supabase
+          .rpc('update_prediction_status', {
+            prediction_id_param: predictionData.id,
+            new_status: 'attiva'
+          });
+        
+        if (updateError) {
+          console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+        } else {
+          console.log('Status della prediction aggiornato a "Attiva"', rpcData);
+        }
       } else {
         console.warn('Nessuna prediction trovata per pool_address:', poolAddress);
       }
@@ -1108,8 +1147,73 @@ export default function AdminPanel() {
         step.id === 'complete' ? { ...step, status: 'completed' } : step
       ));
       
+      // Salva il log della transazione admin
+      const { data: predictionData, error: predictionError } = await supabase
+        .from('predictions')
+        .select('id')
+        .eq('pool_address', poolAddress)
+        .maybeSingle();
+      
+      if (predictionError) {
+        console.error('Errore nel recupero della prediction:', predictionError);
+      } else if (predictionData) {
+        console.log('Salvataggio log admin:', { action: 'close_pool', txHash, poolAddress, adminAddress: userAddress });
+        const { error: insertError } = await supabase
+          .from('logadminfunction')
+          .insert({
+            action_type: 'close_pool',
+            tx_hash: txHash,
+            pool_address: poolAddress,
+            prediction_id: predictionData.id,
+            admin_address: userAddress,
+            additional_data: {}
+          });
+        
+        if (insertError) {
+          console.error('Errore nel salvataggio del log admin:', insertError);
+        } else {
+          console.log('Log admin salvato con successo');
+        }
+        
+        // Aggiorna lo status della prediction a "In Pausa"
+        const { data: rpcData, error: updateError } = await supabase
+          .rpc('update_prediction_status', {
+            prediction_id_param: predictionData.id,
+            new_status: 'in_pausa'
+          });
+        
+        if (updateError) {
+          console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+        } else {
+          console.log('Status della prediction aggiornato a "In Pausa"', rpcData);
+        }
+      } else {
+        console.warn('Nessuna prediction trovata per pool_address:', poolAddress);
+      }
+      
       // Imposta il currentStep a steps.length per mostrare il pulsante "Completato"
       setAdminCurrentStep(steps.length);
+      
+      // Ricarica lo stato del contratto per aggiornare i badge
+      const { data: predictionsWithPool } = await supabase
+        .from('predictions')
+        .select('id, pool_address')
+        .eq('pool_address', poolAddress)
+        .maybeSingle();
+      
+      if (predictionsWithPool) {
+        const [isOpen, emergencyStop, cancelled, isClosed] = await Promise.all([
+          isBettingCurrentlyOpen(poolAddress),
+          getEmergencyStopStatus(poolAddress),
+          isPoolCancelled(poolAddress),
+          isPoolClosed(poolAddress)
+        ]);
+        
+        setContractStates(prev => ({
+          ...prev,
+          [poolAddress]: { isOpen, emergencyStop, cancelled, isClosed }
+        }));
+      }
       
     } catch (error: any) {
       console.error('Errore chiusura pool:', error);
@@ -2082,7 +2186,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         Attiva Contract
                       </button>
                     )}
-                    {prediction.status === 'attiva' && (
+                    {(prediction.status === 'attiva' || prediction.status === 'in_pausa') && (
                       <button
                         onClick={() => handleActivateContract(prediction)}
                         className="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors duration-200 text-sm font-medium"
@@ -2176,7 +2280,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         Attiva Contract
                       </button>
                     )}
-                    {prediction.status === 'attiva' && (
+                    {(prediction.status === 'attiva' || prediction.status === 'in_pausa') && (
                       <button
                         onClick={() => handleActivateContract(prediction)}
                         className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors duration-200 text-sm font-medium"
@@ -2410,7 +2514,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                     Pool di Predictions On-Chain
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {filteredPools.length} pool {showOrphanPools ? 'totali' : 'attive'} trovate
+                    {filteredPools.length} pool {showOrphanPools ? 'totali' : 'attive/pausa'} trovate
                   </p>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -2843,12 +2947,12 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     {adminLogs.length} azioni registrate - Factory:{' '}
                     <a
-                      href="https://testnet.bscscan.com/address/0x3C16d0e1aF0a290ad47ea35214D32c88F910b846"
+                      href={`https://testnet.bscscan.com/address/${process.env.NEXT_PUBLIC_FACTORY_ADDRESS || ''}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-mono"
                     >
-                      0x3C16d0e1aF0a290ad47ea35214D32c88F910b846
+                      {process.env.NEXT_PUBLIC_FACTORY_ADDRESS || 'Not configured'}
                     </a>
                   </p>
                 </div>
@@ -2907,6 +3011,8 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                                 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
                                 : log.action_type === 'resume_betting'
                                 ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                                : log.action_type === 'close_pool'
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
                                 : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
                             }`}>
                               {log.action_type.replace('_', ' ').toUpperCase()}

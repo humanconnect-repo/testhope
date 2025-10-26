@@ -62,6 +62,13 @@ export default function PredictionCard({
             emoji: '🔴',
             textColor: 'text-red-600 dark:text-red-400'
           };
+        } else if (poolState.statusText === 'CHIUSA') {
+          return {
+            status: 'chiusa',
+            displayText: 'CHIUSA',
+            emoji: '🟡',
+            textColor: 'text-yellow-600 dark:text-yellow-400'
+          };
         } else if (poolState.isPaused) {
           return {
             status: 'in_pausa',
