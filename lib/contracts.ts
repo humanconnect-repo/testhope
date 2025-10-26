@@ -285,6 +285,29 @@ export async function claimRefund(poolAddress: string) {
   return tx.hash;
 }
 
+// Check if user can claim refund
+export async function canClaimRefund(poolAddress: string, userAddress: string): Promise<boolean> {
+  try {
+    const pool = await getPool(poolAddress);
+    return await pool.canClaimRefund(userAddress);
+  } catch (error) {
+    console.error('Error checking can claim refund:', error);
+    return false;
+  }
+}
+
+// Check if user already claimed refund (check the claimed status in userBets)
+export async function hasClaimedRefund(poolAddress: string, userAddress: string): Promise<boolean> {
+  try {
+    const pool = await getPool(poolAddress);
+    const bet = await pool.userBets(userAddress);
+    return bet.claimed === true;
+  } catch (error) {
+    console.error('Error checking claimed status:', error);
+    return false;
+  }
+}
+
 // ============ BET READING FUNCTIONS ============
 
 // Get all bettors from a pool contract
@@ -362,17 +385,6 @@ export async function getPoolStatsFromContract(poolAddress: string) {
   } catch (error) {
     console.error('Error getting pool stats from contract:', error);
     return null;
-  }
-}
-
-// Check if user can claim refund
-export async function canClaimRefund(poolAddress: string, userAddress: string): Promise<boolean> {
-  try {
-    const pool = await getPool(poolAddress);
-    return await pool.canClaimRefund(userAddress);
-  } catch (error) {
-    console.warn('Errore nel controllo rimborso (probabilmente ENS su BSC):', error);
-    return false; // Default: non può richiedere rimborso
   }
 }
 

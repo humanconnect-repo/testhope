@@ -7,10 +7,11 @@ import { useWeb3Auth } from '../../../hooks/useWeb3Auth';
 import { useBNBBalance } from '../../../hooks/useBNBBalance';
 import { useContractData } from '../../../hooks/useContractData';
 import { useAdmin } from '../../../hooks/useAdmin';
-import { placeBet, claimRefund } from '../../../lib/contracts';
+import { placeBet, claimRefund, getUserBetFromContract, hasClaimedRefund } from '../../../lib/contracts';
 import { supabase } from '../../../lib/supabase';
 import { validateComment } from '../../../lib/profanityFilter';
 import BettingProgressModal, { BettingStep } from '../../../components/BettingProgressModal';
+import TransactionProgressModal, { TransactionStep } from '../../../components/TransactionProgressModal';
 import Header from '../../../components/Header';
 import Footer from '../../../components/Footer';
 import QuoteChart from '../../../components/QuoteChart';
@@ -33,6 +34,7 @@ interface PredictionData {
   created_at: string;
   updated_at: string;
   notes?: string;
+  pool_address?: string;
 }
 
 interface BetData {
@@ -65,6 +67,15 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   const [poolAddress, setPoolAddress] = useState<string>('');
   const [bettingLoading, setBettingLoading] = useState(false);
   const [claimRefundLoading, setClaimRefundLoading] = useState(false);
+  const [showClaimRefundModal, setShowClaimRefundModal] = useState(false);
+  const [claimRefundSteps, setClaimRefundSteps] = useState<TransactionStep[]>([]);
+  const [currentClaimRefundStep, setCurrentClaimRefundStep] = useState(0);
+  const [claimRefundTransactionHash, setClaimRefundTransactionHash] = useState<string>('');
+  const [claimRefundError, setClaimRefundError] = useState<string>('');
+  const [userBetAmount, setUserBetAmount] = useState<string>('0');
+  const [userHasClaimedRefund, setUserHasClaimedRefund] = useState(false);
+  const [claimTxHash, setClaimTxHash] = useState<string>('');
+  const [userBetAmountInBnb, setUserBetAmountInBnb] = useState<string>('0');
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
 
   // Memoizza i dati del pool per evitare re-render infiniti
@@ -199,7 +210,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         if (poolState.isCancelled || prediction.status === 'cancellata') {
           return {
             type: 'cancelled',
-            message: 'Puoi fare il claim dei tuoi fondi se avevi fatto una prediction',
+            message: 'Puoi fare il claim dei tuoi fondi se avevi fatto una prediction !',
             status: 'Prediction cancellata'
           };
         } else if (poolState.isPaused) {
@@ -495,6 +506,49 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       checkUserHasBet();
     }
   }, [user?.id, prediction]);
+
+  // useEffect per controllare se l'utente ha già fatto claim del refund
+  useEffect(() => {
+    const checkRefundClaimStatus = async () => {
+      if (prediction?.pool_address && address && user?.id) {
+        try {
+          // Controlla prima nel database se ha già fatto claim
+          const { data: betData, error: betError } = await supabase
+            .from('bets')
+            .select('claim_tx_hash, amount_bnb')
+            .eq('prediction_id', prediction.id)
+            .eq('user_id', user.id)
+            .single();
+          
+          if (betData && betData.claim_tx_hash) {
+            // Ha già fatto claim, mostra il messaggio con l'hash
+            setUserHasClaimedRefund(true);
+            setClaimTxHash(betData.claim_tx_hash);
+            setUserBetAmountInBnb(betData.amount_bnb.toString());
+            return;
+          }
+          
+          // Se non ha fatto claim nel database, controlla il contratto
+          const claimed = await hasClaimedRefund(prediction.pool_address, address);
+          setUserHasClaimedRefund(claimed);
+          
+          // Se ha già fatto claim nel contratto, ottieni l'importo della scommessa
+          if (claimed) {
+            const userBet = await getUserBetFromContract(prediction.pool_address, address);
+            if (userBet) {
+              // Converti da Wei a BNB
+              const amountInWei = BigInt(userBet.amount);
+              const amountInBnb = Number(amountInWei) / 1e18;
+              setUserBetAmountInBnb(amountInBnb.toFixed(4));
+            }
+          }
+        } catch (error) {
+          console.error('Errore nel controllo claim refund:', error);
+        }
+      }
+    };
+    checkRefundClaimStatus();
+  }, [prediction?.pool_address, address, user?.id]);
 
   // Aggiorna solo quando i dati del contratto cambiano significativamente
   useEffect(() => {
@@ -1414,8 +1468,26 @@ export default function PredictionPage({ params }: { params: { slug: string } })
               {/* Area Claim Refund - Mostra quando la pool è cancellata */}
               {getBettingContainerStatus(prediction).type === 'cancelled' && userHasBet && (
                 <div className="space-y-4 mb-6">
-                  {/* Pulsante Claim */}
-                  <button
+                  {userHasClaimedRefund ? (
+                    /* Messaggio se ha già fatto claim */
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <p className="text-green-800 dark:text-green-200 mb-2">
+                        ✅ Hai già fatto il claim di {userBetAmountInBnb || userBetAmount} BNB
+                      </p>
+                      {claimTxHash && (
+                        <a 
+                          href={`https://testnet.bscscan.com/tx/${claimTxHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-green-600 dark:text-green-400 underline hover:text-green-800 dark:hover:text-green-200"
+                        >
+                          Visualizza la TX
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    /* Pulsante Claim */
+                    <button
                     onClick={async () => {
                       if (!isAuthenticated || !address || !prediction?.pool_address) {
                         alert('Devi essere connesso per recuperare i fondi');
@@ -1423,14 +1495,92 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                       }
                       
                       try {
+                        // Ottieni l'importo della scommessa dell'utente
+                        const userBet = await getUserBetFromContract(prediction.pool_address, address!);
+                        let betAmountInBnb = '0';
+                        if (userBet) {
+                          // Converti da Wei a BNB (userBet.amount è in Wei)
+                          const amountInWei = BigInt(userBet.amount);
+                          const amountInBnb = Number(amountInWei) / 1e18;
+                          betAmountInBnb = amountInBnb.toFixed(4);
+                          setUserBetAmount(betAmountInBnb);
+                        }
+                        
+                        // Inizializza i passi del modal
+                        const steps: TransactionStep[] = [
+                          { 
+                            id: 'prepare', 
+                            title: 'Preparazione transazione', 
+                            description: `Preparazione del recupero di ${betAmountInBnb} BNB...`, 
+                            status: 'pending' 
+                          },
+                          { 
+                            id: 'sign', 
+                            title: 'Firma transazione', 
+                            description: 'Firma della transazione nel wallet...', 
+                            status: 'pending' 
+                          },
+                          { 
+                            id: 'confirm', 
+                            title: 'Conferma transazione', 
+                            description: 'Conferma della transazione sulla blockchain...', 
+                            status: 'pending' 
+                          }
+                        ];
+                        
+                        setClaimRefundSteps(steps);
+                        setCurrentClaimRefundStep(0);
+                        setClaimRefundError('');
+                        setClaimRefundTransactionHash('');
+                        setShowClaimRefundModal(true);
+                        
                         setClaimRefundLoading(true);
+                        
+                        // Step 1: Preparazione transazione
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        setClaimRefundSteps(prev => prev.map(step => step.id === 'prepare' ? { ...step, status: 'completed' } : step));
+                        setCurrentClaimRefundStep(1);
+                        
+                        // Step 2: Firma transazione
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        setClaimRefundSteps(prev => prev.map(step => step.id === 'sign' ? { ...step, status: 'loading' } : step));
+                        
                         const txHash = await claimRefund(prediction.pool_address);
-                        alert(`Rimborso richiesto con successo! Hash transazione: ${txHash}`);
-                        // Ricarica i dati per aggiornare lo stato
-                        window.location.reload();
+                        
+                        setClaimRefundSteps(prev => prev.map(step => step.id === 'sign' ? { ...step, status: 'completed' } : step));
+                        setCurrentClaimRefundStep(2);
+                        setClaimRefundTransactionHash(txHash);
+                        setClaimTxHash(txHash);
+                        
+                        // Salva l'hash della transazione nel database
+                        const { error: dbError } = await supabase
+                          .from('bets')
+                          .update({ claim_tx_hash: txHash })
+                          .eq('prediction_id', prediction.id)
+                          .eq('user_id', user.id);
+                        
+                        if (dbError) {
+                          console.error('Errore nel salvataggio hash claim:', dbError);
+                        }
+                        
+                        // Aggiorna lo stato che l'utente ha fatto il claim
+                        setUserHasClaimedRefund(true);
+                        
+                        // Step 3: Conferma transazione
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        setClaimRefundSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'loading' } : step));
+                        
+                        // Attendi conferma (claimRefund ritorna solo l'hash, non attendiamo il wait)
+                        setClaimRefundSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'completed' } : step));
+                        setCurrentClaimRefundStep(steps.length);
+                        
                       } catch (error: any) {
                         console.error('Errore nel recupero dei fondi:', error);
-                        alert(`Errore nel recupero dei fondi: ${error.message || 'Errore sconosciuto'}`);
+                        setClaimRefundError(`Log funzione Claim Refund: ${error.message || 'Errore durante il recupero dei fondi'}`);
+                        setClaimRefundSteps(prev => prev.map(step => ({
+                          ...step,
+                          status: step.status === 'loading' ? 'error' : step.status
+                        })));
                       } finally {
                         setClaimRefundLoading(false);
                       }
@@ -1444,6 +1594,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                   >
                     {claimRefundLoading ? '⏳ Elaborazione...' : '🪙 Recupera i tuoi fondi'}
                   </button>
+                  )}
                 </div>
               )}
 
@@ -1975,6 +2126,20 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         error={bettingError}
         betAmount={betAmount}
         betChoice={selectedPosition}
+      />
+
+      {/* Modal di Progresso Claim Refund */}
+      <TransactionProgressModal
+        isOpen={showClaimRefundModal}
+        onClose={() => {
+          setShowClaimRefundModal(false);
+          window.location.reload();
+        }}
+        steps={claimRefundSteps}
+        currentStep={currentClaimRefundStep}
+        transactionHash={claimRefundTransactionHash}
+        contractAddress={prediction?.pool_address}
+        error={claimRefundError}
       />
     </div>
   );
