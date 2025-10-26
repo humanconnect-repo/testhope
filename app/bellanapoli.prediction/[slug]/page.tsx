@@ -434,6 +434,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     amount: number;
     position: 'yes' | 'no';
     timestamp: string;
+    tx_hash?: string;
   } | null>(null);
 
 
@@ -518,7 +519,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
             .select('claim_tx_hash, amount_bnb')
             .eq('prediction_id', prediction.id)
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
           
           if (betData && betData.claim_tx_hash) {
             // Ha già fatto claim, mostra il messaggio con l'hash
@@ -921,7 +922,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       // Controlla se l'utente ha già scommesso in questa prediction usando user_id
       const { data: userBets, error } = await supabase
         .from('bets')
-        .select('id, amount_bnb, position, created_at')
+        .select('id, amount_bnb, position, created_at, tx_hash')
         .eq('prediction_id', prediction.id)
         .eq('user_id', user?.id);
 
@@ -938,7 +939,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
           setUserBetInfo({
             amount: userBets[0].amount_bnb,
             position: userBets[0].position,
-            timestamp: userBets[0].created_at
+            timestamp: userBets[0].created_at,
+            tx_hash: userBets[0].tx_hash
           });
         } else {
           setUserBetInfo(null);
@@ -1091,9 +1093,20 @@ export default function PredictionPage({ params }: { params: { slug: string } })
           bet_position: selectedPosition,
           caller_wallet: address
         });
-
+      
       if (dbError) {
         throw new Error(`Errore salvataggio database: ${dbError.message}`);
+      }
+      
+      // Aggiorna il tx_hash della bet appena creata
+      if (betId && result.hash) {
+        await supabase
+          .from('bets')
+          .update({ tx_hash: result.hash })
+          .eq('id', betId);
+        
+        // Ricarica le informazioni dell'utente per includere il tx_hash
+        await checkUserHasBet();
       }
 
       updateBettingStepStatus('database', 'completed');
@@ -1422,7 +1435,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                             ? 'text-blue-800 dark:text-blue-200'
                             : 'text-gray-800 dark:text-gray-200'
                         }`}>
-                          {containerStatus.type === 'paused' ? 'ATTENDI la scadenza della Prediction' : containerStatus.type === 'cancelled' ? 'Puoi fare il claim dei tuoi fondi se avevi fatto una prediction' : containerStatus.status}
+                          {containerStatus.type === 'paused' ? 'ATTENDI la scadenza della prediction o leggi gli aggiornamenti nel box qui sotto!' : containerStatus.type === 'cancelled' ? 'Puoi fare il claim dei tuoi fondi se avevi fatto una prediction' : containerStatus.status}
                         </h3>
                         {containerStatus.type !== 'paused' && containerStatus.type !== 'cancelled' && (
                           <div className={`mt-2 text-sm ${
@@ -1462,6 +1475,20 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                       </div>
                     )}
                   </div>
+                  
+                  {/* Messaggio per pool cancellata se utente non ha scommesso */}
+                  {getBettingContainerStatus(prediction).type === 'cancelled' && !userHasBet && (
+                    <div className="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                      <div className="flex items-center">
+                        <svg className="h-5 w-5 text-yellow-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                          Non hai nulla da claimare
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1599,16 +1626,13 @@ export default function PredictionPage({ params }: { params: { slug: string } })
               )}
 
               {/* Area Scommesse - Mostra solo quando le scommesse sono aperte */}
-              {getBettingContainerStatus(prediction).type === 'open' && (
+              {getBettingContainerStatus(prediction).type === 'open' && !userHasBet && (
                 <>
                   <div className="space-y-4 mb-6">
                     <button
                       onClick={() => setSelectedPosition('yes')}
-                      disabled={userHasBet}
                       className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-                        userHasBet
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
-                          : selectedPosition === 'yes'
+                        selectedPosition === 'yes'
                           ? 'bg-yes-button text-white'
                           : 'bg-yes-button/10 text-yes-button hover:bg-yes-button/20'
                       }`}
@@ -1617,11 +1641,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                     </button>
                     <button
                       onClick={() => setSelectedPosition('no')}
-                      disabled={userHasBet}
                       className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-                        userHasBet
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
-                          : selectedPosition === 'no'
+                        selectedPosition === 'no'
                           ? 'bg-no-button text-white'
                           : 'bg-no-button/10 text-no-button hover:bg-no-button/20'
                       }`}
@@ -1648,12 +1669,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                       placeholder="0.00"
                       step="0.001"
                       min="0"
-                      disabled={userHasBet}
-                      className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                        userHasBet
-                          ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                          : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white'
-                      }`}
+                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     />
                     
                     {/* Preview del controvalore in Euro */}
@@ -1688,11 +1704,9 @@ export default function PredictionPage({ params }: { params: { slug: string } })
 
                   <button
                     onClick={handleBet}
-                    disabled={!selectedPosition || !betAmount || bettingLoading || !isAuthenticated || userHasBet}
+                    disabled={!selectedPosition || !betAmount || bettingLoading || !isAuthenticated}
                     className={`w-full font-medium py-3 px-4 rounded-lg border transition-colors duration-200 ${
-                      userHasBet
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600'
-                        : !selectedPosition || !betAmount || !isAuthenticated
+                      !selectedPosition || !betAmount || !isAuthenticated
                         ? 'bg-gray-300 disabled:cursor-not-allowed text-white border-gray-200 dark:bg-gray-800 dark:border-gray-600'
                         : bettingLoading
                         ? 'bg-blue-500 text-white border-blue-500 cursor-not-allowed'
@@ -1700,9 +1714,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                     }`}
                   >
                     {bettingLoading ? 'Elaborazione...' : 
-                     userHasBet
-                      ? 'Hai già scommesso'
-                      : !isAuthenticated
+                     !isAuthenticated
                       ? 'Connetti Wallet'
                       : !selectedPosition || !betAmount
                       ? 'Seleziona posizione e importo'
@@ -1742,6 +1754,22 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                       {new Date(userBetInfo.timestamp).toLocaleString('it-IT')}
                     </span>
                   </div>
+                  {userBetInfo.tx_hash && (
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <span className="text-gray-600 dark:text-gray-400">Transazione:</span>
+                      <a 
+                        href={`https://testnet.bscscan.com/tx/${userBetInfo.tx_hash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        Visualizza su BSCScan
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -2092,7 +2120,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
               {/* Tooltip */}
               <div className="mt-4">
                 <p className="text-sm text-white dark:text-gray-200 text-center">
-                  <span className="font-medium">Tooltip:</span> se procedi alla schermata successiva ma poi annulli la TX controlla che la TX non rimanga in sospeso nel wallet e di non firmarla dopo per sbaglio.
+                  <span className="font-medium">Tooltip:</span> se procedi alla schermata successiva ma poi annulli la firma, controlla che la TX non rimanga in sospeso nel wallet.
                 </p>
               </div>
             </div>

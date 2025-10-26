@@ -46,6 +46,7 @@ export default function AdminPanel() {
     loading: contractsLoading, 
     error: contractsError,
     createNewPool,
+    handleClosePool,
     resolvePrediction,
     stopBetting,
     resumeBetting,
@@ -234,13 +235,18 @@ export default function AdminPanel() {
   const [adminCurrentStep, setAdminCurrentStep] = useState(0);
   const [adminTransactionHash, setAdminTransactionHash] = useState<string>('');
   const [adminError, setAdminError] = useState<string>('');
-  const [adminOperationType, setAdminOperationType] = useState<'stop' | 'resume' | 'cancel'>('stop');
+  const [adminOperationType, setAdminOperationType] = useState<'stop' | 'resume' | 'cancel' | 'close'>('stop');
   const [adminPoolAddress, setAdminPoolAddress] = useState<string>('');
+
+  // Stato per i log delle funzioni admin
+  const [adminLogs, setAdminLogs] = useState<any[]>([]);
+  const [adminLogsLoading, setAdminLogsLoading] = useState(false);
 
   // Carica le prediction esistenti
   useEffect(() => {
     if (isAdmin) {
       loadPredictions();
+      loadAdminLogs();
     }
   }, [isAdmin]);
 
@@ -524,6 +530,24 @@ export default function AdminPanel() {
     }
   };
 
+  const loadAdminLogs = async () => {
+    setAdminLogsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('logadminfunction')
+        .select('id, action_type, tx_hash, pool_address, prediction_id, admin_address, created_at, additional_data')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setAdminLogs(data || []);
+    } catch (error) {
+      console.error('Error loading admin logs:', error);
+    } finally {
+      setAdminLogsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
@@ -747,6 +771,37 @@ export default function AdminPanel() {
         step.id === 'complete' ? { ...step, status: 'completed' } : step
       ));
       
+      // Salva il log della transazione admin
+      const { data: predictionData, error: predictionError } = await supabase
+        .from('predictions')
+        .select('id')
+        .eq('pool_address', poolAddress)
+        .maybeSingle();
+      
+      if (predictionError) {
+        console.error('Errore nel recupero della prediction:', predictionError);
+      } else if (predictionData) {
+        console.log('Salvataggio log admin:', { action: 'stop_betting', txHash, poolAddress, adminAddress: userAddress });
+        const { error: insertError } = await supabase
+          .from('logadminfunction')
+          .insert({
+            action_type: 'stop_betting',
+            tx_hash: txHash,
+            pool_address: poolAddress,
+            prediction_id: predictionData.id,
+            admin_address: userAddress,
+            additional_data: {}
+          });
+        
+        if (insertError) {
+          console.error('Errore nel salvataggio del log admin:', insertError);
+        } else {
+          console.log('Log admin salvato con successo');
+        }
+      } else {
+        console.warn('Nessuna prediction trovata per pool_address:', poolAddress);
+      }
+      
       // Imposta il currentStep a steps.length per mostrare il pulsante "Completato"
       setAdminCurrentStep(steps.length);
       
@@ -934,12 +989,131 @@ export default function AdminPanel() {
         step.id === 'complete' ? { ...step, status: 'completed' } : step
       ));
       
+      // Salva il log della transazione admin
+      const { data: predictionData, error: predictionError } = await supabase
+        .from('predictions')
+        .select('id')
+        .eq('pool_address', poolAddress)
+        .maybeSingle();
+      
+      if (predictionError) {
+        console.error('Errore nel recupero della prediction:', predictionError);
+      } else if (predictionData) {
+        console.log('Salvataggio log admin:', { action: 'resume_betting', txHash, poolAddress, adminAddress: userAddress });
+        const { error: insertError } = await supabase
+          .from('logadminfunction')
+          .insert({
+            action_type: 'resume_betting',
+            tx_hash: txHash,
+            pool_address: poolAddress,
+            prediction_id: predictionData.id,
+            admin_address: userAddress,
+            additional_data: {}
+          });
+        
+        if (insertError) {
+          console.error('Errore nel salvataggio del log admin:', insertError);
+        } else {
+          console.log('Log admin salvato con successo');
+        }
+      } else {
+        console.warn('Nessuna prediction trovata per pool_address:', poolAddress);
+      }
+      
       // Imposta il currentStep a steps.length per mostrare il pulsante "Completato"
       setAdminCurrentStep(steps.length);
       
     } catch (error: any) {
       console.error('Errore resume betting:', error);
       setAdminError(error.message || 'Errore durante il resume betting');
+      
+      // Marca solo il passo corrente come errore (senza aggiungere il messaggio di errore nello step)
+      setAdminSteps(prev => prev.map(step => ({
+        ...step,
+        status: step.status === 'loading' ? 'error' : step.status
+      })));
+    }
+  };
+
+  // Funzione per gestire Close Pool con modal
+  const executeClosePool = async (poolAddress: string) => {
+    try {
+      // Imposta i dati per il modal
+      setAdminOperationType('close');
+      setAdminPoolAddress(poolAddress);
+      setAdminError('');
+      setAdminTransactionHash('');
+      
+      // Inizializza i passi
+      const steps: AdminStep[] = [
+        {
+          id: 'prepare',
+          title: 'Preparazione transazione',
+          description: 'Preparazione della transazione per chiudere il pool...',
+          status: 'pending'
+        },
+        {
+          id: 'sign',
+          title: 'Firma transazione',
+          description: 'Firma della transazione nel wallet...',
+          status: 'pending'
+        },
+        {
+          id: 'confirm',
+          title: 'Conferma transazione',
+          description: 'Attesa conferma della transazione sulla blockchain...',
+          status: 'pending'
+        },
+        {
+          id: 'complete',
+          title: 'Operazione completata',
+          description: 'Pool chiuso con successo!',
+          status: 'pending'
+        }
+      ];
+      
+      setAdminSteps(steps);
+      setAdminCurrentStep(0);
+      setShowAdminModal(true);
+      
+      // Passo 1: Preparazione
+      await new Promise(resolve => setTimeout(resolve, 100));
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'prepare' ? { ...step, status: 'loading' } : step
+      ));
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Passo 1: Completato, Passo 2: Chiamata alla funzione closePool
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'prepare' ? { ...step, status: 'completed' } :
+        step.id === 'sign' ? { ...step, status: 'loading' } : step
+      ));
+      
+      const txHash = await handleClosePool(poolAddress);
+      
+      // Passo 2: Completato, Passo 3: Transazione confermata
+      setAdminTransactionHash(txHash);
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'sign' ? { ...step, status: 'completed' } : 
+        step.id === 'confirm' ? { ...step, status: 'loading' } : step
+      ));
+      
+      // Simula attesa conferma
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Passo 3: Completato, Passo 4: Completato
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'confirm' ? { ...step, status: 'completed' } :
+        step.id === 'complete' ? { ...step, status: 'completed' } : step
+      ));
+      
+      // Imposta il currentStep a steps.length per mostrare il pulsante "Completato"
+      setAdminCurrentStep(steps.length);
+      
+    } catch (error: any) {
+      console.error('Errore chiusura pool:', error);
+      setAdminError(error.message || 'Errore durante la chiusura del pool');
       
       // Marca solo il passo corrente come errore (senza aggiungere il messaggio di errore nello step)
       setAdminSteps(prev => prev.map(step => ({
@@ -2350,6 +2524,16 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         
                         {/* Pulsanti uno per riga centrati */}
                         <div className="space-y-2">
+                          {/* Close Pool */}
+                          {!pool.winnerSet && !isPredictionEnded(pool.closingBid) && (
+                            <button
+                              onClick={() => executeClosePool(pool.address)}
+                              className="w-full px-4 py-2 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
+                            >
+                              🔒 Close Pool
+                            </button>
+                          )}
+                          
                           {/* Controlli Risoluzione */}
                           {!pool.winnerSet && (
                             <>
@@ -2374,12 +2558,6 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                                 className="w-full px-4 py-2 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
                                 🚩 Resolve NO
-                              </button>
-                              <button
-                                onClick={() => handleCancelPool(pool.address)}
-                                className="w-full px-4 py-2 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
-                              >
-                                ❌ Cancel Pool
                               </button>
                             </>
                           )}
@@ -2418,6 +2596,16 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                                 Resolve NO
                               </button>
                             </>
+                          )}
+                          
+                          {/* Cancel Pool */}
+                          {!pool.winnerSet && (
+                            <button
+                              onClick={() => handleCancelPool(pool.address)}
+                              className="w-full px-4 py-2 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
+                            >
+                              ❌ Cancel Pool
+                            </button>
                           )}
                           
                           {/* BSCScan */}
@@ -2543,6 +2731,16 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                               🔧 Funzioni CONTRACT
                             </span>
                           </div>
+                          {/* Close Pool */}
+                          {!pool.winnerSet && !isPredictionEnded(pool.closingBid) && (
+                            <button
+                              onClick={() => executeClosePool(pool.address)}
+                              className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
+                            >
+                              🔒 Close Pool
+                            </button>
+                          )}
+                          
                           {/* Controlli Risoluzione */}
                           {!pool.winnerSet && (
                             <div className="flex gap-2">
@@ -2567,12 +2765,6 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                                 className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
                                 🚩 Resolve NO
-                              </button>
-                              <button
-                                onClick={() => handleCancelPool(pool.address)}
-                                className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
-                              >
-                                ❌ Cancel Pool
                               </button>
                             </div>
                           )}
@@ -2613,6 +2805,16 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                             </div>
                           )}
                           
+                          {/* Cancel Pool */}
+                          {!pool.winnerSet && (
+                            <button
+                              onClick={() => handleCancelPool(pool.address)}
+                              className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
+                            >
+                              ❌ Cancel Pool
+                            </button>
+                          )}
+                          
                           {/* BSCScan */}
                           <button
                             onClick={() => window.open(`https://testnet.bscscan.com/address/${pool.address}`, '_blank')}
@@ -2625,6 +2827,128 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Sezione Log Admin Functions */}
+          <div className="mt-8 bg-white dark:bg-dark-card rounded-2xl border border-gray-200 dark:border-gray-700 shadow-md">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Log delle funzioni del Contract
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {adminLogs.length} azioni registrate - Factory:{' '}
+                    <a
+                      href="https://testnet.bscscan.com/address/0x3C16d0e1aF0a290ad47ea35214D32c88F910b846"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-mono"
+                    >
+                      0x3C16d0e1aF0a290ad47ea35214D32c88F910b846
+                    </a>
+                  </p>
+                </div>
+                <button
+                  onClick={loadAdminLogs}
+                  disabled={adminLogsLoading}
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {adminLogsLoading ? 'Ricarica...' : 'Ricarica'}
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {adminLogsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <span className="ml-3 text-gray-600 dark:text-gray-400">Caricamento log...</span>
+                </div>
+              ) : adminLogs.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  Nessun log disponibile
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <div className="max-h-[400px] overflow-y-auto">
+                    <table className="w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Data/Ora
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Azione
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Admin
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Pool Address
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          TX Hash
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-dark-bg divide-y divide-gray-200 dark:divide-gray-700">
+                      {adminLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                          <td className="px-4 py-3 text-gray-900 dark:text-white">
+                            {new Date(log.created_at).toLocaleString('it-IT')}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              log.action_type === 'stop_betting' 
+                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                                : log.action_type === 'resume_betting'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                            }`}>
+                              {log.action_type.replace('_', ' ').toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-900 dark:text-white">
+                            <button
+                              onClick={() => navigator.clipboard.writeText(log.admin_address)}
+                              className="text-xs font-mono text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                              title="Clicca per copiare"
+                            >
+                              {log.admin_address.slice(0, 10)}...
+                            </button>
+                          </td>
+                          <td className="px-4 py-3">
+                            {log.pool_address ? (
+                              <button
+                                onClick={() => navigator.clipboard.writeText(log.pool_address)}
+                                className="text-xs font-mono text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                                title="Clicca per copiare"
+                              >
+                                {log.pool_address.slice(0, 10)}...
+                              </button>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <a
+                              href={`https://testnet.bscscan.com/tx/${log.tx_hash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-mono text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                            >
+                              {log.tx_hash.slice(0, 15)}...
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  </div>
                 </div>
               )}
             </div>

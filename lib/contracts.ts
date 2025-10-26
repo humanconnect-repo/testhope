@@ -8,17 +8,21 @@ const FACTORY_ABI = [
   "function getAllPools() view returns (address[])",
   "function getPoolCount() view returns (uint256)",
   "function getPoolInfo(address) view returns (tuple(string title,string description,string category,uint256 closingDate,uint256 closingBid,address creator,bool isActive,uint256 createdAt))",
+  "function getPoolsByCategory(string) view returns (address[])",
   "function setPoolWinner(address,bool)",
   "function emergencyResolvePool(address,bool,string)",
   "function setPoolEmergencyStop(address,bool)",
   "function cancelPoolPrediction(address,string)",
   "function closePool(address)",
-  "function collectFees(address) returns (uint256)",
+  "function reopenPool(address)",
+  "function recoverCancelledPoolFunds(address)",
   "event PoolCreated(address indexed poolAddress, string title, string category, address indexed creator, uint256 closingDate, uint256 closingBid)",
   "event PoolWinnerSet(address indexed poolAddress, bool winner)",
   "event PoolEmergencyResolved(address indexed poolAddress, bool winner, string reason)",
   "event PoolEmergencyStopToggled(address indexed poolAddress, bool stopped)",
-  "event PoolCancelled(address indexed poolAddress, string reason)"
+  "event PoolCancelled(address indexed poolAddress, string reason)",
+  "event PoolReopened(address indexed poolAddress)",
+  "event PoolFundsRecovered(address indexed poolAddress)"
 ];
 
 // Usa l'ABI del contratto deployato invece di quello hardcoded
@@ -196,6 +200,14 @@ export async function getPoolSummary(address: string) {
     console.error('❌ Errore caricamento pool summary:', address, error);
     throw error;
   }
+}
+
+// Chiude una pool (prima di impostare il winner)
+export async function closePool(address: string) {
+  const factory = await getFactory();
+  const tx = await factory.closePool(address);
+  await tx.wait();
+  return tx.hash;
 }
 
 // Imposta il risultato di una prediction

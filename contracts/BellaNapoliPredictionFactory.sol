@@ -9,7 +9,6 @@ contract BellaNapoliPredictionFactory is Ownable, ReentrancyGuard {
     mapping(address => PoolInfo) public poolInfo;
     uint256 public constant FEE_PERCENTAGE = 150;
     uint256 public constant BASIS_POINTS = 10000;
-    uint256 public totalFeesCollected;
 
     struct PoolInfo {
         string title;
@@ -24,11 +23,12 @@ contract BellaNapoliPredictionFactory is Ownable, ReentrancyGuard {
 
     event PoolCreated(address indexed poolAddress, string title, string category, address indexed creator, uint256 closingDate, uint256 closingBid);
     event PoolClosed(address indexed poolAddress, bool isActive);
-    event FeesCollected(address indexed poolAddress, uint256 amount);
+    event PoolReopened(address indexed poolAddress);
     event PoolWinnerSet(address indexed poolAddress, bool winner);
     event PoolEmergencyResolved(address indexed poolAddress, bool winner, string reason);
     event PoolEmergencyStopToggled(address indexed poolAddress, bool stopped);
     event PoolCancelled(address indexed poolAddress, string reason);
+    event PoolFundsRecovered(address indexed poolAddress);
 
     constructor() Ownable() {}
 
@@ -68,15 +68,13 @@ contract BellaNapoliPredictionFactory is Ownable, ReentrancyGuard {
         emit PoolClosed(_poolAddress, false);
     }
 
-    function collectFees(address _poolAddress) external nonReentrant returns (uint256 feeAmount) {
+    function reopenPool(address _poolAddress) external onlyOwner {
         require(poolInfo[_poolAddress].creator != address(0), "Pool does not exist");
-        require(poolInfo[_poolAddress].isActive, "Pool is not active");
-        
+        require(!poolInfo[_poolAddress].isActive, "Pool is already open");
         PredictionPool pool = PredictionPool(payable(_poolAddress));
-        feeAmount = pool.getTotalFees();
-        totalFeesCollected += feeAmount;
-        emit FeesCollected(_poolAddress, feeAmount);
-        return feeAmount;
+        pool.reopenPool();
+        poolInfo[_poolAddress].isActive = true;
+        emit PoolReopened(_poolAddress);
     }
 
     // ============ POOL MANAGEMENT FUNCTIONS ============
@@ -108,12 +106,15 @@ contract BellaNapoliPredictionFactory is Ownable, ReentrancyGuard {
         pool.cancelPool(_reason);
         emit PoolCancelled(_poolAddress, _reason);
     }
-
-    function withdrawFees() external onlyOwner {
-        uint256 amount = totalFeesCollected;
-        totalFeesCollected = 0;
-        (bool success, ) = payable(owner()).call{value: amount}("");
-        require(success, "Fee withdrawal failed");
+    
+    /// @notice Recover unclaimed funds from a cancelled pool
+    /// @dev Only callable by owner, transfers remaining funds from pool to fee wallet
+    /// @param _poolAddress The pool address to recover funds from
+    function recoverCancelledPoolFunds(address _poolAddress) external onlyOwner {
+        require(poolInfo[_poolAddress].creator != address(0), "Pool does not exist");
+        PredictionPool pool = PredictionPool(payable(_poolAddress));
+        pool.emergencyRecoverFunds();
+        emit PoolFundsRecovered(_poolAddress);
     }
 
     function getPoolCount() external view returns (uint256 count) {
@@ -204,6 +205,8 @@ contract PredictionPool is Ownable, ReentrancyGuard {
     event PoolCancelled(string reason);
     event RefundClaimed(address indexed user, uint256 amount);
     event FeeTransferred(address indexed feeWallet, uint256 amount);
+    event EmergencyFundsRecovered(address indexed to, uint256 amount, uint256 userCount);
+    event PoolReopened();
 
     constructor(string memory _title, string memory _description, string memory _category, uint256 _closingDate, uint256 _closingBid, address _factory) Ownable() {
         title = _title;
@@ -222,6 +225,10 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         _;
     }
 
+    /// @notice Place a bet on this prediction pool
+    /// @dev Users can bet YES (true) or NO (false) on the prediction
+    /// @param _choice True for YES, False for NO
+    /// Emits BetPlaced event with bet details
     function placeBet(bool _choice) external payable bettingOpen {
         require(msg.value > 0, "Bet amount must be greater than 0");
         require(msg.value >= 0.001 ether, "Minimum bet is 0.001 BNB");
@@ -250,12 +257,26 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         emit BetPlaced(msg.sender, msg.value, _choice, totalYes, totalNo, title, userChoiceStr);
     }
 
+    /// @notice Close the betting pool
+    /// @dev Only owner can close the pool at any time (except when cancelled)
     function closePool() external onlyOwner {
         require(!isClosed, "Pool already closed");
-        require(block.timestamp >= closingDate, "Cannot close before closing date");
+        require(!cancelled, "Cannot close a cancelled pool");
         isClosed = true;
     }
 
+    /// @notice Reopen a closed pool (before winner is set)
+    /// @dev Only owner can reopen a pool before winner is determined
+    function reopenPool() external onlyOwner {
+        require(isClosed, "Pool must be closed first");
+        require(!winnerSet, "Cannot reopen after winner is set");
+        require(!cancelled, "Cannot reopen a cancelled pool");
+        isClosed = false;
+        emit PoolReopened();
+    }
+
+    /// @notice Set the winner of the prediction
+    /// @param _winner True if YES won, False if NO won
     function setWinner(bool _winner) external onlyOwner {
         require(isClosed, "Pool must be closed first");
         require(!winnerSet, "Winner already set");
@@ -265,6 +286,9 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         emit WinnerSet(_winner, reason);
     }
 
+    /// @notice Claim your winnings if you bet on the correct outcome
+    /// @dev Winners receive a proportional share of the prize pool minus fees
+    /// Emits RewardClaimed event with reward amount
     function claimWinnings() external nonReentrant {
         require(winnerSet, "Winner not set yet");
         require(userBets[msg.sender].amount > 0, "No bet placed");
@@ -279,7 +303,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         
         // Calcolo corretto: l'utente riceve la sua quota proporzionale del pot totale
         // meno la sua quota proporzionale delle commissioni
-        uint256 totalPot = totalBets;
+        uint256 totalPot = totalYes + totalNo;
         uint256 totalFees = (totalLosingBets * FEE_PERCENTAGE) / BASIS_POINTS;
         uint256 netPot = totalPot - totalFees;
         
@@ -301,11 +325,17 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         emit RewardClaimed(msg.sender, reward);
     }
 
+    /// @notice Toggle emergency stop for betting
+    /// @param _stop True to pause betting, False to resume
     function setEmergencyStop(bool _stop) external onlyOwner {
+        require(!cancelled, "Cannot toggle emergency stop on a cancelled pool");
         emergencyStop = _stop;
         emit EmergencyStopToggled(_stop);
     }
 
+    /// @notice Emergency resolution when pool is stopped
+    /// @param _winner The winning outcome (true for YES, false for NO)
+    /// @param _reason Reason for emergency resolution
     function emergencyResolve(bool _winner, string memory _reason) external onlyOwner {
         require(emergencyStop, "Emergency stop not activated");
         require(!winnerSet, "Winner already set");
@@ -314,6 +344,8 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         emit WinnerSet(_winner, _reason);
     }
 
+    /// @notice Cancel the prediction pool
+    /// @param _reason Reason for cancellation
     function cancelPool(string memory _reason) external onlyOwner {
         require(!winnerSet, "Cannot cancel after winner is set");
         require(!cancelled, "Pool already cancelled");
@@ -321,6 +353,8 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         emit PoolCancelled(_reason);
     }
 
+    /// @notice Claim a refund for a cancelled pool
+    /// @dev Returns the full bet amount back to the user when pool is cancelled
     function claimRefund() external nonReentrant {
         require(cancelled, "Pool not cancelled");
         require(userBets[msg.sender].amount > 0, "No bet placed");
@@ -333,6 +367,21 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         require(success, "Refund transfer failed");
         
         emit RefundClaimed(msg.sender, refundAmount);
+    }
+
+    /// @notice Emergency recovery of remaining funds from cancelled pool
+    /// @dev Only callable by owner when pool is cancelled, transfers ALL remaining funds to fee wallet
+    function emergencyRecoverFunds() external onlyOwner {
+        require(cancelled, "Pool not cancelled");
+        
+        uint256 remainingBalance = address(this).balance;
+        require(remainingBalance > 0, "No remaining funds");
+        
+        // Trasferisci TUTTI i fondi residui al fee wallet (anche se tutti hanno fatto claim)
+        (bool success, ) = payable(feeWallet).call{value: remainingBalance}("");
+        require(success, "Transfer failed");
+        
+        emit EmergencyFundsRecovered(feeWallet, remainingBalance, bettors.length);
     }
 
     function canClaimRefund(address _user) external view returns (bool) {

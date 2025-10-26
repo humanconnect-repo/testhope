@@ -1,0 +1,13 @@
+{
+  "_format": "hh3-artifact-1",
+  "contractName": "Context",
+  "sourceName": "contracts/BellaNapoliPredictionFactory-flattened-v2.sol",
+  "abi": [],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {},
+  "immutableReferences": {},
+  "inputSourceName": "project/contracts/BellaNapoliPredictionFactory-flattened-v2.sol",
+  "buildInfoId": "solc-0_8_24-c0fe4efa76c497c2f21070dae6bf317f12cd4c55"
+}

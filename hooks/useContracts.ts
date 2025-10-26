@@ -6,6 +6,7 @@ import {
   listPools, 
   getPoolSummary, 
   createPool, 
+  closePool,
   resolvePool,
   setEmergencyStop,
   emergencyResolve,
@@ -188,6 +189,27 @@ export const useContracts = () => {
     }
   };
 
+  // Chiude una pool
+  const handleClosePool = async (poolAddress: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const txHash = await closePool(poolAddress);
+      
+      // Ricarica i pool dopo la chiusura
+      await loadPools();
+      
+      return txHash;
+    } catch (err) {
+      console.error('Errore chiusura pool:', err);
+      setError('Errore chiusura pool');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Risolve una prediction
   const resolvePrediction = async (poolAddress: string, winnerYes: boolean) => {
     try {
@@ -333,6 +355,7 @@ export const useContracts = () => {
     loading,
     error,
     createNewPool,
+    handleClosePool,
     resolvePrediction,
     stopBetting,
     resumeBetting,

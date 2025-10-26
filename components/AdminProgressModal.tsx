@@ -16,7 +16,7 @@ interface AdminProgressModalProps {
   currentStep: number;
   transactionHash?: string;
   error?: string;
-  operationType: 'stop' | 'resume' | 'cancel';
+  operationType: 'stop' | 'resume' | 'cancel' | 'close';
   poolAddress?: string;
 }
 
@@ -52,6 +52,7 @@ export default function AdminProgressModal({
     let operationLabel = '';
     if (operationType === 'stop') operationLabel = 'STOP BETTING';
     else if (operationType === 'cancel') operationLabel = 'CANCEL POOL';
+    else if (operationType === 'close') operationLabel = 'CLOSE POOL';
     else operationLabel = 'RESUME BETTING';
     
     let allContent = `=== BELLA NAPOLI - LOG ${operationLabel} ===\n\n`;
@@ -145,30 +146,35 @@ export default function AdminProgressModal({
   const getOperationIcon = () => {
     if (operationType === 'stop') return '🟡';
     if (operationType === 'cancel') return '🔴';
+    if (operationType === 'close') return '🔒';
     return '▶️';
   };
 
   const getOperationTitle = () => {
     if (operationType === 'stop') return 'Stop Betting';
     if (operationType === 'cancel') return 'Cancel Pool';
+    if (operationType === 'close') return 'Close Pool';
     return 'Resume Betting';
   };
 
   const getOperationColor = () => {
     if (operationType === 'stop') return 'yellow';
     if (operationType === 'cancel') return 'red';
+    if (operationType === 'close') return 'purple';
     return 'blue';
   };
 
   const getOperationColorClass = () => {
     if (operationType === 'stop') return 'text-yellow-600 dark:text-yellow-400';
     if (operationType === 'cancel') return 'text-red-600 dark:text-red-400';
+    if (operationType === 'close') return 'text-purple-600 dark:text-purple-400';
     return 'text-blue-600 dark:text-blue-400';
   };
 
   const getOperationBgClass = () => {
     if (operationType === 'stop') return 'bg-yellow-600 hover:bg-yellow-700';
     if (operationType === 'cancel') return 'bg-red-600 hover:bg-red-700';
+    if (operationType === 'close') return 'bg-purple-600 hover:bg-purple-700';
     return 'bg-blue-600 hover:bg-blue-700';
   };
 
