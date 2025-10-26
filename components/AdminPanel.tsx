@@ -346,6 +346,61 @@ export default function AdminPanel() {
     }
   };
 
+  // Funzione helper per ottenere lo stato della pool basato sul contratto
+  const getPoolBadgeStatus = (pool: any) => {
+    // Se abbiamo dati del contratto per questa pool, usa quelli
+    if (contractStates[pool.address]) {
+      const contractState = contractStates[pool.address];
+      
+      if (contractState.emergencyStop) {
+        return {
+          text: 'IN PAUSA',
+          emoji: '🟡',
+          bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+        };
+      } else if (contractState.isOpen) {
+        return {
+          text: 'ATTIVA',
+          emoji: '🟢',
+          bgColor: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+        };
+      } else {
+        // Contratto chiuso ma non in emergency stop
+        const now = Math.floor(Date.now() / 1000);
+        
+        if (now < pool.closingBid) {
+          return {
+            text: 'ATTIVA',
+            emoji: '🟡',
+            bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+          };
+        } else {
+          return {
+            text: 'RISOLTA',
+            emoji: '🏆',
+            bgColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+          };
+        }
+      }
+    }
+
+    // Fallback: controlla se c'è una prediction attiva corrispondente
+    const isActive = predictions.some(prediction => 
+      prediction.pool_address === pool.address && 
+      prediction.status === 'attiva'
+    );
+    
+    return isActive ? {
+      text: 'ATTIVA',
+      emoji: '🟢',
+      bgColor: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+    } : {
+      text: 'ORFANA',
+      emoji: '🔴',
+      bgColor: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+    };
+  };
+
   const getBettingContainerStatus = (pool: any, prediction: any) => {
     const now = Math.floor(Date.now() / 1000);
     const closingDate = pool.closingDate;
@@ -1912,35 +1967,13 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         {/* Badge status */}
                         <div className="flex gap-2 mb-3">
                           {(() => {
-                            const isActive = predictions.some(prediction => 
-                              prediction.pool_address === pool.address && 
-                              prediction.status === 'attiva'
-                            );
-                            return isActive ? (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                                🟢 Attiva
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
-                                🔴 Orfana
+                            const poolStatus = getPoolBadgeStatus(pool);
+                            return (
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${poolStatus.bgColor}`}>
+                                {poolStatus.emoji} {poolStatus.text}
                               </span>
                             );
                           })()}
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            (() => {
-                              const prediction = predictions.find(p => p.pool_address === pool.address);
-                              const containerStatus = getBettingContainerStatus(pool, prediction);
-                              return containerStatus.type === 'open' 
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                                : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
-                            })()
-                          }`}>
-                            {(() => {
-                              const prediction = predictions.find(p => p.pool_address === pool.address);
-                              const containerStatus = getBettingContainerStatus(pool, prediction);
-                              return containerStatus.status;
-                            })()}
-                          </span>
                           {pool.winnerSet ? (
                             <span className={`px-2 py-1 rounded text-xs font-medium ${
                               pool.winner 
@@ -2111,17 +2144,10 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                               {pool.title}
                             </h4>
                             {(() => {
-                              const isActive = predictions.some(prediction => 
-                                prediction.pool_address === pool.address && 
-                                prediction.status === 'attiva'
-                              );
-                              return isActive ? (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                                  🟢 Attiva
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
-                                  🔴 Orfana
+                              const poolStatus = getPoolBadgeStatus(pool);
+                              return (
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${poolStatus.bgColor}`}>
+                                  {poolStatus.emoji} {poolStatus.text}
                                 </span>
                               );
                             })()}
@@ -2188,21 +2214,6 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                       {/* Stato e azioni */}
                       <div className="flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex items-center space-x-4">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            (() => {
-                              const prediction = predictions.find(p => p.pool_address === pool.address);
-                              const containerStatus = getBettingContainerStatus(pool, prediction);
-                              return containerStatus.type === 'open' 
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                                : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
-                            })()
-                          }`}>
-                            {(() => {
-                              const prediction = predictions.find(p => p.pool_address === pool.address);
-                              const containerStatus = getBettingContainerStatus(pool, prediction);
-                              return containerStatus.status;
-                            })()}
-                          </span>
                           
                           {pool.winnerSet ? (
                             <span className={`px-2 py-1 rounded text-xs font-medium ${
@@ -2220,7 +2231,13 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         </div>
 
                         {/* Pulsanti azione */}
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          {/* Badge Funzioni CONTRACT */}
+                          <div className="w-full flex justify-center mb-2">
+                            <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                              🔧 Funzioni CONTRACT
+                            </span>
+                          </div>
                           {/* Controlli Risoluzione */}
                           {!pool.winnerSet && (
                             <div className="flex gap-2">
