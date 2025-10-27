@@ -3081,13 +3081,15 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         
                         {/* Indirizzo Pool */}
                         <div className="mb-2">
-                          <button
-                            onClick={() => navigator.clipboard.writeText(pool.address)}
-                            className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                            title="Clicca per copiare"
+                          <a
+                            href={`https://testnet.bscscan.com/address/${pool.address}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer inline-block"
+                            title="Clicca per aprire su BSCScan"
                           >
                             {pool.address}
-                          </button>
+                          </a>
                         </div>
                         
                         {/* Titolo */}
@@ -3241,13 +3243,15 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         <div className="mb-3">
                           {/* Indirizzo Pool */}
                           <div className="mb-2">
-                            <button
-                              onClick={() => navigator.clipboard.writeText(pool.address)}
-                              className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                              title="Clicca per copiare"
+                            <a
+                              href={`https://testnet.bscscan.com/address/${pool.address}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer inline-block"
+                              title="Clicca per aprire su BSCScan"
                             >
                               {pool.address}
-                            </button>
+                            </a>
                           </div>
                           
                           <div className="flex items-center space-x-2 mb-1">
