@@ -355,7 +355,8 @@ export default function AdminPanel() {
     }
 
     // Fallback al database
-    switch (prediction.status) {
+    const status: 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata' = prediction.status;
+    switch (status) {
       case 'in_attesa':
         return {
           text: 'IN ATTESA',
