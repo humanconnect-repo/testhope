@@ -241,12 +241,19 @@ export default function AdminPanel() {
   // Stato per i log delle funzioni admin
   const [adminLogs, setAdminLogs] = useState<any[]>([]);
   const [adminLogsLoading, setAdminLogsLoading] = useState(false);
+  const [adminLogsOffset, setAdminLogsOffset] = useState(0);
+  const [adminLogsHasMore, setAdminLogsHasMore] = useState(false);
+  const [adminLogsTotalCount, setAdminLogsTotalCount] = useState(0);
+  const LOGS_PER_PAGE = 5;
+
+  // Stato per le predictions espanse nell'accordion
+  const [expandedPredictions, setExpandedPredictions] = useState<Set<string>>(new Set());
 
   // Carica le prediction esistenti
   useEffect(() => {
     if (isAdmin) {
       loadPredictions();
-      loadAdminLogs();
+      loadAdminLogs(true);
     }
   }, [isAdmin]);
 
@@ -543,19 +550,72 @@ export default function AdminPanel() {
     }
   };
 
-  const loadAdminLogs = async () => {
+  const loadAdminLogs = async (reset: boolean = false) => {
     setAdminLogsLoading(true);
     try {
+      // Get total count
+      const { count } = await supabase
+        .from('logadminfunction')
+        .select('*', { count: 'exact', head: true });
+
+      const totalCount = count || 0;
+      setAdminLogsTotalCount(totalCount);
+
+      // Reset offset if this is a reset call
+      if (reset) {
+        setAdminLogsOffset(0);
+      }
+      
+      // Calculate how many logs to fetch
+      const logsToFetch = LOGS_PER_PAGE;
+      
+      // Fetch logs from 0 to logsToFetch - 1 (always start from the beginning)
       const { data, error } = await supabase
         .from('logadminfunction')
         .select('id, action_type, tx_hash, pool_address, prediction_id, admin_address, created_at, additional_data')
         .order('created_at', { ascending: false })
-        .limit(50);
+        .range(0, logsToFetch - 1);
 
       if (error) throw error;
+      
       setAdminLogs(data || []);
+      setAdminLogsOffset(logsToFetch);
+      
+      // Check if there are more logs to load
+      setAdminLogsHasMore(logsToFetch < totalCount);
     } catch (error) {
       console.error('Error loading admin logs:', error);
+    } finally {
+      setAdminLogsLoading(false);
+    }
+  };
+
+  const loadMoreAdminLogs = async () => {
+    setAdminLogsLoading(true);
+    try {
+      const { count } = await supabase
+        .from('logadminfunction')
+        .select('*', { count: 'exact', head: true });
+
+      const totalCount = count || 0;
+      
+      // Calculate how many more logs to load
+      const currentCount = adminLogs.length;
+      const logsToFetch = currentCount + LOGS_PER_PAGE;
+      
+      const { data, error } = await supabase
+        .from('logadminfunction')
+        .select('id, action_type, tx_hash, pool_address, prediction_id, admin_address, created_at, additional_data')
+        .order('created_at', { ascending: false })
+        .range(0, logsToFetch - 1);
+
+      if (error) throw error;
+      
+      setAdminLogs(data || []);
+      setAdminLogsOffset(logsToFetch);
+      setAdminLogsHasMore(logsToFetch < totalCount);
+    } catch (error) {
+      console.error('Error loading more admin logs:', error);
     } finally {
       setAdminLogsLoading(false);
     }
@@ -682,6 +742,18 @@ export default function AdminPanel() {
       notes: prediction.notes || ''
     });
     // Non aprire il form generale, solo quello inline
+  };
+
+  const togglePredictionExpansion = (predictionId: string) => {
+    setExpandedPredictions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(predictionId)) {
+        newSet.delete(predictionId);
+      } else {
+        newSet.add(predictionId);
+      }
+      return newSet;
+    });
   };
 
   const handleDelete = async (id: string) => {
@@ -2122,11 +2194,49 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         </div>
         
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {predictions.map((prediction) => (
+          {predictions.map((prediction) => {
+            const isExpanded = expandedPredictions.has(prediction.id);
+            return (
             <div key={prediction.id}>
               <div className="p-6">
                 {/* Layout mobile: badge, titolo, descrizione, dati, pulsanti uno per riga */}
-                <div className="block sm:hidden p-6">
+                <div className="block sm:hidden">
+                  {/* Riga compatta - sempre visibile */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {/* Status */}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPredictionBadgeStatus(prediction).bgColor}`}>
+                        {getPredictionBadgeStatus(prediction).emoji} {getPredictionBadgeStatus(prediction).text}
+                      </span>
+                      
+                      {/* Categoria */}
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-primary/10 text-primary dark:bg-primary/20 flex-shrink-0">
+                        {prediction.category}
+                      </span>
+                      
+                      {/* Titolo */}
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex-1 min-w-0 truncate">
+                        {prediction.title}
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => togglePredictionExpansion(prediction.id)}
+                      className="flex-shrink-0 ml-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    >
+                      <svg
+                        className={`w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Contenuto espandibile */}
+                  {isExpanded && (
+                    <div className="p-6">
                   {/* Badge status e categoria */}
                   <div className="flex gap-2 mb-3">
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPredictionBadgeStatus(prediction).bgColor}`}>
@@ -2213,28 +2323,50 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                       Codice BSCScan
                     </button>
                   </div>
+                    </div>
+                  )}
                 </div>
                 
-                {/* Layout desktop: originale */}
-                <div className="hidden sm:block p-6">
-                  <div className="mb-2">
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                      ID prediction: {prediction.id}
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex-1 min-w-0">
-                        {prediction.title}
-                      </h3>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPredictionBadgeStatus(prediction).bgColor}`}>
-                        {getPredictionBadgeStatus(prediction).emoji} {getPredictionBadgeStatus(prediction).text}
-                      </span>
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary dark:bg-primary/20">
+                {/* Layout desktop: accordion */}
+                <div className="hidden sm:block">
+                  {/* Riga compatta - sempre visibile */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {/* Status con pallino */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPredictionBadgeStatus(prediction).bgColor}`}>
+                          {getPredictionBadgeStatus(prediction).emoji} {getPredictionBadgeStatus(prediction).text}
+                        </span>
+                      </div>
+                      
+                      {/* Categoria */}
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-primary/10 text-primary dark:bg-primary/20 flex-shrink-0">
                         {prediction.category}
                       </span>
+                      
+                      {/* Titolo */}
+                      <h3 className="text-base font-semibold text-gray-900 dark:text-white flex-1 min-w-0 truncate">
+                        {prediction.title}
+                      </h3>
                     </div>
-                    </div>
+                    <button
+                      onClick={() => togglePredictionExpansion(prediction.id)}
+                      className="flex-shrink-0 ml-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    >
+                      <svg
+                        className={`w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
                   </div>
+
+                  {/* Contenuto espandibile */}
+                  {isExpanded && (
+                    <div className="p-6 pt-0">
                   
                   <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2 text-sm leading-tight">
                     {prediction.description.length > 120 
@@ -2307,6 +2439,8 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                       Codice BSCScan
                     </button>
                   </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2473,7 +2607,8 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
           
           {predictions.length === 0 && (
             <div className="p-6 text-center text-gray-500 dark:text-gray-400">
@@ -2957,7 +3092,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                   </p>
                 </div>
                 <button
-                  onClick={loadAdminLogs}
+                  onClick={() => loadAdminLogs(true)}
                   disabled={adminLogsLoading}
                   className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -3055,6 +3190,26 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                     </tbody>
                   </table>
                   </div>
+                  
+                  {/* Load More Button */}
+                  {adminLogsHasMore && (
+                    <div className="mt-4 text-center">
+                      <button
+                        onClick={loadMoreAdminLogs}
+                        disabled={adminLogsLoading}
+                        className="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      >
+                        {adminLogsLoading ? (
+                          <span className="flex items-center space-x-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 dark:border-gray-300"></div>
+                            <span>Caricamento...</span>
+                          </span>
+                        ) : (
+                          `Carica altri (${Math.min(LOGS_PER_PAGE, adminLogsTotalCount - adminLogs.length)} rimanenti)`
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
