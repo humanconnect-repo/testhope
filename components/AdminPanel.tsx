@@ -17,7 +17,7 @@ interface Prediction {
   category: string;
   closing_date: string;
   closing_bid: string;
-  status: 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata';
+  status: 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata' | 'nascosta';
   rules: string;
   image_url?: string;
   pool_address?: string; // Indirizzo del contratto smart contract
@@ -32,7 +32,7 @@ interface PredictionFormData {
   category: string;
   closing_date: string;
   closing_bid: string;
-  status: 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata';
+  status: 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata' | 'nascosta';
   rules: string;
   image_url?: string;
   notes?: string;
@@ -295,7 +295,16 @@ export default function AdminPanel() {
   // Funzione helper per determinare lo status del container betting
   // Funzione helper per ottenere lo stato del badge basato su contratto + database
   const getPredictionBadgeStatus = (prediction: Prediction): { text: string; emoji: string; bgColor: string } => {
-    // Prima controlla se la prediction è risolta nel database (priorità massima)
+    // Prima controlla se la prediction è nascosta nel database (priorità massima)
+    if (prediction.status === 'nascosta') {
+      return {
+        text: 'NASCOSTA',
+        emoji: '🔘',
+        bgColor: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
+      };
+    }
+    
+    // Controlla se la prediction è risolta nel database
     if (prediction.status === 'risolta') {
       return {
         text: 'RISOLTA',
@@ -549,15 +558,15 @@ export default function AdminPanel() {
     }
   };
 
-  // Filtra i pool per mostrare solo quelli attivi/pausa/risolte o tutti
+  // Filtra i pool per mostrare solo quelli attivi/pausa/risolte/cancellate o tutti
   const filteredPools = pools.filter(pool => {
     if (showOrphanPools) {
       return true; // Mostra tutti i pool
     }
-    // Mostra pool che hanno una prediction attiva, in pausa o risolta
+    // Mostra pool che hanno una prediction attiva, in pausa, risolta o cancellata
     const hasActivePrediction = predictions.some(prediction => 
       prediction.pool_address === pool.address && 
-      (prediction.status === 'attiva' || prediction.status === 'in_pausa' || prediction.status === 'risolta')
+      (prediction.status === 'attiva' || prediction.status === 'in_pausa' || prediction.status === 'risolta' || prediction.status === 'cancellata')
     );
     return hasActivePrediction;
   });
@@ -942,8 +951,7 @@ export default function AdminPanel() {
 
   // Funzione per gestire Cancel Pool con modal
   const handleCancelPool = async (poolAddress: string) => {
-    const reason = prompt('Motivo per la cancellazione del pool:');
-    if (!reason) return;
+    const reason = 'Cancelled by admin'; // Motivo fisso, senza prompt
     
     try {
       // Imposta i dati per il modal
@@ -952,7 +960,7 @@ export default function AdminPanel() {
       setAdminError('');
       setAdminTransactionHash('');
       
-      // Inizializza i passi
+      // Inizializza i passi (senza salvataggio note)
       const steps: AdminStep[] = [
         {
           id: 'prepare',
@@ -973,9 +981,9 @@ export default function AdminPanel() {
           status: 'pending'
         },
         {
-          id: 'save_notes',
-          title: 'Salvataggio note',
-          description: 'Salvataggio delle note nel database...',
+          id: 'complete',
+          title: 'Operazione completata',
+          description: 'Pool cancellato con successo!',
           status: 'pending'
         }
       ];
@@ -993,36 +1001,22 @@ export default function AdminPanel() {
       await new Promise(resolve => setTimeout(resolve, 500));
       setAdminSteps(prev => prev.map(step => step.id === 'sign' ? { ...step, status: 'loading' } : step));
       
-      const tx = await cancelPoolPrediction(poolAddress, reason);
+      // Restituisce txHash (string), non oggetto transazione
+      const txHash = await cancelPoolPrediction(poolAddress, reason);
       
       setAdminSteps(prev => prev.map(step => step.id === 'sign' ? { ...step, status: 'completed' } : step));
       setAdminCurrentStep(2);
-      setAdminTransactionHash(tx.hash);
+      setAdminTransactionHash(txHash);
       
       // Passo 3: Attendi conferma
       await new Promise(resolve => setTimeout(resolve, 2000));
       setAdminSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'loading' } : step));
       
-      await tx.wait();
+      // Non serve aspettare tx.wait() perché resolvePrediction già fa il wait
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       setAdminSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'completed' } : step));
       setAdminCurrentStep(3);
-      
-      // Passo 4: Salva le note nel database
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setAdminSteps(prev => prev.map(step => step.id === 'save_notes' ? { ...step, status: 'loading' } : step));
-      
-      const { error: dbError } = await supabase.rpc('update_prediction_notes', {
-        pool_address: poolAddress,
-        notes: `Pool cancellato: ${reason}`
-      });
-      
-      if (dbError) {
-        console.error('Errore nel salvataggio delle note:', dbError);
-        throw dbError;
-      }
-      
-      setAdminSteps(prev => prev.map(step => step.id === 'save_notes' ? { ...step, status: 'completed' } : step));
       
       // Salva il log della transazione admin
       const { data: predictionData, error: predictionError } = await supabase
@@ -1031,10 +1025,14 @@ export default function AdminPanel() {
         .eq('pool_address', poolAddress)
         .maybeSingle();
       
-      if (predictionData) {
+      if (predictionError) {
+        console.error('Errore nel recupero della prediction:', predictionError);
+      } else if (predictionData) {
+        console.log('Salvataggio log admin:', { action: 'cancel_pool', txHash, poolAddress, adminAddress: userAddress });
+        
         const { data: logId, error: insertError } = await supabase.rpc('insert_admin_log', {
           action_type_param: 'cancel_pool',
-          tx_hash_param: tx.hash,
+          tx_hash_param: txHash,
           admin_address_param: userAddress,
           pool_address_param: poolAddress,
           prediction_id_param: predictionData.id,
@@ -1046,9 +1044,25 @@ export default function AdminPanel() {
         } else {
           console.log('Log admin salvato con successo, ID:', logId);
         }
+        
+        // Aggiorna lo status della prediction a "Cancellata"
+        const { data: rpcData, error: updateError } = await supabase
+          .rpc('update_prediction_status', {
+            prediction_id_param: predictionData.id,
+            new_status: 'cancellata'
+          });
+        
+        if (updateError) {
+          console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+        } else {
+          console.log('Status della prediction aggiornato a "Cancellata"', rpcData);
+        }
+      } else {
+        console.warn('Nessuna prediction trovata per pool_address:', poolAddress);
       }
       
-      // Completato
+      // Passo 4: Completato
+      setAdminSteps(prev => prev.map(step => step.id === 'complete' ? { ...step, status: 'completed' } : step));
       setAdminCurrentStep(steps.length);
       
     } catch (error: any) {
@@ -1115,16 +1129,31 @@ export default function AdminPanel() {
       
       const txHash = await recoverPoolFunds(poolAddress);
       
-      // Log dell'azione admin
-      const { error: logError } = await supabase.rpc('insert_admin_log', {
-        action_type_param: 'recover_funds',
-        admin_address_param: userAddress,
-        tx_hash_param: txHash,
-        pool_address_param: poolAddress
-      });
+      // Salva il log della transazione admin
+      const { data: predictionData, error: predictionError } = await supabase
+        .from('predictions')
+        .select('id')
+        .eq('pool_address', poolAddress)
+        .maybeSingle();
       
-      if (logError) {
-        console.error('Errore nel logging recover funds:', logError);
+      if (predictionError) {
+        console.error('Errore nel recupero della prediction:', predictionError);
+      } else if (predictionData) {
+        console.log('Salvataggio log admin:', { action: 'recover_funds', txHash, poolAddress, adminAddress: userAddress });
+        const { data: logId, error: insertError } = await supabase.rpc('insert_admin_log', {
+          action_type_param: 'recover_funds',
+          tx_hash_param: txHash,
+          admin_address_param: userAddress,
+          pool_address_param: poolAddress,
+          prediction_id_param: predictionData.id,
+          additional_data_param: {}
+        });
+        
+        if (insertError) {
+          console.error('Errore nel salvataggio del log admin:', insertError);
+        } else {
+          console.log('Log admin salvato con successo, ID:', logId);
+        }
       }
       
       setAdminSteps(prev => prev.map(step => step.id === 'sign' ? { ...step, status: 'completed' } : step));
@@ -1365,6 +1394,41 @@ export default function AdminPanel() {
       
       // Lo status viene aggiornato già dalla funzione resolvePrediction, aspettiamo
       await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Salva il log dell'azione admin
+      const { data: predictionData, error: predictionError } = await supabase
+        .from('predictions')
+        .select('id')
+        .eq('pool_address', poolAddress)
+        .maybeSingle();
+      
+      if (predictionError) {
+        console.error('Errore nel recupero della prediction:', predictionError);
+      } else if (predictionData) {
+        console.log('Salvataggio log admin:', { 
+          action: winnerYes ? 'resolve_yes' : 'resolve_no', 
+          txHash, 
+          poolAddress, 
+          adminAddress: userAddress 
+        });
+        
+        const { data: logId, error: insertError } = await supabase.rpc('insert_admin_log', {
+          action_type_param: winnerYes ? 'resolve_yes' : 'resolve_no',
+          tx_hash_param: txHash,
+          admin_address_param: userAddress,
+          pool_address_param: poolAddress,
+          prediction_id_param: predictionData.id,
+          additional_data_param: { winner: winnerYes }
+        });
+        
+        if (insertError) {
+          console.error('Errore nel salvataggio del log admin:', insertError);
+        } else {
+          console.log('Log admin salvato con successo, ID:', logId);
+        }
+      } else {
+        console.warn('Nessuna prediction trovata per pool_address:', poolAddress);
+      }
       
       // Passo 4: Database completato, Passo 5: Completato
       setAdminSteps(prev => prev.map(step => 
@@ -2489,7 +2553,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value as 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata'})}
+                  onChange={(e) => setFormData({...formData, status: e.target.value as 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata' | 'nascosta'})}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
                   <option value="in_attesa">In Attesa</option>
@@ -2497,6 +2561,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                   <option value="in_pausa">In Pausa</option>
                   <option value="risolta">Risolta</option>
                   <option value="cancellata">Cancellata</option>
+                  <option value="nascosta">Nascosta</option>
                 </select>
               </div>
             </div>
@@ -2663,7 +2728,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         Attiva Contract
                       </button>
                     )}
-                    {(prediction.status === 'attiva' || prediction.status === 'in_pausa' || prediction.status === 'risolta') && (
+                    {(prediction.status === 'attiva' || prediction.status === 'in_pausa' || prediction.status === 'risolta' || prediction.status === 'cancellata' || prediction.status === 'nascosta') && (
                       <button
                         onClick={() => handleActivateContract(prediction)}
                         className="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors duration-200 text-sm font-medium"
@@ -2779,7 +2844,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         Attiva Contract
                       </button>
                     )}
-                    {(prediction.status === 'attiva' || prediction.status === 'in_pausa' || prediction.status === 'risolta') && (
+                    {(prediction.status === 'attiva' || prediction.status === 'in_pausa' || prediction.status === 'risolta' || prediction.status === 'cancellata' || prediction.status === 'nascosta') && (
                       <button
                         onClick={() => handleActivateContract(prediction)}
                         className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors duration-200 text-sm font-medium"
@@ -2911,13 +2976,14 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                           </label>
                           <select
                             value={formData.status}
-                            onChange={(e) => setFormData({...formData, status: e.target.value as 'attiva' | 'in_pausa' | 'risolta' | 'cancellata'})}
+                            onChange={(e) => setFormData({...formData, status: e.target.value as 'attiva' | 'in_pausa' | 'risolta' | 'cancellata' | 'nascosta'})}
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           >
                             <option value="attiva">Attiva</option>
                             <option value="in_pausa">In Pausa</option>
                             <option value="risolta">Risolta</option>
                             <option value="cancellata">Cancellata</option>
+                            <option value="nascosta">Nascosta</option>
                           </select>
                         </div>
                       </div>
@@ -3016,7 +3082,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                     Pool di Predictions On-Chain
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {filteredPools.length} pool {showOrphanPools ? 'totali' : 'attive/pausa/risolte'} trovate
+                    {filteredPools.length} Pools trovate
                   </p>
                 </div>
                 <div className="flex items-center space-x-3">

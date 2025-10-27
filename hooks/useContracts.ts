@@ -50,7 +50,7 @@ export interface PoolSummary {
 }
 
 export const useContracts = () => {
-  const { isConnected, user } = useWeb3Auth();
+  const { isConnected, user, address } = useWeb3Auth();
   const [isFactoryOwner, setIsFactoryOwner] = useState(false);
   const [pools, setPools] = useState<PoolSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -95,7 +95,7 @@ export const useContracts = () => {
       const { data: predictions, error: predictionsError } = await supabase
         .from('predictions')
         .select('*')
-        .in('status', ['attiva', 'in_pausa', 'risolta']);
+        .in('status', ['attiva', 'in_pausa', 'risolta', 'cancellata']);
       
       if (predictionsError) {
         console.error('❌ Errore caricamento predictions:', predictionsError);
@@ -258,7 +258,7 @@ export const useContracts = () => {
         const { data: logId, error: insertError } = await supabase.rpc('insert_admin_log', {
           action_type_param: 'set_winner',
           tx_hash_param: txHash,
-          admin_address_param: user?.address || '',
+          admin_address_param: address || '',
           pool_address_param: poolAddress,
           prediction_id_param: predictionData.id,
           additional_data_param: { winner: winnerYes }

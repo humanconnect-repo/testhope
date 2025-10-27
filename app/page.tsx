@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import PredictionList from '../components/PredictionList';
+import CancelledPredictionsList from '../components/CancelledPredictionsList';
 import CategoryTabs from '../components/CategoryTabs';
 
 export default function Home() {
@@ -111,6 +112,11 @@ export default function Home() {
         )}
 
         <PredictionList selectedCategory={selectedCategory} searchQuery={searchQuery} />
+        
+        {/* Pools Cancellate */}
+        <div className="mt-12">
+          <CancelledPredictionsList />
+        </div>
       </main>
 
       <Footer />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-interface ActivePrediction {
+interface CancelledPrediction {
   id: string;
   title: string;
   slug: string;
@@ -12,8 +12,8 @@ interface ActivePrediction {
   created_at: string;
 }
 
-export function useUserActivePredictions(userId: string | null) {
-  const [predictions, setPredictions] = useState<ActivePrediction[]>([]);
+export function useUserCancelledPredictions(userId: string | null) {
+  const [predictions, setPredictions] = useState<CancelledPrediction[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,12 +24,12 @@ export function useUserActivePredictions(userId: string | null) {
       return;
     }
 
-    const fetchActivePredictions = async () => {
+    const fetchCancelledPredictions = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Ottieni le scommesse dell'utente con le prediction attive
+        // Ottieni le scommesse dell'utente con le prediction cancellate
         const { data: bets, error: betsError } = await supabase
           .from('bets')
           .select(`
@@ -47,7 +47,7 @@ export function useUserActivePredictions(userId: string | null) {
             )
           `)
           .eq('user_id', userId)
-          .in('predictions.status', ['attiva', 'in_attesa', 'in_pausa'])
+          .eq('predictions.status', 'cancellata')
           .order('created_at', { ascending: false });
 
         if (betsError) {
@@ -58,7 +58,7 @@ export function useUserActivePredictions(userId: string | null) {
           setPredictions([]);
         } else {
           // Trasforma i dati per la UI
-          const activePredictions: ActivePrediction[] = bets.map((bet: any) => ({
+          const cancelledPredictions: CancelledPrediction[] = bets.map((bet: any) => ({
             id: bet.predictions.id,
             title: bet.predictions.title,
             slug: bet.predictions.slug,
@@ -69,19 +69,20 @@ export function useUserActivePredictions(userId: string | null) {
             created_at: bet.created_at
           }));
           
-          setPredictions(activePredictions);
+          setPredictions(cancelledPredictions);
         }
 
       } catch (error) {
-        console.error('Errore nel caricamento delle prediction attive:', error);
+        console.error('Errore nel caricamento delle prediction cancellate:', error);
         setError('Errore nel caricamento delle prediction');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchActivePredictions();
+    fetchCancelledPredictions();
   }, [userId]);
 
   return { predictions, loading, error };
 }
+

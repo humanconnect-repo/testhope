@@ -10,7 +10,7 @@ interface Prediction {
   slug: string;
   category: string;
   closing_date: string;
-  status: 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata';
+  status: 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata' | 'nascosta';
   image_url?: string;
   pool_address?: string;
   yes_percentage: number;

@@ -364,7 +364,7 @@ export default function BettingProgressModal({
             <button
               onClick={() => {
                 onClose();
-                // Non serve più il refresh, i dati si aggiornano automaticamente
+                window.location.reload();
               }}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
             >

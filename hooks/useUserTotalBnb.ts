@@ -51,23 +51,26 @@ export function useUserTotalBnb(userId: string | null) {
           setBnbLost(0);
           setNetBalance(0);
         } else {
-          // Somma tutti i BNB scommessi
-          const total = bets.reduce((sum: number, bet: any) => {
+          // Filtra le scommesse escludendo quelle con prediction cancellata
+          const validBets = bets.filter((bet: any) => bet.prediction?.status !== 'cancellata');
+          
+          // Somma tutti i BNB scommessi (escludendo quelli cancellati)
+          const total = validBets.reduce((sum: number, bet: any) => {
             return sum + (bet.amount_bnb || 0);
           }, 0);
           setTotalBnb(total);
           
-          // Conta il numero totale di scommesse
-          setTotalBets(bets.length);
+          // Conta il numero totale di scommesse (escludendo quelle con prediction cancellata)
+          setTotalBets(validBets.length);
 
-          // Calcola BNB guadagnati (somma di winning_rewards_amount dove presente)
-          const gained = bets.reduce((sum: number, bet: any) => {
+          // Calcola BNB guadagnati (somma di winning_rewards_amount dove presente, escludendo quelle cancellate)
+          const gained = validBets.reduce((sum: number, bet: any) => {
             return sum + (bet.winning_rewards_amount || 0);
           }, 0);
           setBnbGained(gained);
 
-          // Calcola BNB persi: per le pool risolte dove winning_rewards_amount è NULL
-          const lost = bets.reduce((sum: number, bet: any) => {
+          // Calcola BNB persi: per le pool risolte dove winning_rewards_amount è NULL (escludendo quelle cancellate)
+          const lost = validBets.reduce((sum: number, bet: any) => {
             // Se la prediction è risolta e non ha winning_rewards_amount, significa che ha perso
             if (bet.prediction?.status === 'risolta' && !bet.winning_rewards_amount) {
               return sum + (bet.amount_bnb || 0);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-interface ActivePrediction {
+interface ResolvedPrediction {
   id: string;
   title: string;
   slug: string;
@@ -10,10 +10,12 @@ interface ActivePrediction {
   amount_bnb: number;
   position: string;
   created_at: string;
+  claim_winning_tx_hash?: string;
+  winning_rewards_amount?: number;
 }
 
-export function useUserActivePredictions(userId: string | null) {
-  const [predictions, setPredictions] = useState<ActivePrediction[]>([]);
+export function useUserResolvedPredictions(userId: string | null) {
+  const [predictions, setPredictions] = useState<ResolvedPrediction[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,12 +26,12 @@ export function useUserActivePredictions(userId: string | null) {
       return;
     }
 
-    const fetchActivePredictions = async () => {
+    const fetchResolvedPredictions = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Ottieni le scommesse dell'utente con le prediction attive
+        // Ottieni le scommesse dell'utente con le prediction risolte
         const { data: bets, error: betsError } = await supabase
           .from('bets')
           .select(`
@@ -37,6 +39,8 @@ export function useUserActivePredictions(userId: string | null) {
             amount_bnb,
             position,
             created_at,
+            claim_winning_tx_hash,
+            winning_rewards_amount,
             predictions!inner(
               id,
               title,
@@ -47,7 +51,7 @@ export function useUserActivePredictions(userId: string | null) {
             )
           `)
           .eq('user_id', userId)
-          .in('predictions.status', ['attiva', 'in_attesa', 'in_pausa'])
+          .eq('predictions.status', 'risolta')
           .order('created_at', { ascending: false });
 
         if (betsError) {
@@ -58,7 +62,7 @@ export function useUserActivePredictions(userId: string | null) {
           setPredictions([]);
         } else {
           // Trasforma i dati per la UI
-          const activePredictions: ActivePrediction[] = bets.map((bet: any) => ({
+          const resolvedPredictions: ResolvedPrediction[] = bets.map((bet: any) => ({
             id: bet.predictions.id,
             title: bet.predictions.title,
             slug: bet.predictions.slug,
@@ -66,22 +70,25 @@ export function useUserActivePredictions(userId: string | null) {
             closing_date: bet.predictions.closing_date,
             amount_bnb: bet.amount_bnb,
             position: bet.position,
-            created_at: bet.created_at
+            created_at: bet.created_at,
+            claim_winning_tx_hash: bet.claim_winning_tx_hash,
+            winning_rewards_amount: bet.winning_rewards_amount
           }));
           
-          setPredictions(activePredictions);
+          setPredictions(resolvedPredictions);
         }
 
       } catch (error) {
-        console.error('Errore nel caricamento delle prediction attive:', error);
+        console.error('Errore nel caricamento delle prediction risolte:', error);
         setError('Errore nel caricamento delle prediction');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchActivePredictions();
+    fetchResolvedPredictions();
   }, [userId]);
 
   return { predictions, loading, error };
 }
+

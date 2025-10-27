@@ -2,6 +2,8 @@
 import { useWeb3Auth } from '../../hooks/useWeb3Auth'
 import { useUserTotalBnb } from '../../hooks/useUserTotalBnb'
 import { useUserActivePredictions } from '../../hooks/useUserActivePredictions'
+import { useUserResolvedPredictions } from '../../hooks/useUserResolvedPredictions'
+import { useUserCancelledPredictions } from '../../hooks/useUserCancelledPredictions'
 import ProfileForm from '../../components/ProfileForm'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
@@ -20,6 +22,17 @@ export default function ProfiloPage() {
   
   // Carica le prediction attive dell'utente
   const { predictions: activePredictions, loading: predictionsLoading, error: predictionsError } = useUserActivePredictions(user?.id || null)
+  
+  // Carica le prediction risolte dell'utente
+  const { predictions: resolvedPredictions, loading: resolvedLoading, error: resolvedError } = useUserResolvedPredictions(user?.id || null)
+  
+  // Carica le prediction cancellate dell'utente
+  const { predictions: cancelledPredictions, loading: cancelledLoading, error: cancelledError } = useUserCancelledPredictions(user?.id || null)
+  
+  // Calcola le statistiche di successo
+  const wonPredictions = resolvedPredictions.filter(p => p.winning_rewards_amount && p.winning_rewards_amount > 0).length;
+  const totalResolvedPredictions = resolvedPredictions.length;
+  const successRate = totalResolvedPredictions > 0 ? ((wonPredictions / totalResolvedPredictions) * 100).toFixed(1) : '0.0';
   
   // Stato per il loading durante la navigazione
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
@@ -272,11 +285,27 @@ export default function ProfiloPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Prediction vinte</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">0</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {resolvedLoading ? (
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8"></div>
+                      </div>
+                    ) : (
+                      wonPredictions
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Percentuale successo</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">-</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {resolvedLoading ? (
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-12"></div>
+                      </div>
+                    ) : (
+                      `${successRate}%`
+                    )}
+                  </span>
                 </div>
               </div>
             </div>
@@ -349,6 +378,169 @@ export default function ProfiloPage() {
                             }`}>
                               {prediction.position === 'yes' ? 'Sì' : 'No'}
                             </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Le tue Prediction risolte */}
+            <div className="bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                🏆 Le tue Prediction risolte
+              </h3>
+              {resolvedLoading ? (
+                <div className="space-y-3">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                </div>
+              ) : resolvedError ? (
+                <div className="text-center py-4">
+                  <p className="text-red-500 dark:text-red-400 text-sm">{resolvedError}</p>
+                </div>
+              ) : resolvedPredictions.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    Non hai prediction risolte al momento
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {resolvedPredictions.map((prediction) => (
+                    <div
+                      key={prediction.id}
+                      onClick={() => handlePredictionClick(prediction.slug, prediction.id)}
+                      className={`block p-3 rounded-md transition-colors duration-200 cursor-pointer ${
+                        navigatingTo === prediction.id
+                          ? 'bg-primary/10 dark:bg-primary/20'
+                          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {navigatingTo === prediction.id ? (
+                        <div className="flex items-center justify-center py-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-4 h-4 bg-primary/20 rounded-full animate-pulse"></div>
+                            <span className="text-sm text-primary dark:text-primary-400 font-medium">
+                              Caricamento...
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
+                              {prediction.title}
+                            </h4>
+                            <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 ml-2 flex-shrink-0">
+                              🏆 Risolta
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
+                              <span>
+                                Scommessa: {prediction.amount_bnb.toFixed(4)} BNB
+                              </span>
+                              <span className={`px-2 py-1 rounded ${
+                                prediction.position === 'yes' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                              }`}>
+                                {prediction.position === 'yes' ? 'Sì' : 'No'}
+                              </span>
+                            </div>
+                            {prediction.winning_rewards_amount && (
+                              <div className="text-xs font-medium text-green-600 dark:text-green-400">
+                                💰 Vincita: {prediction.winning_rewards_amount.toFixed(4)} BNB
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Le tue Prediction cancellate */}
+            <div className="bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                ❌ Le tue Prediction cancellate
+              </h3>
+              {cancelledLoading ? (
+                <div className="space-y-3">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                </div>
+              ) : cancelledError ? (
+                <div className="text-center py-4">
+                  <p className="text-red-500 dark:text-red-400 text-sm">{cancelledError}</p>
+                </div>
+              ) : cancelledPredictions.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    Non hai prediction cancellate al momento
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {cancelledPredictions.map((prediction) => (
+                    <div
+                      key={prediction.id}
+                      onClick={() => handlePredictionClick(prediction.slug, prediction.id)}
+                      className={`block p-3 rounded-md transition-colors duration-200 cursor-pointer ${
+                        navigatingTo === prediction.id
+                          ? 'bg-primary/10 dark:bg-primary/20'
+                          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {navigatingTo === prediction.id ? (
+                        <div className="flex items-center justify-center py-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-4 h-4 bg-primary/20 rounded-full animate-pulse"></div>
+                            <span className="text-sm text-primary dark:text-primary-400 font-medium">
+                              Caricamento...
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
+                              {prediction.title}
+                            </h4>
+                            <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 ml-2 flex-shrink-0">
+                              ❌ Cancellata
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
+                              <span>
+                                Scommessa: {prediction.amount_bnb.toFixed(4)} BNB
+                              </span>
+                              <span className={`px-2 py-1 rounded ${
+                                prediction.position === 'yes' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                              }`}>
+                                {prediction.position === 'yes' ? 'Sì' : 'No'}
+                              </span>
+                            </div>
                           </div>
                         </>
                       )}

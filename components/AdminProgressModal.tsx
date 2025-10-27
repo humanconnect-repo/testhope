@@ -55,6 +55,7 @@ export default function AdminProgressModal({
     else if (operationType === 'resolve_yes') operationLabel = 'RESOLVE YES';
     else if (operationType === 'resolve_no') operationLabel = 'RESOLVE NO';
     else if (operationType === 'reopen') operationLabel = 'OPEN POOL';
+    else if (operationType === 'recover') operationLabel = 'RECOVER FUNDS';
     else operationLabel = 'RESUME BETTING';
     
     let allContent = `=== BELLA NAPOLI - LOG ${operationLabel} ===\n\n`;
@@ -152,6 +153,7 @@ export default function AdminProgressModal({
     if (operationType === 'resolve_yes') return '✅';
     if (operationType === 'resolve_no') return '🚩';
     if (operationType === 'reopen') return '🔓';
+    if (operationType === 'recover') return '💰';
     return '▶️';
   };
 
@@ -162,6 +164,7 @@ export default function AdminProgressModal({
     if (operationType === 'resolve_yes') return 'Resolve YES';
     if (operationType === 'resolve_no') return 'Resolve NO';
     if (operationType === 'reopen') return 'Open Pool';
+    if (operationType === 'recover') return 'Recover';
     return 'Resume Betting';
   };
 
@@ -172,6 +175,7 @@ export default function AdminProgressModal({
     if (operationType === 'resolve_yes') return 'green';
     if (operationType === 'resolve_no') return 'red';
     if (operationType === 'reopen') return 'green';
+    if (operationType === 'recover') return 'yellow';
     return 'blue';
   };
 
@@ -182,6 +186,7 @@ export default function AdminProgressModal({
     if (operationType === 'resolve_yes') return 'text-green-600 dark:text-green-400';
     if (operationType === 'resolve_no') return 'text-red-600 dark:text-red-400';
     if (operationType === 'reopen') return 'text-green-600 dark:text-green-400';
+    if (operationType === 'recover') return 'text-yellow-600 dark:text-yellow-400';
     return 'text-blue-600 dark:text-blue-400';
   };
 
@@ -192,6 +197,7 @@ export default function AdminProgressModal({
     if (operationType === 'resolve_yes') return 'bg-green-600 hover:bg-green-700';
     if (operationType === 'resolve_no') return 'bg-red-600 hover:bg-red-700';
     if (operationType === 'reopen') return 'bg-green-600 hover:bg-green-700';
+    if (operationType === 'recover') return 'bg-yellow-600 hover:bg-yellow-700';
     return 'bg-blue-600 hover:bg-blue-700';
   };
 

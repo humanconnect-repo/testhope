@@ -1307,9 +1307,26 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         {/* Header della prediction */}
         <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-8 mb-8">
           <div className="flex items-center justify-between mb-6">
-            <span className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary dark:bg-primary/20">
-              {prediction.category}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary dark:bg-primary/20">
+                {prediction.category}
+              </span>
+              {/* Link al contract se c'è pool_address */}
+              {poolAddress && (
+                <a
+                  href={`https://testnet.bscscan.com/address/${poolAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/30 transition-colors inline-flex items-center gap-1"
+                  title="Visualizza contratto su BSCScan"
+                >
+                  📄 Contract
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              )}
+            </div>
             {/* Status della prediction */}
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPredictionStatus(prediction).bgColor}`}>
               {getPredictionStatus(prediction).emoji} {getPredictionStatus(prediction).displayText}
@@ -2491,6 +2508,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         transactionHash={claimRefundTransactionHash}
         contractAddress={prediction?.pool_address}
         error={claimRefundError}
+        title="🤝 Recupera i tuoi fondi"
       />
 
       {/* Modal di Progresso Claim Vincite */}
