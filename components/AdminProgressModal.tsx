@@ -16,7 +16,7 @@ interface AdminProgressModalProps {
   currentStep: number;
   transactionHash?: string;
   error?: string;
-  operationType: 'stop' | 'resume' | 'cancel' | 'close' | 'resolve_yes' | 'resolve_no' | 'reopen';
+  operationType: 'stop' | 'resume' | 'cancel' | 'close' | 'resolve_yes' | 'resolve_no' | 'reopen' | 'recover';
   poolAddress?: string;
 }
 

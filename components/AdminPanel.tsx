@@ -237,7 +237,7 @@ export default function AdminPanel() {
   const [adminCurrentStep, setAdminCurrentStep] = useState(0);
   const [adminTransactionHash, setAdminTransactionHash] = useState<string>('');
   const [adminError, setAdminError] = useState<string>('');
-  const [adminOperationType, setAdminOperationType] = useState<'stop' | 'resume' | 'cancel' | 'close' | 'resolve_yes' | 'resolve_no' | 'reopen'>('stop');
+  const [adminOperationType, setAdminOperationType] = useState<'stop' | 'resume' | 'cancel' | 'close' | 'resolve_yes' | 'resolve_no' | 'reopen' | 'recover'>('stop');
   const [adminPoolAddress, setAdminPoolAddress] = useState<string>('');
 
   // Stato per i log delle funzioni admin
@@ -355,7 +355,7 @@ export default function AdminPanel() {
     }
 
     // Fallback al database
-    const status: 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata' = prediction.status;
+    const status = prediction.status as 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata';
     switch (status) {
       case 'in_attesa':
         return {
