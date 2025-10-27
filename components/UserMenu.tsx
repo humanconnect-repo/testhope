@@ -169,6 +169,18 @@ export default function UserMenu() {
             {isAuthenticated ? (
               // Autenticato - Profilo e Disconnetti
               <>
+                <a
+                  href="https://www.bnbchain.org/en/testnet-faucet"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full text-left px-4 py-2 text-sm text-black bg-yellow-500 hover:bg-yellow-600 transition-colors duration-200 flex items-center space-x-2"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2.69l5.66 5.66a8 8 0 11-11.32 0L12 2.69z"/>
+                  </svg>
+                  <span className="font-semibold">BNB Chain Faucet</span>
+                </a>
                 <button
                   onClick={handleProfileClick}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center space-x-2"
