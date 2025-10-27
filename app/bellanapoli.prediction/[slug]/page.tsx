@@ -2484,7 +2484,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         isOpen={showClaimRefundModal}
         onClose={() => {
           setShowClaimRefundModal(false);
-          window.location.reload();
+          // Non serve più il refresh, i dati si aggiornano automaticamente
         }}
         steps={claimRefundSteps}
         currentStep={currentClaimRefundStep}
@@ -2498,7 +2498,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         isOpen={showClaimWinningsModal}
         onClose={() => {
           setShowClaimWinningsModal(false);
-          window.location.reload();
+          // Non serve più il refresh, i dati si aggiornano automaticamente
         }}
         steps={claimWinningsSteps}
         currentStep={currentClaimWinningsStep}

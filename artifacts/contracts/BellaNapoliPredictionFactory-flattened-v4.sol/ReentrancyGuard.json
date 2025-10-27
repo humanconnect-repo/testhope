@@ -1,0 +1,13 @@
+{
+  "_format": "hh3-artifact-1",
+  "contractName": "ReentrancyGuard",
+  "sourceName": "contracts/BellaNapoliPredictionFactory-flattened-v4.sol",
+  "abi": [],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {},
+  "immutableReferences": {},
+  "inputSourceName": "project/contracts/BellaNapoliPredictionFactory-flattened-v4.sol",
+  "buildInfoId": "solc-0_8_24-86e18cd624895f0209645d11e689d6d21d08b80a"
+}

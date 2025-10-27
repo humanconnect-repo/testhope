@@ -216,6 +216,14 @@ export async function closePool(address: string) {
   return tx.hash;
 }
 
+// Riapre una pool chiusa (prima che il winner sia stato settato)
+export async function reopenPool(address: string) {
+  const factory = await getFactory();
+  const tx = await factory.reopenPool(address);
+  await tx.wait();
+  return tx.hash;
+}
+
 // Imposta il risultato di una prediction
 export async function resolvePool(address: string, winnerYes: boolean) {
   const factory = await getFactory();
@@ -291,6 +299,14 @@ export async function getEmergencyStopStatus(poolAddress: string): Promise<boole
 export async function cancelPool(poolAddress: string, reason: string) {
   const factory = await getFactory();
   const tx = await factory.cancelPoolPrediction(poolAddress, reason);
+  await tx.wait();
+  return tx.hash;
+}
+
+// Recover remaining funds from cancelled or resolved pool
+export async function recoverCancelledPoolFunds(poolAddress: string) {
+  const factory = await getFactory();
+  const tx = await factory.recoverCancelledPoolFunds(poolAddress);
   await tx.wait();
   return tx.hash;
 }

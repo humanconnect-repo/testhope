@@ -8,9 +8,6 @@ import "hardhat/types/artifacts";
 declare module "hardhat/types/artifacts" {
   interface ArtifactMap {
     ["BellaNapoliPredictionFactory"]: never
-    ["Context"]: never
-    ["Ownable"]: never
-    ["PredictionPool"]: never
-    ["ReentrancyGuard"]: never;
+    ["PredictionPool"]: never;
   }
 }

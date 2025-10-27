@@ -7,12 +7,14 @@ import {
   getPoolSummary, 
   createPool, 
   closePool,
+  reopenPool,
   resolvePool,
   setEmergencyStop,
   emergencyResolve,
   isBettingCurrentlyOpen,
   getEmergencyStopStatus,
   cancelPool,
+  recoverCancelledPoolFunds,
   claimRefund,
   canClaimRefund,
   isPoolCancelled,
@@ -210,6 +212,27 @@ export const useContracts = () => {
     }
   };
 
+  // Riapre una pool chiusa
+  const handleReopenPool = async (poolAddress: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const txHash = await reopenPool(poolAddress);
+      
+      // Ricarica i pool dopo la riapertura
+      await loadPools();
+      
+      return txHash;
+    } catch (err) {
+      console.error('Errore riapertura pool:', err);
+      setError('Errore riapertura pool');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Risolve una prediction
   const resolvePrediction = async (poolAddress: string, winnerYes: boolean) => {
     try {
@@ -231,22 +254,20 @@ export const useContracts = () => {
       if (predictionError) {
         console.error('Errore nel recupero della prediction:', predictionError);
       } else if (predictionData) {
-        // Salva il log della transazione admin
-        const { error: insertError } = await supabase
-          .from('logadminfunction')
-          .insert({
-            action_type: 'set_winner',
-            tx_hash: txHash,
-            pool_address: poolAddress,
-            prediction_id: predictionData.id,
-            admin_address: user?.address || '',
-            additional_data: { winner: winnerYes }
-          });
+        // Salva il log della transazione admin usando RPC function con verifica admin
+        const { data: logId, error: insertError } = await supabase.rpc('insert_admin_log', {
+          action_type_param: 'set_winner',
+          tx_hash_param: txHash,
+          admin_address_param: user?.address || '',
+          pool_address_param: poolAddress,
+          prediction_id_param: predictionData.id,
+          additional_data_param: { winner: winnerYes }
+        });
         
         if (insertError) {
           console.error('Errore nel salvataggio del log admin:', insertError);
         } else {
-          console.log('Log admin salvato con successo');
+          console.log('Log admin salvato con successo, ID:', logId);
         }
         
         // Aggiorna lo status della prediction a "Risolta"
@@ -357,6 +378,27 @@ export const useContracts = () => {
     }
   };
 
+  // Recover remaining funds from cancelled or resolved pool
+  const recoverPoolFunds = async (poolAddress: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const txHash = await recoverCancelledPoolFunds(poolAddress);
+      
+      // Ricarica i pool dopo il recupero
+      await loadPools();
+      
+      return txHash;
+    } catch (err) {
+      console.error('Errore recupero fondi:', err);
+      setError('Errore recupero fondi');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Claim refund for cancelled pool
   const claimRefundForPool = async (poolAddress: string) => {
     try {
@@ -398,11 +440,13 @@ export const useContracts = () => {
     error,
     createNewPool,
     handleClosePool,
+    handleReopenPool,
     resolvePrediction,
     stopBetting,
     resumeBetting,
     emergencyResolvePrediction,
     cancelPoolPrediction,
+    recoverPoolFunds,
     claimRefundForPool,
     loadPools,
     formatItalianTime,

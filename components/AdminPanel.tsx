@@ -47,11 +47,13 @@ export default function AdminPanel() {
     error: contractsError,
     createNewPool,
     handleClosePool,
+    handleReopenPool,
     resolvePrediction,
     stopBetting,
     resumeBetting,
     emergencyResolvePrediction,
     cancelPoolPrediction,
+    recoverPoolFunds,
     claimRefundForPool,
     formatItalianTime,
     isBettingOpen,
@@ -235,7 +237,7 @@ export default function AdminPanel() {
   const [adminCurrentStep, setAdminCurrentStep] = useState(0);
   const [adminTransactionHash, setAdminTransactionHash] = useState<string>('');
   const [adminError, setAdminError] = useState<string>('');
-  const [adminOperationType, setAdminOperationType] = useState<'stop' | 'resume' | 'cancel' | 'close' | 'resolve_yes' | 'resolve_no'>('stop');
+  const [adminOperationType, setAdminOperationType] = useState<'stop' | 'resume' | 'cancel' | 'close' | 'resolve_yes' | 'resolve_no' | 'reopen'>('stop');
   const [adminPoolAddress, setAdminPoolAddress] = useState<string>('');
 
   // Stato per i log delle funzioni admin
@@ -891,21 +893,19 @@ export default function AdminPanel() {
         console.error('Errore nel recupero della prediction:', predictionError);
       } else if (predictionData) {
         console.log('Salvataggio log admin:', { action: 'stop_betting', txHash, poolAddress, adminAddress: userAddress });
-        const { error: insertError } = await supabase
-          .from('logadminfunction')
-          .insert({
-            action_type: 'stop_betting',
-            tx_hash: txHash,
-            pool_address: poolAddress,
-            prediction_id: predictionData.id,
-            admin_address: userAddress,
-            additional_data: {}
-          });
+        const { data: logId, error: insertError } = await supabase.rpc('insert_admin_log', {
+          action_type_param: 'stop_betting',
+          tx_hash_param: txHash,
+          admin_address_param: userAddress,
+          pool_address_param: poolAddress,
+          prediction_id_param: predictionData.id,
+          additional_data_param: {}
+        });
         
         if (insertError) {
           console.error('Errore nel salvataggio del log admin:', insertError);
         } else {
-          console.log('Log admin salvato con successo');
+          console.log('Log admin salvato con successo, ID:', logId);
         }
         
         // Aggiorna lo status della prediction a "In Pausa"
@@ -1023,6 +1023,30 @@ export default function AdminPanel() {
       
       setAdminSteps(prev => prev.map(step => step.id === 'save_notes' ? { ...step, status: 'completed' } : step));
       
+      // Salva il log della transazione admin
+      const { data: predictionData, error: predictionError } = await supabase
+        .from('predictions')
+        .select('id')
+        .eq('pool_address', poolAddress)
+        .maybeSingle();
+      
+      if (predictionData) {
+        const { data: logId, error: insertError } = await supabase.rpc('insert_admin_log', {
+          action_type_param: 'cancel_pool',
+          tx_hash_param: tx.hash,
+          admin_address_param: userAddress,
+          pool_address_param: poolAddress,
+          prediction_id_param: predictionData.id,
+          additional_data_param: { reason: reason }
+        });
+        
+        if (insertError) {
+          console.error('Errore nel salvataggio del log admin:', insertError);
+        } else {
+          console.log('Log admin salvato con successo, ID:', logId);
+        }
+      }
+      
       // Completato
       setAdminCurrentStep(steps.length);
       
@@ -1031,6 +1055,97 @@ export default function AdminPanel() {
       setAdminError(`Log funzione Cancel Pool: ${error.message || 'Errore durante la cancellazione del pool'}`);
       
       // Marca solo il passo corrente come errore
+      setAdminSteps(prev => prev.map(step => ({
+        ...step,
+        status: step.status === 'loading' ? 'error' : step.status
+      })));
+    }
+  };
+
+  // Funzione per gestire Recover Funds per pool risolte/cancellate
+  const handleRecoverFunds = async (poolAddress: string) => {
+    try {
+      // Imposta i dati per il modal
+      setAdminOperationType('recover');
+      setAdminPoolAddress(poolAddress);
+      setAdminError('');
+      setAdminTransactionHash('');
+      
+      // Inizializza i passi
+      const steps: AdminStep[] = [
+        {
+          id: 'prepare',
+          title: 'Preparazione transazione',
+          description: 'Preparazione del recupero dei fondi residui...',
+          status: 'pending'
+        },
+        {
+          id: 'sign',
+          title: 'Firma transazione',
+          description: 'Firma della transazione nel wallet...',
+          status: 'pending'
+        },
+        {
+          id: 'confirm',
+          title: 'Conferma transazione',
+          description: 'Attesa conferma della transazione sulla blockchain...',
+          status: 'pending'
+        },
+        {
+          id: 'complete',
+          title: 'Operazione completata',
+          description: 'Fondi recuperati con successo!',
+          status: 'pending'
+        }
+      ];
+      
+      setAdminSteps(steps);
+      setAdminCurrentStep(0);
+      setShowAdminModal(true);
+      
+      // Passo 1: Preparazione
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setAdminSteps(prev => prev.map(step => step.id === 'prepare' ? { ...step, status: 'completed' } : step));
+      setAdminCurrentStep(1);
+      
+      // Passo 2: Chiama la funzione recoverPoolFunds
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setAdminSteps(prev => prev.map(step => step.id === 'sign' ? { ...step, status: 'loading' } : step));
+      
+      const txHash = await recoverPoolFunds(poolAddress);
+      
+      // Log dell'azione admin
+      const { error: logError } = await supabase.rpc('insert_admin_log', {
+        action_type_param: 'recover_funds',
+        admin_address_param: userAddress,
+        tx_hash_param: txHash,
+        pool_address_param: poolAddress
+      });
+      
+      if (logError) {
+        console.error('Errore nel logging recover funds:', logError);
+      }
+      
+      setAdminSteps(prev => prev.map(step => step.id === 'sign' ? { ...step, status: 'completed' } : step));
+      setAdminCurrentStep(2);
+      setAdminTransactionHash(txHash);
+      
+      // Passo 3: Attendi conferma
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setAdminSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'completed' } : step));
+      setAdminCurrentStep(3);
+      
+      // Passo 4: Completato
+      setAdminSteps(prev => prev.map(step => step.id === 'complete' ? { ...step, status: 'completed' } : step));
+      setAdminCurrentStep(steps.length);
+      
+      // Imposta il currentStep a steps.length per mostrare il pulsante "Completato"
+      setAdminCurrentStep(steps.length);
+      
+    } catch (error: any) {
+      console.error('Errore recupero fondi:', error);
+      setAdminError(error.message || 'Errore durante il recupero fondi');
+      
       setAdminSteps(prev => prev.map(step => ({
         ...step,
         status: step.status === 'loading' ? 'error' : step.status
@@ -1122,21 +1237,19 @@ export default function AdminPanel() {
         console.error('Errore nel recupero della prediction:', predictionError);
       } else if (predictionData) {
         console.log('Salvataggio log admin:', { action: 'resume_betting', txHash, poolAddress, adminAddress: userAddress });
-        const { error: insertError } = await supabase
-          .from('logadminfunction')
-          .insert({
-            action_type: 'resume_betting',
-            tx_hash: txHash,
-            pool_address: poolAddress,
-            prediction_id: predictionData.id,
-            admin_address: userAddress,
-            additional_data: {}
-          });
+        const { data: logId, error: insertError } = await supabase.rpc('insert_admin_log', {
+          action_type_param: 'resume_betting',
+          tx_hash_param: txHash,
+          admin_address_param: userAddress,
+          pool_address_param: poolAddress,
+          prediction_id_param: predictionData.id,
+          additional_data_param: {}
+        });
         
         if (insertError) {
           console.error('Errore nel salvataggio del log admin:', insertError);
         } else {
-          console.log('Log admin salvato con successo');
+          console.log('Log admin salvato con successo, ID:', logId);
         }
         
         // Aggiorna lo status della prediction a "Attiva"
@@ -1274,6 +1387,133 @@ export default function AdminPanel() {
     }
   };
 
+  // Funzione per gestire Reopen Pool con modal
+  const executeReopenPool = async (poolAddress: string) => {
+    try {
+      // Imposta i dati per il modal
+      setAdminOperationType('reopen');
+      setAdminPoolAddress(poolAddress);
+      setAdminError('');
+      setAdminTransactionHash('');
+      
+      // Inizializza i passi
+      const steps: AdminStep[] = [
+        {
+          id: 'prepare',
+          title: 'Preparazione transazione',
+          description: 'Preparazione della transazione per riaprire il pool...',
+          status: 'pending'
+        },
+        {
+          id: 'sign',
+          title: 'Firma transazione',
+          description: 'Firma della transazione nel wallet...',
+          status: 'pending'
+        },
+        {
+          id: 'confirm',
+          title: 'Conferma transazione',
+          description: 'Attesa conferma della transazione sulla blockchain...',
+          status: 'pending'
+        },
+        {
+          id: 'complete',
+          title: 'Operazione completata',
+          description: 'Pool riaperto con successo!',
+          status: 'pending'
+        }
+      ];
+      
+      setAdminSteps(steps);
+      setAdminCurrentStep(0);
+      setShowAdminModal(true);
+      
+      // Passo 1: Preparazione
+      await new Promise(resolve => setTimeout(resolve, 100));
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'prepare' ? { ...step, status: 'loading' } : step
+      ));
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Passo 1: Completato, Passo 2: Chiamata alla funzione reopenPool
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'prepare' ? { ...step, status: 'completed' } :
+        step.id === 'sign' ? { ...step, status: 'loading' } : step
+      ));
+      
+      const txHash = await handleReopenPool(poolAddress);
+      
+      // Passo 2: Completato, Passo 3: Transazione confermata
+      setAdminTransactionHash(txHash);
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'sign' ? { ...step, status: 'completed' } : 
+        step.id === 'confirm' ? { ...step, status: 'loading' } : step
+      ));
+      
+      // Simula attesa conferma
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Passo 3: Completato, Passo 4: Completato
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'confirm' ? { ...step, status: 'completed' } :
+        step.id === 'complete' ? { ...step, status: 'completed' } : step
+      ));
+      
+      // Salva il log della transazione admin
+      const { data: predictionData, error: predictionError } = await supabase
+        .from('predictions')
+        .select('id')
+        .eq('pool_address', poolAddress)
+        .maybeSingle();
+      
+      if (predictionError) {
+        console.error('Errore nel recupero della prediction:', predictionError);
+      } else if (predictionData) {
+        console.log('Salvataggio log admin:', { action: 'reopen_pool', txHash, poolAddress, adminAddress: userAddress });
+        const { data: logId, error: insertError } = await supabase.rpc('insert_admin_log', {
+          action_type_param: 'reopen_pool',
+          tx_hash_param: txHash,
+          admin_address_param: userAddress,
+          pool_address_param: poolAddress,
+          prediction_id_param: predictionData.id,
+          additional_data_param: {}
+        });
+        
+        if (insertError) {
+          console.error('Errore nel salvataggio del log admin:', insertError);
+        } else {
+          console.log('Log admin salvato con successo, ID:', logId);
+        }
+        
+        // Aggiorna lo status della prediction a "Attiva"
+        const { data: rpcData, error: updateError } = await supabase.rpc('update_prediction_status', {
+          prediction_id_param: predictionData.id,
+          new_status: 'attiva'
+        });
+        
+        if (updateError) {
+          console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+        } else {
+          console.log('Status della prediction aggiornato a "Attiva"', rpcData);
+        }
+      }
+      
+      // Imposta il currentStep a steps.length per mostrare il pulsante "Completato"
+      setAdminCurrentStep(steps.length);
+      
+    } catch (error: any) {
+      console.error('Errore riapertura pool:', error);
+      setAdminError(error.message || 'Errore durante la riapertura del pool');
+      
+      // Marca solo il passo corrente come errore
+      setAdminSteps(prev => prev.map(step => ({
+        ...step,
+        status: step.status === 'loading' ? 'error' : step.status
+      })));
+    }
+  };
+
   // Funzione per gestire Close Pool con modal
   const executeClosePool = async (poolAddress: string) => {
     try {
@@ -1358,21 +1598,19 @@ export default function AdminPanel() {
         console.error('Errore nel recupero della prediction:', predictionError);
       } else if (predictionData) {
         console.log('Salvataggio log admin:', { action: 'close_pool', txHash, poolAddress, adminAddress: userAddress });
-        const { error: insertError } = await supabase
-          .from('logadminfunction')
-          .insert({
-            action_type: 'close_pool',
-            tx_hash: txHash,
-            pool_address: poolAddress,
-            prediction_id: predictionData.id,
-            admin_address: userAddress,
-            additional_data: {}
-          });
+        const { data: logId, error: insertError } = await supabase.rpc('insert_admin_log', {
+          action_type_param: 'close_pool',
+          tx_hash_param: txHash,
+          admin_address_param: userAddress,
+          pool_address_param: poolAddress,
+          prediction_id_param: predictionData.id,
+          additional_data_param: {}
+        });
         
         if (insertError) {
           console.error('Errore nel salvataggio del log admin:', insertError);
         } else {
-          console.log('Log admin salvato con successo');
+          console.log('Log admin salvato con successo, ID:', logId);
         }
         
         // Aggiorna lo status della prediction a "In Pausa"
@@ -1394,7 +1632,7 @@ export default function AdminPanel() {
       // Imposta il currentStep a steps.length per mostrare il pulsante "Completato"
       setAdminCurrentStep(steps.length);
       
-      // Ricarica lo stato del contratto per aggiornare i badge
+      // Ricarica lo stato del contratto per aggiornare i badge e i pulsanti
       const { data: predictionsWithPool } = await supabase
         .from('predictions')
         .select('id, pool_address')
@@ -1402,7 +1640,7 @@ export default function AdminPanel() {
         .maybeSingle();
       
       if (predictionsWithPool) {
-        const [isOpen, emergencyStop, cancelled, isClosed] = await Promise.all([
+        const [isOpen, emergencyStop, cancelled, isClosedContract] = await Promise.all([
           isBettingCurrentlyOpen(poolAddress),
           getEmergencyStopStatus(poolAddress),
           isPoolCancelled(poolAddress),
@@ -1411,7 +1649,7 @@ export default function AdminPanel() {
         
         setContractStates(prev => ({
           ...prev,
-          [poolAddress]: { isOpen, emergencyStop, cancelled, isClosed }
+          [poolAddress]: { isOpen, emergencyStop, cancelled, isClosed: isClosedContract }
         }));
       }
       
@@ -2892,12 +3130,22 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         {/* Pulsanti uno per riga centrati */}
                         <div className="space-y-2">
                           {/* Close Pool */}
-                          {!pool.winnerSet && !isPredictionEnded(pool.closingBid) && (
+                          {!pool.winnerSet && (
                             <button
                               onClick={() => executeClosePool(pool.address)}
                               className="w-full px-4 py-2 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                             >
                               🔒 Close Pool
+                            </button>
+                          )}
+                          
+                          {/* Reopen Pool */}
+                          {!pool.winnerSet && (
+                            <button
+                              onClick={() => executeReopenPool(pool.address)}
+                              className="w-full px-4 py-2 border-2 border-green-500 bg-transparent text-white rounded text-sm hover:bg-green-500/10 transition-colors"
+                            >
+                              🔓 Open Pool
                             </button>
                           )}
                           
@@ -2968,6 +3216,14 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                               ❌ Cancel Pool
                             </button>
                           )}
+                          
+                          {/* Recover Funds - for all pools */}
+                          <button
+                            onClick={() => handleRecoverFunds(pool.address)}
+                            className="w-full px-4 py-2 border-2 border-yellow-500 bg-transparent text-white rounded text-sm hover:bg-yellow-500/10 transition-colors"
+                          >
+                            💰 Recover Funds
+                          </button>
                           
                           {/* BSCScan */}
                           <button
@@ -3093,12 +3349,22 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                             </span>
                           </div>
                           {/* Close Pool */}
-                          {!pool.winnerSet && !isPredictionEnded(pool.closingBid) && (
+                          {!pool.winnerSet && (
                             <button
                               onClick={() => executeClosePool(pool.address)}
                               className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                             >
                               🔒 Close Pool
+                            </button>
+                          )}
+                          
+                          {/* Reopen Pool */}
+                          {!pool.winnerSet && (
+                            <button
+                              onClick={() => executeReopenPool(pool.address)}
+                              className="px-3 py-1 border-2 border-green-500 bg-transparent text-white rounded text-sm hover:bg-green-500/10 transition-colors"
+                            >
+                              🔓 Open Pool
                             </button>
                           )}
                           
@@ -3169,6 +3435,14 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                               ❌ Cancel Pool
                             </button>
                           )}
+                          
+                          {/* Recover Funds - for all pools */}
+                          <button
+                            onClick={() => handleRecoverFunds(pool.address)}
+                            className="px-3 py-1 border-2 border-yellow-500 bg-transparent text-white rounded text-sm hover:bg-yellow-500/10 transition-colors"
+                          >
+                            💰 Recover
+                          </button>
                           
                           {/* BSCScan */}
                           <button
