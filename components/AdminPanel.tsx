@@ -726,8 +726,13 @@ export default function AdminPanel() {
 
         alert('Prediction aggiornata con successo!');
       } else {
-        // Crea nuova prediction usando RPC
-        const { data: newPredictionId, error } = await supabase.rpc('create_prediction_admin', {
+        // Validazione userAddress
+        if (!userAddress) {
+          throw new Error('Wallet address non disponibile. Assicurati di essere connesso.');
+        }
+
+        // Log per debug
+        console.log('Creating prediction with data:', {
           title: predictionData.title,
           description: predictionData.description,
           category: predictionData.category,
@@ -739,7 +744,23 @@ export default function AdminPanel() {
           image_url: predictionData.image_url
         });
 
-        if (error) throw error;
+        // Crea nuova prediction usando RPC
+        const { data: newPredictionId, error } = await supabase.rpc('create_prediction_admin', {
+          title: predictionData.title,
+          description: predictionData.description || '',
+          category: predictionData.category,
+          closing_date: predictionData.closing_date,
+          closing_bid: predictionData.closing_bid,
+          status: predictionData.status,
+          rules: predictionData.rules || '',
+          admin_wallet_address: userAddress,
+          image_url: predictionData.image_url || null
+        });
+
+        if (error) {
+          console.error('RPC Error details:', error);
+          throw error;
+        }
         alert('Prediction creata con successo!');
       }
 
@@ -751,7 +772,8 @@ export default function AdminPanel() {
         closing_date: '',
         closing_bid: '',
         status: 'attiva',
-        rules: ''
+        rules: '',
+        image_url: ''
       });
       setShowForm(false);
       setEditingPrediction(null);
