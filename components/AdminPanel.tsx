@@ -294,7 +294,7 @@ export default function AdminPanel() {
 
   // Funzione helper per determinare lo status del container betting
   // Funzione helper per ottenere lo stato del badge basato su contratto + database
-  const getPredictionBadgeStatus = (prediction: Prediction) => {
+  const getPredictionBadgeStatus = (prediction: Prediction): { text: string; emoji: string; bgColor: string } => {
     // Prima controlla se la prediction è risolta nel database (priorità massima)
     if (prediction.status === 'risolta') {
       return {
