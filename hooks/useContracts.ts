@@ -93,7 +93,7 @@ export const useContracts = () => {
       const { data: predictions, error: predictionsError } = await supabase
         .from('predictions')
         .select('*')
-        .in('status', ['attiva', 'in_pausa']);
+        .in('status', ['attiva', 'in_pausa', 'risolta']);
       
       if (predictionsError) {
         console.error('❌ Errore caricamento predictions:', predictionsError);

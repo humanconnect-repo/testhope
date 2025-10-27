@@ -52,7 +52,17 @@ export default function PredictionCard({
   // Funzione helper per determinare lo stato basato su contratto + database
   const getCardStatus = useMemo(() => {
     return () => {
-      // Se abbiamo un pool address e poolState, usa quello come priorità assoluta
+      // Prima controlla se la prediction è risolta nel database (priorità massima)
+      if (status === 'risolta') {
+        return {
+          status: 'risolta',
+          displayText: 'RISOLTA',
+          emoji: '🏆',
+          textColor: 'text-blue-600 dark:text-blue-400'
+        };
+      }
+      
+      // Se abbiamo un pool address e poolState, usa quello come priorità
       if (poolAddress && poolState && poolState.statusText !== 'CARICAMENTO CONTRATTO') {
         // Controlla prima se è cancellata
         if (poolState.isCancelled || status === 'cancellata') {

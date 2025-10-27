@@ -17,6 +17,7 @@ export interface TransactionProgressModalProps {
   transactionHash?: string;
   contractAddress?: string;
   error?: string;
+  title?: string;
 }
 
 export default function TransactionProgressModal({
@@ -26,7 +27,8 @@ export default function TransactionProgressModal({
   currentStep,
   transactionHash,
   contractAddress,
-  error
+  error,
+  title = '🚀 Attivazione Contract'
 }: TransactionProgressModalProps) {
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
 
@@ -135,7 +137,7 @@ export default function TransactionProgressModal({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-            🚀 Attivazione Contract
+            {title}
           </h3>
           <div className="flex items-center space-x-2">
             <button

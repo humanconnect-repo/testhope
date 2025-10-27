@@ -235,7 +235,7 @@ export default function AdminPanel() {
   const [adminCurrentStep, setAdminCurrentStep] = useState(0);
   const [adminTransactionHash, setAdminTransactionHash] = useState<string>('');
   const [adminError, setAdminError] = useState<string>('');
-  const [adminOperationType, setAdminOperationType] = useState<'stop' | 'resume' | 'cancel' | 'close'>('stop');
+  const [adminOperationType, setAdminOperationType] = useState<'stop' | 'resume' | 'cancel' | 'close' | 'resolve_yes' | 'resolve_no'>('stop');
   const [adminPoolAddress, setAdminPoolAddress] = useState<string>('');
 
   // Stato per i log delle funzioni admin
@@ -293,6 +293,15 @@ export default function AdminPanel() {
   // Funzione helper per determinare lo status del container betting
   // Funzione helper per ottenere lo stato del badge basato su contratto + database
   const getPredictionBadgeStatus = (prediction: Prediction) => {
+    // Prima controlla se la prediction è risolta nel database (priorità massima)
+    if (prediction.status === 'risolta') {
+      return {
+        text: 'RISOLTA',
+        emoji: '🏆',
+        bgColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+      };
+    }
+    
     // Se abbiamo dati del contratto, usa quelli come priorità
     if (prediction.pool_address && contractStates[prediction.pool_address]) {
       const contractState = contractStates[prediction.pool_address];
@@ -386,6 +395,19 @@ export default function AdminPanel() {
 
   // Funzione helper per ottenere lo stato della pool basato sul contratto
   const getPoolBadgeStatus = (pool: any) => {
+    // Prima controlla se c'è una prediction corrispondente nel database per vedere se è risolta
+    const correspondingPrediction = predictions.find(prediction => 
+      prediction.pool_address === pool.address
+    );
+    
+    if (correspondingPrediction && correspondingPrediction.status === 'risolta') {
+      return {
+        text: 'RISOLTA',
+        emoji: '🏆',
+        bgColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+      };
+    }
+    
     // Se abbiamo dati del contratto per questa pool, usa quelli
     if (contractStates[pool.address]) {
       const contractState = contractStates[pool.address];
@@ -435,11 +457,7 @@ export default function AdminPanel() {
       }
     }
 
-    // Fallback: controlla se c'è una prediction corrispondente
-    const correspondingPrediction = predictions.find(prediction => 
-      prediction.pool_address === pool.address
-    );
-    
+    // Fallback: usa la correspondingPrediction già trovata all'inizio
     if (correspondingPrediction) {
       if (correspondingPrediction.status === 'cancellata') {
         return {
@@ -452,6 +470,12 @@ export default function AdminPanel() {
           text: 'ATTIVA',
           emoji: '🟢',
           bgColor: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+        };
+      } else if (correspondingPrediction.status === 'in_pausa') {
+        return {
+          text: 'IN PAUSA',
+          emoji: '🟡',
+          bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
         };
       }
     }
@@ -522,15 +546,15 @@ export default function AdminPanel() {
     }
   };
 
-  // Filtra i pool per mostrare solo quelli attivi/pausa o tutti
+  // Filtra i pool per mostrare solo quelli attivi/pausa/risolte o tutti
   const filteredPools = pools.filter(pool => {
     if (showOrphanPools) {
       return true; // Mostra tutti i pool
     }
-    // Mostra pool che hanno una prediction attiva o in pausa
+    // Mostra pool che hanno una prediction attiva, in pausa o risolta
     const hasActivePrediction = predictions.some(prediction => 
       prediction.pool_address === pool.address && 
-      (prediction.status === 'attiva' || prediction.status === 'in_pausa')
+      (prediction.status === 'attiva' || prediction.status === 'in_pausa' || prediction.status === 'risolta')
     );
     return hasActivePrediction;
   });
@@ -1139,6 +1163,110 @@ export default function AdminPanel() {
       setAdminError(error.message || 'Errore durante il resume betting');
       
       // Marca solo il passo corrente come errore (senza aggiungere il messaggio di errore nello step)
+      setAdminSteps(prev => prev.map(step => ({
+        ...step,
+        status: step.status === 'loading' ? 'error' : step.status
+      })));
+    }
+  };
+
+  // Funzione per gestire Resolve Prediction con modal
+  const handleResolvePrediction = async (poolAddress: string, winnerYes: boolean) => {
+    try {
+      // Imposta i dati per il modal
+      setAdminOperationType(winnerYes ? 'resolve_yes' : 'resolve_no');
+      setAdminPoolAddress(poolAddress);
+      setAdminError('');
+      setAdminTransactionHash('');
+      
+      // Inizializza i passi
+      const steps: AdminStep[] = [
+        {
+          id: 'prepare',
+          title: 'Preparazione transazione',
+          description: 'Preparazione della transazione per risolvere la prediction...',
+          status: 'pending'
+        },
+        {
+          id: 'sign',
+          title: 'Firma transazione',
+          description: 'Firma della transazione nel wallet...',
+          status: 'pending'
+        },
+        {
+          id: 'confirm',
+          title: 'Conferma transazione',
+          description: 'Attesa conferma della transazione sulla blockchain...',
+          status: 'pending'
+        },
+        {
+          id: 'database',
+          title: 'Aggiornamento database',
+          description: 'Aggiornamento dello status nel database...',
+          status: 'pending'
+        },
+        {
+          id: 'complete',
+          title: 'Operazione completata',
+          description: 'Prediction risolta con successo!',
+          status: 'pending'
+        }
+      ];
+      
+      setAdminSteps(steps);
+      setAdminCurrentStep(0);
+      setShowAdminModal(true);
+      
+      // Passo 1: Preparazione
+      await new Promise(resolve => setTimeout(resolve, 100));
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'prepare' ? { ...step, status: 'loading' } : step
+      ));
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Passo 1: Completato, Passo 2: Chiamata alla funzione resolvePrediction
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'prepare' ? { ...step, status: 'completed' } :
+        step.id === 'sign' ? { ...step, status: 'loading' } : step
+      ));
+      
+      const txHash = await resolvePrediction(poolAddress, winnerYes);
+      
+      // Passo 2: Completato, Passo 3: Transazione confermata
+      setAdminTransactionHash(txHash);
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'sign' ? { ...step, status: 'completed' } : 
+        step.id === 'confirm' ? { ...step, status: 'loading' } : step
+      ));
+      
+      // Simula attesa conferma (in realtà resolvePrediction già aspetta la conferma)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Passo 3: Completato, Passo 4: Database
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'confirm' ? { ...step, status: 'completed' } :
+        step.id === 'database' ? { ...step, status: 'loading' } : step
+      ));
+      
+      // Lo status viene aggiornato già dalla funzione resolvePrediction, aspettiamo
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Passo 4: Database completato, Passo 5: Completato
+      setAdminSteps(prev => prev.map(step => 
+        step.id === 'database' ? { ...step, status: 'completed' } :
+        step.id === 'complete' ? { ...step, status: 'completed' } : step
+      ));
+      
+      // Imposta il currentStep a steps.length per mostrare il pulsante "Completato"
+      setAdminCurrentStep(steps.length);
+      
+    } catch (error) {
+      console.error('Errore nella risoluzione della prediction:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setAdminError(errorMessage);
+      
+      // Marca solo il passo corrente come errore
       setAdminSteps(prev => prev.map(step => ({
         ...step,
         status: step.status === 'loading' ? 'error' : step.status
@@ -2296,7 +2424,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         Attiva Contract
                       </button>
                     )}
-                    {(prediction.status === 'attiva' || prediction.status === 'in_pausa') && (
+                    {(prediction.status === 'attiva' || prediction.status === 'in_pausa' || prediction.status === 'risolta') && (
                       <button
                         onClick={() => handleActivateContract(prediction)}
                         className="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors duration-200 text-sm font-medium"
@@ -2412,7 +2540,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         Attiva Contract
                       </button>
                     )}
-                    {(prediction.status === 'attiva' || prediction.status === 'in_pausa') && (
+                    {(prediction.status === 'attiva' || prediction.status === 'in_pausa' || prediction.status === 'risolta') && (
                       <button
                         onClick={() => handleActivateContract(prediction)}
                         className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors duration-200 text-sm font-medium"
@@ -2649,7 +2777,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                     Pool di Predictions On-Chain
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {filteredPools.length} pool {showOrphanPools ? 'totali' : 'attive/pausa'} trovate
+                    {filteredPools.length} pool {showOrphanPools ? 'totali' : 'attive/pausa/risolte'} trovate
                   </p>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -2778,10 +2906,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                             <>
                               <button
                                 onClick={() => {
-                                  const reason = prompt('Motivo per la risoluzione anticipata:');
-                                  if (reason) {
-                                    emergencyResolvePrediction(pool.address, true, reason);
-                                  }
+                                  handleResolvePrediction(pool.address, true);
                                 }}
                                 className="w-full px-4 py-2 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
@@ -2789,10 +2914,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                               </button>
                               <button
                                 onClick={() => {
-                                  const reason = prompt('Motivo per la risoluzione anticipata:');
-                                  if (reason) {
-                                    emergencyResolvePrediction(pool.address, false, reason);
-                                  }
+                                  handleResolvePrediction(pool.address, false);
                                 }}
                                 className="w-full px-4 py-2 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
@@ -2985,10 +3107,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                             <div className="flex gap-2">
                               <button
                                 onClick={() => {
-                                  const reason = prompt('Motivo per la risoluzione anticipata:');
-                                  if (reason) {
-                                    emergencyResolvePrediction(pool.address, true, reason);
-                                  }
+                                  handleResolvePrediction(pool.address, true);
                                 }}
                                 className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >
@@ -2996,10 +3115,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                               </button>
                               <button
                                 onClick={() => {
-                                  const reason = prompt('Motivo per la risoluzione anticipata:');
-                                  if (reason) {
-                                    emergencyResolvePrediction(pool.address, false, reason);
-                                  }
+                                  handleResolvePrediction(pool.address, false);
                                 }}
                                 className="px-3 py-1 border-2 border-blue-500 bg-transparent text-white rounded text-sm hover:bg-blue-500/10 transition-colors"
                               >

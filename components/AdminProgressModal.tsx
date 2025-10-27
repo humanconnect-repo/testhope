@@ -16,7 +16,7 @@ interface AdminProgressModalProps {
   currentStep: number;
   transactionHash?: string;
   error?: string;
-  operationType: 'stop' | 'resume' | 'cancel' | 'close';
+  operationType: 'stop' | 'resume' | 'cancel' | 'close' | 'resolve_yes' | 'resolve_no';
   poolAddress?: string;
 }
 
@@ -53,6 +53,8 @@ export default function AdminProgressModal({
     if (operationType === 'stop') operationLabel = 'STOP BETTING';
     else if (operationType === 'cancel') operationLabel = 'CANCEL POOL';
     else if (operationType === 'close') operationLabel = 'CLOSE POOL';
+    else if (operationType === 'resolve_yes') operationLabel = 'RESOLVE YES';
+    else if (operationType === 'resolve_no') operationLabel = 'RESOLVE NO';
     else operationLabel = 'RESUME BETTING';
     
     let allContent = `=== BELLA NAPOLI - LOG ${operationLabel} ===\n\n`;
@@ -147,6 +149,8 @@ export default function AdminProgressModal({
     if (operationType === 'stop') return '🟡';
     if (operationType === 'cancel') return '🔴';
     if (operationType === 'close') return '🔒';
+    if (operationType === 'resolve_yes') return '✅';
+    if (operationType === 'resolve_no') return '🚩';
     return '▶️';
   };
 
@@ -154,6 +158,8 @@ export default function AdminProgressModal({
     if (operationType === 'stop') return 'Stop Betting';
     if (operationType === 'cancel') return 'Cancel Pool';
     if (operationType === 'close') return 'Close Pool';
+    if (operationType === 'resolve_yes') return 'Resolve YES';
+    if (operationType === 'resolve_no') return 'Resolve NO';
     return 'Resume Betting';
   };
 
@@ -161,6 +167,8 @@ export default function AdminProgressModal({
     if (operationType === 'stop') return 'yellow';
     if (operationType === 'cancel') return 'red';
     if (operationType === 'close') return 'blue';
+    if (operationType === 'resolve_yes') return 'green';
+    if (operationType === 'resolve_no') return 'red';
     return 'blue';
   };
 
@@ -168,6 +176,8 @@ export default function AdminProgressModal({
     if (operationType === 'stop') return 'text-yellow-600 dark:text-yellow-400';
     if (operationType === 'cancel') return 'text-red-600 dark:text-red-400';
     if (operationType === 'close') return 'text-blue-600 dark:text-blue-400';
+    if (operationType === 'resolve_yes') return 'text-green-600 dark:text-green-400';
+    if (operationType === 'resolve_no') return 'text-red-600 dark:text-red-400';
     return 'text-blue-600 dark:text-blue-400';
   };
 
@@ -175,6 +185,8 @@ export default function AdminProgressModal({
     if (operationType === 'stop') return 'bg-yellow-600 hover:bg-yellow-700';
     if (operationType === 'cancel') return 'bg-red-600 hover:bg-red-700';
     if (operationType === 'close') return 'bg-blue-600 hover:bg-blue-700';
+    if (operationType === 'resolve_yes') return 'bg-green-600 hover:bg-green-700';
+    if (operationType === 'resolve_no') return 'bg-red-600 hover:bg-red-700';
     return 'bg-blue-600 hover:bg-blue-700';
   };
 

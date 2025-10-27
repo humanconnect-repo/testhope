@@ -7,7 +7,7 @@ import { useWeb3Auth } from '../../../hooks/useWeb3Auth';
 import { useBNBBalance } from '../../../hooks/useBNBBalance';
 import { useContractData } from '../../../hooks/useContractData';
 import { useAdmin } from '../../../hooks/useAdmin';
-import { placeBet, claimRefund, getUserBetFromContract, hasClaimedRefund } from '../../../lib/contracts';
+import { placeBet, claimRefund, getUserBetFromContract, hasClaimedRefund, getPoolWinner, calculateUserWinnings, claimWinnings, hasClaimedWinnings } from '../../../lib/contracts';
 import { supabase } from '../../../lib/supabase';
 import { validateComment } from '../../../lib/profanityFilter';
 import BettingProgressModal, { BettingStep } from '../../../components/BettingProgressModal';
@@ -77,6 +77,19 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   const [claimTxHash, setClaimTxHash] = useState<string>('');
   const [userBetAmountInBnb, setUserBetAmountInBnb] = useState<string>('0');
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
+  const [poolWinner, setPoolWinner] = useState<boolean | null>(null);
+  const [userWinnings, setUserWinnings] = useState<{ totalWinnings: string; betAmount: string; reward: string } | null>(null);
+  const [userWon, setUserWon] = useState<boolean | null>(null);
+  
+  // Stati per claim delle vincite
+  const [claimWinningsLoading, setClaimWinningsLoading] = useState(false);
+  const [showClaimWinningsModal, setShowClaimWinningsModal] = useState(false);
+  const [claimWinningsSteps, setClaimWinningsSteps] = useState<TransactionStep[]>([]);
+  const [currentClaimWinningsStep, setCurrentClaimWinningsStep] = useState(0);
+  const [claimWinningsTransactionHash, setClaimWinningsTransactionHash] = useState<string>('');
+  const [claimWinningsError, setClaimWinningsError] = useState<string>('');
+  const [userHasClaimedWinnings, setUserHasClaimedWinnings] = useState(false);
+  const [claimWinningsTxHash, setClaimWinningsTxHash] = useState<string>('');
 
   // Memoizza i dati del pool per evitare re-render infiniti
   const poolData = useMemo(() => ({
@@ -270,7 +283,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         case 'risolta':
           return {
             type: 'resolved',
-            message: 'Pool finita - Risultati disponibili',
+            message: 'Prediction risolta',
             status: 'Prediction risolta'
           };
         
@@ -511,6 +524,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     if (prediction) {
       loadComments();
       checkUserHasBet();
+      loadWinnerInfo();
     }
   }, [prediction]);
 
@@ -518,8 +532,19 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   useEffect(() => {
     if (user?.id && prediction) {
       checkUserHasBet();
+      // Se la pool è risolta, carica anche le info sul vincitore
+      if (prediction.status === 'risolta') {
+        loadWinnerInfo();
+      }
     }
   }, [user?.id, prediction]);
+
+  // useEffect per ricaricare le info del vincitore quando l'utente si connette/disconnette
+  useEffect(() => {
+    if (prediction && prediction.status === 'risolta' && poolAddress && isAuthenticated && address) {
+      loadWinnerInfo();
+    }
+  }, [isAuthenticated, address, poolAddress]);
 
   // useEffect per controllare se l'utente ha già fatto claim del refund
   useEffect(() => {
@@ -563,6 +588,47 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     };
     checkRefundClaimStatus();
   }, [prediction?.pool_address, address, user?.id]);
+
+  // useEffect per controllare se l'utente ha già fatto claim delle vincite (pool risolta)
+  useEffect(() => {
+    const checkWinningsClaimStatus = async () => {
+      if (prediction?.pool_address && address && prediction?.status === 'risolta' && userWon === true && user?.id) {
+        try {
+          // Controlla prima nel database se ha già fatto claim
+          const { data: betData, error: betError } = await supabase
+            .from('bets')
+            .select('claim_winning_tx_hash, winning_rewards_amount')
+            .eq('prediction_id', prediction.id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (betData && betData.claim_winning_tx_hash) {
+            // Ha già fatto claim, mostra il messaggio con l'hash
+            setUserHasClaimedWinnings(true);
+            setClaimWinningsTxHash(betData.claim_winning_tx_hash);
+            // Se c'è l'importo salvato, usalo per mostrarlo nel messaggio
+            if (betData.winning_rewards_amount && userWinnings) {
+              // userWinnings.reward è in Wei, convertiamolo in BNB se non è già nel formato corretto
+              const savedReward = betData.winning_rewards_amount;
+              setUserWinnings({
+                totalWinnings: userWinnings.totalWinnings,
+                betAmount: userWinnings.betAmount,
+                reward: (savedReward * 1e18).toString() // Converti da BNB a Wei per consistenza
+              });
+            }
+            return;
+          }
+          
+          // Se non ha fatto claim nel database, controlla il contratto
+          const claimed = await hasClaimedWinnings(prediction.pool_address, address);
+          setUserHasClaimedWinnings(claimed);
+        } catch (error) {
+          console.error('Errore nel controllo claim vincite:', error);
+        }
+      }
+    };
+    checkWinningsClaimStatus();
+  }, [prediction?.pool_address, address, prediction?.status, userWon, user?.id]);
 
   // Aggiorna solo quando i dati del contratto cambiano significativamente
   useEffect(() => {
@@ -963,6 +1029,38 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       console.warn('Error checking user bets:', e);
       setUserHasBet(false);
       setUserBetInfo(null);
+    }
+  };
+
+  // Funzione per caricare informazioni sul vincitore e vincite
+  const loadWinnerInfo = async () => {
+    if (!poolAddress || !prediction || prediction.status !== 'risolta') {
+      return;
+    }
+
+    try {
+      // Carica il vincitore dal contratto
+      const winnerInfo = await getPoolWinner(poolAddress);
+      if (winnerInfo) {
+        setPoolWinner(winnerInfo.winner);
+        
+        // Se l'utente è connesso, calcola le vincite
+        if (isAuthenticated && address) {
+          const winnings = await calculateUserWinnings(poolAddress, address);
+          
+          if (winnings) {
+            // L'utente ha vinto
+            setUserWon(true);
+            setUserWinnings(winnings);
+          } else {
+            // L'utente ha perso o non ha scommesso
+            setUserWon(false);
+            setUserWinnings(null);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Error loading winner info:', error);
     }
   };
 
@@ -1374,8 +1472,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                 </div>
               )}
 
-              {/* Avviso se l'utente ha già scommesso - Non mostrare se la pool è cancellata */}
-              {userHasBet && getBettingContainerStatus(prediction).type !== 'cancelled' && (
+              {/* Avviso se l'utente ha già scommesso - Non mostrare se la pool è cancellata o risolta */}
+              {userHasBet && getBettingContainerStatus(prediction).type !== 'cancelled' && getBettingContainerStatus(prediction).type !== 'resolved' && (
                 <div className="mb-6 p-4 rounded-lg border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
@@ -1456,7 +1554,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                         }`}>
                           {containerStatus.type === 'paused' || containerStatus.type === 'closed_waiting' ? 'Segui gli aggiornamenti e attendi i risultati' : containerStatus.type === 'cancelled' ? 'Puoi fare il claim dei tuoi fondi se avevi fatto una prediction' : containerStatus.status}
                         </h3>
-                        {containerStatus.type !== 'paused' && containerStatus.type !== 'cancelled' && containerStatus.type !== 'closed_waiting' && (
+                        {/* Non mostrare il messaggio duplicato quando è risolta (il check verde lo mostra già) */}
+                        {containerStatus.type !== 'paused' && containerStatus.type !== 'cancelled' && containerStatus.type !== 'closed_waiting' && containerStatus.type !== 'resolved' && (
                           <div className={`mt-2 text-sm ${
                             containerStatus.type === 'closed_waiting'
                               ? 'text-yellow-700 dark:text-yellow-300'
@@ -1473,6 +1572,76 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                         )}
                       </div>
                     </div>
+                    
+                    {/* Mostra vincitore e risultato utente se pool è risolta */}
+                    {containerStatus.type === 'resolved' && poolWinner !== null && (
+                      <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-800">
+                        {/* Check verde con "I risultati sono disponibili" */}
+                        <div className="mb-3 flex items-center space-x-2">
+                          <svg className="h-5 w-5 text-green-600 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-sm font-semibold text-green-800 dark:text-green-200">
+                            I risultati sono disponibili
+                          </span>
+                        </div>
+                        
+                        <div className="mb-2">
+                          <span className="text-sm font-semibold text-green-800 dark:text-green-200">
+                            Vincitore: {poolWinner ? 'SÌ 🟢' : 'NO 🔴'}
+                          </span>
+                        </div>
+                        
+                        {/* Se l'utente è connesso e ha scommesso, mostra il risultato */}
+                        {isAuthenticated && address && userHasBet && (
+                          <div className="mt-2">
+                            {userWon === true && userWinnings ? (
+                              <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <span className="text-xl">🎉</span>
+                                  <span className="font-bold text-green-800 dark:text-green-200">HAI VINTO!</span>
+                                </div>
+                                <div className="text-sm text-green-700 dark:text-green-300">
+                                  <div className="flex justify-between items-center mb-1">
+                                    <span>Importo scommesso:</span>
+                                    <span className="font-bold">{(Number(userWinnings.betAmount) / 1e18).toFixed(4)} BNB</span>
+                                  </div>
+                                  <div className="flex justify-between items-center mb-1">
+                                    <span>Vincita:</span>
+                                    <span className="font-bold">{(Number(userWinnings.reward) / 1e18).toFixed(4)} BNB</span>
+                                  </div>
+                                  <div className="flex justify-between items-center pt-2 border-t border-green-300 dark:border-green-700 mt-2">
+                                    <span className="font-semibold">Totale da ricevere:</span>
+                                    <span className="font-bold text-green-800 dark:text-green-200">{(Number(userWinnings.totalWinnings) / 1e18).toFixed(4)} BNB</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : userWon === false ? (
+                              <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-lg">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <span className="text-xl">😔</span>
+                                  <span className="font-bold text-red-800 dark:text-red-200">HAI PERSO</span>
+                                </div>
+                                <div className="text-sm text-red-700 dark:text-red-300">
+                                  La tua previsione non si è verificata. Grazie per aver partecipato!
+                                </div>
+                              </div>
+                            ) : userBetInfo ? (
+                              <div className="text-sm text-gray-600 dark:text-gray-400">
+                                Hai scommesso {userBetInfo.amount} BNB su {userBetInfo.position === 'yes' ? 'SÌ' : 'NO'}
+                              </div>
+                            ) : null}
+                          </div>
+                        )}
+                        
+                        {/* Se l'utente non ha scommesso */}
+                        {!(isAuthenticated && userHasBet) && (
+                          <div className="mt-2 text-sm text-gray-600 dark:text-gray-400 italic">
+                            {isAuthenticated ? 'Non hai scommesso su questa prediction' : 'Connetti il wallet per vedere il tuo risultato'}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -1507,6 +1676,141 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                         </p>
                       </div>
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* Area Claim Vincite - Mostra quando la pool è risolta e l'utente ha vinto */}
+              {getBettingContainerStatus(prediction).type === 'resolved' && userWon === true && userWinnings && (
+                <div className="space-y-4 mb-6">
+                  {userHasClaimedWinnings ? (
+                    /* Messaggio se ha già fatto claim */
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <div className="flex items-center mb-2">
+                        <span className="text-green-800 dark:text-green-200">
+                          ✅ Hai già fatto il claim delle tue vincite!
+                        </span>
+                      </div>
+                      {userWinnings && userWinnings.reward && (
+                        <p className="text-sm text-green-700 dark:text-green-300 mb-2">
+                          Ricompensa: {(Number(userWinnings.reward) / 1e18).toFixed(4)} BNB
+                        </p>
+                      )}
+                      {claimWinningsTxHash && (
+                        <a 
+                          href={`https://testnet.bscscan.com/tx/${claimWinningsTxHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-green-600 dark:text-green-400 underline hover:text-green-800 dark:hover:text-green-200 text-sm"
+                        >
+                          Visualizza la TX
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    /* Pulsante Claim */
+                    <button
+                      onClick={async () => {
+                        if (!isAuthenticated || !address || !prediction?.pool_address) {
+                          alert('Devi essere connesso per reclamare le vincite');
+                          return;
+                        }
+                        
+                        try {
+                          // Inizializza i passi del modal
+                          const steps: TransactionStep[] = [
+                            { 
+                              id: 'prepare', 
+                              title: 'Preparazione transazione', 
+                              description: `Preparazione del claim di ${(Number(userWinnings.totalWinnings) / 1e18).toFixed(4)} BNB...`, 
+                              status: 'pending' 
+                            },
+                            { 
+                              id: 'sign', 
+                              title: 'Firma transazione', 
+                              description: 'Firma della transazione nel wallet...', 
+                              status: 'pending' 
+                            },
+                            { 
+                              id: 'confirm', 
+                              title: 'Conferma transazione', 
+                              description: 'Conferma della transazione sulla blockchain...', 
+                              status: 'pending' 
+                            }
+                          ];
+                          
+                          setClaimWinningsSteps(steps);
+                          setCurrentClaimWinningsStep(0);
+                          setClaimWinningsError('');
+                          setClaimWinningsTransactionHash('');
+                          setShowClaimWinningsModal(true);
+                          
+                          setClaimWinningsLoading(true);
+                          
+                          // Step 1: Preparazione
+                          setClaimWinningsSteps(prev => prev.map(step => step.id === 'prepare' ? { ...step, status: 'completed' } : step));
+                          setCurrentClaimWinningsStep(1);
+                          
+                          // Step 2: Firma e invio
+                          setClaimWinningsSteps(prev => prev.map(step => step.id === 'sign' ? { ...step, status: 'loading' } : step));
+                          
+                          const txHash = await claimWinnings(prediction.pool_address);
+                          
+                          setClaimWinningsSteps(prev => prev.map(step => step.id === 'sign' ? { ...step, status: 'completed' } : step));
+                          setCurrentClaimWinningsStep(2);
+                          setClaimWinningsTransactionHash(txHash);
+                          setClaimWinningsTxHash(txHash);
+                          
+                          // Salva l'hash della transazione e l'importo della ricompensa nel database
+                          const winningRewardInBnb = userWinnings ? Number(userWinnings.reward) / 1e18 : 0;
+                          const { error: dbError } = await supabase
+                            .from('bets')
+                            .update({ 
+                              claim_winning_tx_hash: txHash,
+                              winning_rewards_amount: winningRewardInBnb
+                            })
+                            .eq('prediction_id', prediction.id)
+                            .eq('user_id', user.id);
+                          
+                          if (dbError) {
+                            console.error('Errore nel salvataggio hash claim vincite:', dbError);
+                          }
+                          
+                          // Aggiorna lo stato che l'utente ha fatto il claim
+                          setUserHasClaimedWinnings(true);
+                          
+                          // Step 3: Conferma
+                          setClaimWinningsSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'loading' } : step));
+                          
+                          // Attendi conferma
+                          setClaimWinningsSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'completed' } : step));
+                          setCurrentClaimWinningsStep(steps.length);
+                        } catch (error: any) {
+                          console.error('Errore durante il claim delle vincite:', error);
+                          setClaimWinningsError(`Errore durante il claim: ${error.message || 'Errore sconosciuto'}`);
+                          setClaimWinningsSteps(prev => prev.map(step => ({
+                            ...step,
+                            status: step.status === 'loading' ? 'error' : step.status
+                          })));
+                        } finally {
+                          setClaimWinningsLoading(false);
+                        }
+                      }}
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={claimWinningsLoading}
+                    >
+                      {claimWinningsLoading ? (
+                        <>
+                          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          <span>⏳ Elaborazione...</span>
+                        </>
+                      ) : (
+                        <span>💰 Reclama le tue vincite ({(Number(userWinnings.totalWinnings) / 1e18).toFixed(4)} BNB)</span>
+                      )}
+                    </button>
                   )}
                 </div>
               )}
@@ -2187,6 +2491,21 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         transactionHash={claimRefundTransactionHash}
         contractAddress={prediction?.pool_address}
         error={claimRefundError}
+      />
+
+      {/* Modal di Progresso Claim Vincite */}
+      <TransactionProgressModal
+        isOpen={showClaimWinningsModal}
+        onClose={() => {
+          setShowClaimWinningsModal(false);
+          window.location.reload();
+        }}
+        steps={claimWinningsSteps}
+        currentStep={currentClaimWinningsStep}
+        transactionHash={claimWinningsTransactionHash}
+        contractAddress={prediction?.pool_address}
+        error={claimWinningsError}
+        title="🚀 Claim della vincita!"
       />
     </div>
   );

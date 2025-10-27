@@ -16,7 +16,7 @@ export default function ProfiloPage() {
   const [hasBeenAuthenticated, setHasBeenAuthenticated] = useState(false)
   
   // Carica il totale BNB e le statistiche dell'utente
-  const { totalBnb, totalBets, loading: bnbLoading, error: bnbError } = useUserTotalBnb(user?.id || null)
+  const { totalBnb, totalBets, bnbGained, bnbLost, netBalance, loading: bnbLoading, error: bnbError } = useUserTotalBnb(user?.id || null)
   
   // Carica le prediction attive dell'utente
   const { predictions: activePredictions, loading: predictionsLoading, error: predictionsError } = useUserActivePredictions(user?.id || null)
@@ -178,16 +178,46 @@ export default function ProfiloPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500 dark:text-gray-400">BNB guadagnati</span>
-                  <span className="text-lg font-bold text-green-600 dark:text-green-400">+0.00 BNB</span>
+                  <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                    {bnbLoading ? (
+                      <div className="animate-pulse">
+                        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+                      </div>
+                    ) : bnbError ? (
+                      <span className="text-red-500 dark:text-red-400 text-sm">Errore</span>
+                    ) : (
+                      `+${bnbGained.toFixed(4)} BNB`
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500 dark:text-gray-400">BNB persi</span>
-                  <span className="text-lg font-bold text-red-600 dark:text-red-400">-0.00 BNB</span>
+                  <span className="text-lg font-bold text-red-600 dark:text-red-400">
+                    {bnbLoading ? (
+                      <div className="animate-pulse">
+                        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+                      </div>
+                    ) : bnbError ? (
+                      <span className="text-red-500 dark:text-red-400 text-sm">Errore</span>
+                    ) : (
+                      `-${bnbLost.toFixed(4)} BNB`
+                    )}
+                  </span>
                 </div>
                 <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Bilancio netto</span>
-                    <span className="text-lg font-bold text-gray-900 dark:text-white">0.00 BNB</span>
+                    <span className={`text-lg font-bold ${netBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {bnbLoading ? (
+                        <div className="animate-pulse">
+                          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+                        </div>
+                      ) : bnbError ? (
+                        <span className="text-red-500 dark:text-red-400 text-sm">Errore</span>
+                      ) : (
+                        `${netBalance >= 0 ? '+' : ''}${netBalance.toFixed(4)} BNB`
+                      )}
+                    </span>
                   </div>
                 </div>
               </div>

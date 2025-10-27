@@ -59,7 +59,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             pool_address,
             created_at
           `)
-          .in('status', ['attiva', 'in_attesa', 'in_pausa'])
+          .in('status', ['attiva', 'in_attesa', 'in_pausa', 'risolta'])
           .order('created_at', { ascending: false });
 
         if (hasSearchQuery) {
@@ -109,7 +109,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             pool_address,
             created_at
           `)
-          .in('status', ['attiva', 'in_attesa', 'in_pausa'])
+          .in('status', ['attiva', 'in_attesa', 'in_pausa', 'risolta'])
           .order('created_at', { ascending: false })
           .limit(limit);
 

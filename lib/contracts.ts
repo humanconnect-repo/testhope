@@ -50,7 +50,12 @@ export async function getFactory() {
   return new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
 }
 
-export async function getPool(address: string) {
+export async function getPool(address: string, readOnly: boolean = false) {
+  if (readOnly) {
+    // Usa un provider read-only per letture senza transazioni
+    const provider = new ethers.JsonRpcProvider("https://bsc-testnet.publicnode.com");
+    return new ethers.Contract(address, PredictionPoolABI.abi, provider);
+  }
   const signer = await getSigner();
   return new ethers.Contract(address, PredictionPoolABI.abi, signer);
 }
@@ -321,6 +326,26 @@ export async function hasClaimedRefund(poolAddress: string, userAddress: string)
   }
 }
 
+// Claim winnings for resolved pool
+export async function claimWinnings(poolAddress: string) {
+  const pool = await getPool(poolAddress);
+  const tx = await pool.claimWinnings();
+  const receipt = await tx.wait();
+  return tx.hash;
+}
+
+// Check if user has already claimed winnings (check the claimed status in userBets)
+export async function hasClaimedWinnings(poolAddress: string, userAddress: string): Promise<boolean> {
+  try {
+    const pool = await getPool(poolAddress, true); // Read-only
+    const bet = await pool.userBets(userAddress);
+    return bet.claimed === true;
+  } catch (error) {
+    console.error('Error checking claimed winnings status:', error);
+    return false;
+  }
+}
+
 // ============ BET READING FUNCTIONS ============
 
 // Get all bettors from a pool contract
@@ -386,6 +411,9 @@ export async function getPoolStatsFromContract(poolAddress: string) {
     const pool = await getPool(poolAddress);
     const [totalYes, totalNo, totalBets, bettorCount, isClosed, winnerSet, cancelled] = await pool.getPoolStats();
     
+    // Read winner separately
+    const winner = await pool.winner();
+    
     return {
       totalYes: totalYes.toString(),
       totalNo: totalNo.toString(),
@@ -393,10 +421,83 @@ export async function getPoolStatsFromContract(poolAddress: string) {
       bettorCount: Number(bettorCount),
       isClosed,
       winnerSet,
-      winner: false // We need to get this separately
+      winner,
+      cancelled
     };
   } catch (error) {
     console.error('Error getting pool stats from contract:', error);
+    return null;
+  }
+}
+
+// Get winner information from contract
+export async function getPoolWinner(poolAddress: string): Promise<{ winner: boolean; winnerSet: boolean } | null> {
+  try {
+    const pool = await getPool(poolAddress, true); // Read-only mode
+    const winner = await pool.winner();
+    const winnerSet = await pool.winnerSet();
+    
+    return {
+      winner,
+      winnerSet
+    };
+  } catch (error) {
+    console.error('Error getting pool winner:', error);
+    return null;
+  }
+}
+
+// Calculate user winnings if they won
+export async function calculateUserWinnings(
+  poolAddress: string, 
+  userAddress: string
+): Promise<{ totalWinnings: string; betAmount: string; reward: string } | null> {
+  try {
+    const pool = await getPool(poolAddress, true); // Read-only mode
+    
+    // Get pool stats
+    const [totalYes, totalNo] = await Promise.all([
+      pool.totalYes(),
+      pool.totalNo()
+    ]);
+    
+    // Get user bet
+    const userBet = await pool.userBets(userAddress);
+    if (!userBet || userBet.amount.toString() === '0') {
+      return null;
+    }
+    
+    // Get winner
+    const winner = await pool.winner();
+    
+    // Check if user won
+    if (userBet.choice !== winner) {
+      return null; // User lost
+    }
+    
+    // Calculate winnings
+    const betAmount = userBet.amount;
+    const totalWinningBets = winner ? totalYes : totalNo;
+    const totalLosingBets = winner ? totalNo : totalYes;
+    
+    // Fee is 1.5% (150 bps)
+    const FEE_PERCENTAGE = 150;
+    const feeAmount = (totalLosingBets * BigInt(FEE_PERCENTAGE)) / BigInt(10000);
+    const rewardPool = totalLosingBets - feeAmount;
+    
+    // User reward = (betAmount * rewardPool) / totalWinningBets
+    const userReward = (betAmount * rewardPool) / totalWinningBets;
+    
+    // Total winnings = betAmount + userReward
+    const totalWinnings = betAmount + userReward;
+    
+    return {
+      totalWinnings: totalWinnings.toString(),
+      betAmount: betAmount.toString(),
+      reward: userReward.toString()
+    };
+  } catch (error) {
+    console.error('Error calculating user winnings:', error);
     return null;
   }
 }
