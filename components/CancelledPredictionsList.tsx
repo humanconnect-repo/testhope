@@ -97,7 +97,7 @@ export default function CancelledPredictionsList() {
     <div className="space-y-6">
       <div className="text-center">
         <p className="text-gray-600 dark:text-gray-400">
-          Pool cancellate
+          Prediction cancellate
         </p>
       </div>
 

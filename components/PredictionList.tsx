@@ -303,7 +303,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
   const getSectionDescription = () => {
     switch (selectedCategory) {
       case 'all':
-        return 'Le ultime Predicitons listate';
+        return 'Prediction in corso';
       case 'trending':
         return 'Le Predicitons più popolari con il maggior numero di scommesse';
       default:
