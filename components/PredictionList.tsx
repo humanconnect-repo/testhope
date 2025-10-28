@@ -142,6 +142,52 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
 
         predictionsData = predictionsWithPercentages;
 
+      } else if (selectedCategory === 'closing_soon') {
+        // In scadenza: tutte le prediction ATTIVE ordinate per data di chiusura (DB)
+        let query = supabase
+          .from('predictions')
+          .select(`
+            id,
+            title,
+            slug,
+            category,
+            closing_date,
+            status,
+            image_url,
+            pool_address,
+            created_at
+          `)
+          .eq('status', 'attiva')
+          .order('closing_date', { ascending: true });
+
+        if (hasSearchQuery) {
+          query = query.ilike('title', `%${searchQuery.trim()}%`);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        // Calcola le percentuali per ogni prediction
+        const predictionsWithPercentages = await Promise.all(
+          (data || []).map(async (prediction: any) => {
+            const { data: betStats } = await supabase
+              .rpc('get_prediction_percentages', { prediction_uuid: prediction.id });
+
+            const stats = betStats?.[0] || { yes_percentage: 0, no_percentage: 0, total_bets: 0, total_amount_bnb: 0 };
+
+            return {
+              ...prediction,
+              yes_percentage: stats.yes_percentage || 0,
+              no_percentage: stats.no_percentage || 0,
+              total_bets: stats.total_amount_bnb || 0,
+              total_predictions: stats.total_bets || 0
+            };
+          })
+        );
+
+        predictionsData = predictionsWithPercentages;
+
       } else {
         // Categoria specifica: tutte le prediction di quella categoria
         let query = supabase
@@ -272,6 +318,11 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
           title: null, // Nessun titolo per Novità
           description: 'Non ci sono Predicitons attive al momento'
         };
+      } else if (selectedCategory === 'closing_soon') {
+        return {
+          title: null,
+          description: 'Nessuna prediction in scadenza'
+        };
       } else {
         return {
           title: null, // Nessun titolo per le categorie
@@ -309,6 +360,8 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
         return 'Prediction in corso';
       case 'trending':
         return 'Le Predicitons più popolari con il maggior numero di scommesse';
+      case 'closing_soon':
+        return 'Predictions in scadenza';
       default:
         return `Tutte le Predicitons della categoria ${selectedCategory}`;
     }

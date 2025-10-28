@@ -8,18 +8,18 @@ interface CategoryTabsProps {
 const categories = [
   { name: "Novità", value: "all" },
   { name: "Trending", value: "trending" },
+  { name: "In scadenza", value: "closing_soon" },
   { name: "Crypto", value: "Crypto" },
   { name: "Politica", value: "Politica" },
   { name: "Degen", value: "Degen" },
   { name: "Sport", value: "Sport" },
-  { name: "TV", value: "TV" },
 ];
 
 export default function CategoryTabs({ selectedCategory, onCategoryChange }: CategoryTabsProps) {
   return (
     <div className="flex justify-center">
       <div className="grid grid-cols-4 sm:flex sm:space-x-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg gap-1">
-        {/* Prima riga: Novità, Trending, Crypto, Politica */}
+        {/* Prima riga: Novità, Trending, In scadenza, Crypto */}
         <div className="col-span-4 sm:hidden grid grid-cols-4 gap-1">
           {categories.slice(0, 4).map((category) => (
             <button
