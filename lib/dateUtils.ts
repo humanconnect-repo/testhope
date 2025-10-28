@@ -57,7 +57,7 @@ export const getClosingDateText = (closingDate: string | Date, status?: string):
   }
   
   if (status === 'in_pausa') {
-    return 'In Pausa';
+    return '';
   }
   
   if (status === 'in_attesa') {
