@@ -60,8 +60,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             pool_address,
             created_at
           `)
-          .in('status', ['attiva', 'in_attesa', 'in_pausa', 'risolta'])
-          .order('created_at', { ascending: false });
+          .in('status', ['attiva', 'in_attesa', 'in_pausa', 'risolta']);
 
         if (hasSearchQuery) {
           query = query.ilike('title', `%${searchQuery.trim()}%`);
@@ -159,8 +158,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             created_at
           `)
           .in('status', ['attiva', 'in_attesa', 'in_pausa'])
-          .eq('category', selectedCategory)
-          .order('created_at', { ascending: false });
+          .eq('category', selectedCategory);
 
         if (hasSearchQuery) {
           query = query.ilike('title', `%${searchQuery.trim()}%`);
@@ -188,7 +186,8 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
           })
         );
 
-        predictionsData = predictionsWithPercentages;
+        // ORDINA PER PREDICTIONS TOTALI (numero di bet)
+        predictionsData = predictionsWithPercentages.sort((a, b) => b.total_predictions - a.total_predictions);
       }
 
       setPredictions(predictionsData);
