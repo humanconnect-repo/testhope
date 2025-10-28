@@ -35,7 +35,35 @@ export default function QuoteChart({
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {betCount}
             </div>
-            <div className="text-xs text-gray-600 dark:text-gray-400">Scommesse</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400">Predictions</div>
+          </div>
+        </div>
+        
+        {/* Percentuali Sì/No con conteggi */}
+        <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+            <div className="flex items-center space-x-2 mb-1">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span className="text-sm font-medium text-green-700 dark:text-green-300">Sì</span>
+            </div>
+            <div className="text-xl font-bold text-green-600 dark:text-green-400">
+              {yesPercentage.toFixed(1)}%
+            </div>
+            <div className="text-xs text-green-600 dark:text-green-400">
+              {Math.round((yesPercentage / 100) * betCount)} {Math.round((yesPercentage / 100) * betCount) === 1 ? 'Prediction' : 'Predictions'}
+            </div>
+          </div>
+          <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+            <div className="flex items-center space-x-2 mb-1">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <span className="text-sm font-medium text-red-700 dark:text-red-300">No</span>
+            </div>
+            <div className="text-xl font-bold text-red-600 dark:text-red-400">
+              {noPercentage.toFixed(1)}%
+            </div>
+            <div className="text-xs text-red-600 dark:text-red-400">
+              {Math.round((noPercentage / 100) * betCount)} {Math.round((noPercentage / 100) * betCount) === 1 ? 'Prediction' : 'Predictions'}
+            </div>
           </div>
         </div>
       </div>
@@ -82,37 +110,6 @@ export default function QuoteChart({
                   />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-            
-            {/* Pannello Quote Attuali - sempre visibile */}
-            <div className="flex justify-center">
-              <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 text-center">
-                  📊 Quote
-                </h4>
-                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-6">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Sì</span>
-                    <span className="text-sm font-bold text-green-600 dark:text-green-400">
-                      {yesPercentage.toFixed(1)}%
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      ({Math.round((yesPercentage / 100) * betCount)})
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                    <span className="text-sm text-gray-700 dark:text-gray-300">No</span>
-                    <span className="text-sm font-bold text-red-600 dark:text-red-400">
-                      {noPercentage.toFixed(1)}%
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      ({Math.round((noPercentage / 100) * betCount)})
-                    </span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         ) : (

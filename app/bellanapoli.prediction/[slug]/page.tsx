@@ -80,6 +80,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   const [poolWinner, setPoolWinner] = useState<boolean | null>(null);
   const [userWinnings, setUserWinnings] = useState<{ totalWinnings: string; betAmount: string; reward: string } | null>(null);
   const [userWon, setUserWon] = useState<boolean | null>(null);
+  const [totalBetsCount, setTotalBetsCount] = useState<number>(0);
   
   // Stati per claim delle vincite
   const [claimWinningsLoading, setClaimWinningsLoading] = useState(false);
@@ -691,6 +692,14 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         }
         return;
       }
+
+      // Calcola il conteggio totale delle bets dal database
+      const { count: totalBetsFromDB } = await supabase
+        .from('bets')
+        .select('*', { count: 'exact', head: true })
+        .eq('prediction_id', predictionData.id);
+      
+      setTotalBetsCount(totalBetsFromDB || 0);
 
       // Calcola le percentuali - prima prova dal contratto, poi fallback al database
       let stats = { yes_percentage: 0, no_percentage: 0, total_bets: 0 };
@@ -2324,7 +2333,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                   yesPercentage={prediction.yes_percentage}
                   noPercentage={prediction.no_percentage}
                   totalBetsAmount={totalBetsAmount}
-                  betCount={contractBets?.length || 0}
+                  betCount={totalBetsCount}
                 />
               ) : (
                 <div className="h-64 flex items-center justify-center">
