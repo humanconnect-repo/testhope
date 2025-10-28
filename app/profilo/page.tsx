@@ -146,7 +146,7 @@ export default function ProfiloPage() {
     <div className="min-h-screen bg-white dark:bg-dark-bg">
       <Header />
       
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-10">
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -170,7 +170,7 @@ export default function ProfiloPage() {
             <ProfileForm />
             
             {/* Volumi BNB */}
-            <div className="bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 💰 Volumi in BNB
               </h3>
@@ -240,7 +240,7 @@ export default function ProfiloPage() {
           {/* Info aggiuntive */}
           <div className="space-y-6">
             {/* Info wallet */}
-            <div className="bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 🔗 Wallet connesso
               </h3>
@@ -264,7 +264,7 @@ export default function ProfiloPage() {
             </div>
 
             {/* Statistiche */}
-            <div className="bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 📊 Le tue statistiche
               </h3>
@@ -311,7 +311,7 @@ export default function ProfiloPage() {
             </div>
 
             {/* Le tue Prediction in corso */}
-            <div className="bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 📊 Le tue Prediction in corso
               </h3>
@@ -388,7 +388,7 @@ export default function ProfiloPage() {
             </div>
 
             {/* Le tue Prediction risolte */}
-            <div className="bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 🏆 Le tue Prediction risolte
               </h3>
@@ -472,7 +472,7 @@ export default function ProfiloPage() {
             </div>
 
             {/* Le tue Prediction cancellate */}
-            <div className="bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 ❌ Le tue Prediction cancellate
               </h3>

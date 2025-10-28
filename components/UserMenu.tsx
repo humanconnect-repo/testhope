@@ -130,10 +130,10 @@ export default function UserMenu() {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-card rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+        <div className="absolute right-0 mt-2 w-48 bg-blue-800 dark:bg-blue-900 rounded-lg shadow-lg border border-blue-700 dark:border-blue-800 py-1 z-50">
           {/* Header con indirizzo wallet, chain e saldo */}
           {isConnected && address && (
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 space-y-2">
+            <div className="px-4 py-3 border-b border-blue-700 dark:border-blue-800 space-y-2">
               {/* Indirizzo wallet */}
               <div className="flex items-center space-x-2">
                 <div className={`w-2 h-2 rounded-full ${isAuthenticated ? 'bg-green-500' : 'bg-yellow-500'}`}></div>

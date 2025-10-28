@@ -102,13 +102,28 @@ export const useContracts = () => {
         setError('Errore caricamento predictions');
         return;
       }
+
+      // Calcola il numero di bet per ogni prediction
+      const predictionsWithBetCount = await Promise.all(
+        (predictions || []).map(async (prediction: any) => {
+          const { count: betCount } = await supabase
+            .from('bets')
+            .select('*', { count: 'exact', head: true })
+            .eq('prediction_id', prediction.id);
+          
+          return {
+            ...prediction,
+            bettorCount: betCount || 0
+          };
+        })
+      );
       
-      console.log('📊 Predictions caricate dal DB:', predictions);
+      console.log('📊 Predictions caricate dal DB:', predictionsWithBetCount);
       
       // Crea le pool summary usando i dati del database
       const poolSummaries = poolAddresses.map(address => {
         // Trova la prediction corrispondente
-        const prediction = predictions?.find((p: any) => p.pool_address === address);
+        const prediction = predictionsWithBetCount?.find((p: any) => p.pool_address === address);
         
         if (!prediction) {
           console.log('⚠️ Nessuna prediction trovata per pool:', address);
@@ -128,7 +143,7 @@ export const useContracts = () => {
           totalYes: "0", // Dal contratto se necessario
           totalNo: "0", // Dal contratto se necessario
           totalBets: "0", // Dal contratto se necessario
-          bettorCount: 0,
+          bettorCount: prediction.bettorCount || 0, // Usa il valore calcolato dal database
           isClosed: false,
           winnerSet: false,
           winner: false,

@@ -188,7 +188,7 @@ export default function ProfileForm() {
   }
 
   return (
-    <div className="bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4 shadow-sm">
       
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Avatar */}
