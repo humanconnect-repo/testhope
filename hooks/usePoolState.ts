@@ -167,161 +167,30 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
           statusColor: 'text-blue-600',
           statusIcon: '🏆'
         };
-             } else {
-               // LOGICA DEI 4 STATI BASATA SUL CONTRATTO
-               
-               // Stato 1: Pool chiusa (contratto chiuso manualmente)
-               if (contractClosed === true) {
-                 return {
-                   canBet: false,
-                   canClaimRewards: false,
-                   canClaimRefund: false,
-                   isActive: false,
-                   isPaused: false,
-                   isCancelled: false,
-                   isResolved: false,
-                   statusText: 'CHIUSA',
-                   statusColor: 'text-yellow-600',
-                   statusIcon: '🟡'
-                 };
-               }
-               
-               // Stato 2: Emergency Stop attivo (contratto in pausa)
-               if (emergencyStop === true) {
-                 return {
-                   canBet: false,
-                   canClaimRewards: false,
-                   canClaimRefund: false,
-                   isActive: false,
-                   isPaused: true,
-                   isCancelled: false,
-                   isResolved: false,
-                   statusText: 'IN PAUSA',
-                   statusColor: 'text-yellow-600',
-                   statusIcon: '🟡'
-                 };
-               }
-               
-               // Stato 3: Scommesse aperte (contratto permette di scommettere)
-               else if (contractBettingOpen === true) {
-                 const hasBet = user && memoizedPoolData.userBet && memoizedPoolData.userBet.amount > 0;
-                 
-                 return {
-                   canBet: !hasBet,
-                   canClaimRewards: false,
-                   canClaimRefund: false,
-                   isActive: true,
-                   isPaused: false,
-                   isCancelled: false,
-                   isResolved: false,
-                   statusText: 'ATTIVA',
-                   statusColor: 'text-green-600',
-                   statusIcon: '🟢'
-                 };
-               }
-               
-               // Stato 4: Fine scommesse ma prediction non terminata (contratto non permette scommesse ma siamo prima di closingBid)
-               else if (contractBettingOpen === false && now < closingBid) {
-                 return {
-                   canBet: false,
-                   canClaimRewards: false,
-                   canClaimRefund: false,
-                   isActive: false,
-                   isPaused: false,
-                   isCancelled: false,
-                   isResolved: false,
-                   statusText: 'SCOMMESSE CHIUSE',
-                   statusColor: 'text-yellow-600',
-                   statusIcon: '🟡'
-                 };
-               }
-               
-               // Stato 5: Prediction terminata - attesa risultati (contratto non permette scommesse e siamo dopo closingBid)
-               else if (contractBettingOpen === false && now >= closingBid) {
-                 return {
-                   canBet: false,
-                   canClaimRewards: false,
-                   canClaimRefund: false,
-                   isActive: false,
-                   isPaused: false,
-                   isCancelled: false,
-                   isResolved: false,
-                   statusText: 'ATTESA RISULTATI',
-                   statusColor: 'text-blue-600',
-                   statusIcon: '⏰'
-                 };
-               }
-               
-               // Fallback: Se contratto non disponibile, usa logica temporale
-               else {
-                 const bettingOpen = now < closingDate;
-                 const hasBet = user && memoizedPoolData.userBet && memoizedPoolData.userBet.amount > 0;
-                 
-                 if (bettingOpen) {
-                   return {
-                     canBet: !hasBet,
-                     canClaimRewards: false,
-                     canClaimRefund: false,
-                     isActive: true,
-                     isPaused: false,
-                     isCancelled: false,
-                     isResolved: false,
-                     statusText: 'ATTIVA (FALLBACK)',
-                     statusColor: 'text-green-600',
-                     statusIcon: '🟢'
-                   };
-                 } else if (now < closingBid) {
-                   return {
-                     canBet: false,
-                     canClaimRewards: false,
-                     canClaimRefund: false,
-                     isActive: false,
-                     isPaused: true,
-                     isCancelled: false,
-                     isResolved: false,
-                     statusText: 'SCOMMESSE CHIUSE (FALLBACK)',
-                     statusColor: 'text-yellow-600',
-                     statusIcon: '🟡'
-                   };
-                 } else {
-                   return {
-                     canBet: false,
-                     canClaimRewards: false,
-                     canClaimRefund: false,
-                     isActive: false,
-                     isPaused: false,
-                     isCancelled: false,
-                     isResolved: false,
-                     statusText: 'ATTESA RISULTATI (FALLBACK)',
-                     statusColor: 'text-blue-600',
-                     statusIcon: '⏰'
-                   };
-                 }
-               }
-      }
-    } catch (error) {
-      console.error('Errore calcolo stato pool:', error);
-      
-      // FALLBACK: usa lo status dal database se disponibile
-      const dbStatus = memoizedPoolData?.status;
-      
-      if (dbStatus) {
-        // Mappa lo status del DB ai valori di poolState
-        switch (dbStatus) {
-          case 'attiva':
+      } else {
+        // PRIORITÀ AL CONTRACT CHECK - Solo se contract è disponibile
+        
+        // Se abbiamo dati dal contratto, usali sempre
+        if (contractBettingOpen !== null || emergencyStop !== null || contractClosed !== null || contractCancelled !== null) {
+          
+          // Stato 1: Pool chiusa (contratto chiuso manualmente)
+          if (contractClosed === true) {
             return {
               canBet: false,
               canClaimRewards: false,
               canClaimRefund: false,
-              isActive: true,
+              isActive: false,
               isPaused: false,
               isCancelled: false,
               isResolved: false,
-              statusText: 'ATTIVA',
-              statusColor: 'text-green-600',
-              statusIcon: '🟢'
+              statusText: 'CHIUSA',
+              statusColor: 'text-yellow-600',
+              statusIcon: '🟡'
             };
-          case 'in_pausa':
+          }
+          
+          // Stato 2: Emergency Stop attivo (contratto in pausa)
+          if (emergencyStop === true) {
             return {
               canBet: false,
               canClaimRewards: false,
@@ -334,33 +203,28 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
               statusColor: 'text-yellow-600',
               statusIcon: '🟡'
             };
-          case 'risolta':
+          }
+          
+          // Stato 3: Scommesse aperte (contratto permette di scommettere)
+          if (contractBettingOpen === true) {
+            const hasBet = user && memoizedPoolData.userBet && memoizedPoolData.userBet.amount > 0;
+            
             return {
-              canBet: false,
+              canBet: !hasBet,
               canClaimRewards: false,
               canClaimRefund: false,
-              isActive: false,
+              isActive: true,
               isPaused: false,
               isCancelled: false,
-              isResolved: true,
-              statusText: 'RISOLTA',
-              statusColor: 'text-blue-600',
-              statusIcon: '🏆'
-            };
-          case 'cancellata':
-            return {
-              canBet: false,
-              canClaimRewards: false,
-              canClaimRefund: false,
-              isActive: false,
-              isPaused: false,
-              isCancelled: true,
               isResolved: false,
-              statusText: 'CANCELLATA',
-              statusColor: 'text-red-600',
-              statusIcon: '🔴'
+              statusText: 'ATTIVA',
+              statusColor: 'text-green-600',
+              statusIcon: '🟢'
             };
-          case 'in_attesa':
+          }
+          
+          // Stato 4: Fine scommesse ma prediction non terminata (contratto non permette scommesse ma siamo prima di closingBid)
+          if (contractBettingOpen === false && now < closingBid) {
             return {
               canBet: false,
               canClaimRewards: false,
@@ -369,12 +233,150 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
               isPaused: false,
               isCancelled: false,
               isResolved: false,
-              statusText: 'IN ATTESA',
+              statusText: 'SCOMMESSE CHIUSE',
               statusColor: 'text-yellow-600',
               statusIcon: '🟡'
             };
+          }
+          
+          // Stato 5: Prediction terminata - attesa risultati (contratto non permette scommesse e siamo dopo closingBid)
+          if (contractBettingOpen === false && now >= closingBid) {
+            return {
+              canBet: false,
+              canClaimRewards: false,
+              canClaimRefund: false,
+              isActive: false,
+              isPaused: false,
+              isCancelled: false,
+              isResolved: false,
+              statusText: 'ATTESA RISULTATI',
+              statusColor: 'text-blue-600',
+              statusIcon: '⏰'
+            };
+          }
+        }
+        
+        // FALLBACK: Se contratto non disponibile, usa DB status
+        const dbStatus = memoizedPoolData?.status;
+        
+        if (dbStatus) {
+          // Mappa lo status del DB ai valori di poolState
+          switch (dbStatus) {
+            case 'attiva':
+              return {
+                canBet: false,
+                canClaimRewards: false,
+                canClaimRefund: false,
+                isActive: true,
+                isPaused: false,
+                isCancelled: false,
+                isResolved: false,
+                statusText: 'ATTIVA (DB)',
+                statusColor: 'text-green-600',
+                statusIcon: '🟢'
+              };
+            case 'in_pausa':
+              return {
+                canBet: false,
+                canClaimRewards: false,
+                canClaimRefund: false,
+                isActive: false,
+                isPaused: true,
+                isCancelled: false,
+                isResolved: false,
+                statusText: 'IN PAUSA (DB)',
+                statusColor: 'text-yellow-600',
+                statusIcon: '🟡'
+              };
+            case 'risolta':
+              return {
+                canBet: false,
+                canClaimRewards: false,
+                canClaimRefund: false,
+                isActive: false,
+                isPaused: false,
+                isCancelled: false,
+                isResolved: true,
+                statusText: 'RISOLTA (DB)',
+                statusColor: 'text-blue-600',
+                statusIcon: '🏆'
+              };
+            case 'cancellata':
+              return {
+                canBet: false,
+                canClaimRewards: false,
+                canClaimRefund: false,
+                isActive: false,
+                isPaused: false,
+                isCancelled: true,
+                isResolved: false,
+                statusText: 'CANCELLATA (DB)',
+                statusColor: 'text-red-600',
+                statusIcon: '🔴'
+              };
+            case 'in_attesa':
+              return {
+                canBet: false,
+                canClaimRewards: false,
+                canClaimRefund: false,
+                isActive: false,
+                isPaused: false,
+                isCancelled: false,
+                isResolved: false,
+                statusText: 'IN ATTESA (DB)',
+                statusColor: 'text-yellow-600',
+                statusIcon: '🟡'
+              };
+          }
+        }
+        
+        // Ultimo fallback: usa logica temporale
+        const bettingOpen = now < closingDate;
+        const hasBet = user && memoizedPoolData.userBet && memoizedPoolData.userBet.amount > 0;
+        
+        if (bettingOpen) {
+          return {
+            canBet: !hasBet,
+            canClaimRewards: false,
+            canClaimRefund: false,
+            isActive: true,
+            isPaused: false,
+            isCancelled: false,
+            isResolved: false,
+            statusText: 'ATTIVA (TIME)',
+            statusColor: 'text-green-600',
+            statusIcon: '🟢'
+          };
+        } else if (now < closingBid) {
+          return {
+            canBet: false,
+            canClaimRewards: false,
+            canClaimRefund: false,
+            isActive: false,
+            isPaused: true,
+            isCancelled: false,
+            isResolved: false,
+            statusText: 'SCOMMESSE CHIUSE (TIME)',
+            statusColor: 'text-yellow-600',
+            statusIcon: '🟡'
+          };
+        } else {
+          return {
+            canBet: false,
+            canClaimRewards: false,
+            canClaimRefund: false,
+            isActive: false,
+            isPaused: false,
+            isCancelled: false,
+            isResolved: false,
+            statusText: 'ATTESA RISULTATI (TIME)',
+            statusColor: 'text-blue-600',
+            statusIcon: '⏰'
+          };
         }
       }
+    } catch (error) {
+      console.error('Errore calcolo stato pool:', error);
       
       // Se anche il DB non ha uno status valido, allora mostra errore
       return {
