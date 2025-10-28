@@ -16,6 +16,7 @@ interface Prediction {
   yes_percentage: number;
   no_percentage: number;
   total_bets: number;
+  total_predictions?: number;
 }
 
 interface PredictionListProps {
@@ -82,7 +83,8 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
               ...prediction,
               yes_percentage: stats.yes_percentage || 0,
               no_percentage: stats.no_percentage || 0,
-              total_bets: stats.total_amount_bnb || 0
+              total_bets: stats.total_amount_bnb || 0,
+              total_predictions: stats.total_bets || 0
             };
           })
         );
@@ -133,7 +135,8 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
               ...prediction,
               yes_percentage: stats.yes_percentage || 0,
               no_percentage: stats.no_percentage || 0,
-              total_bets: stats.total_amount_bnb || 0
+              total_bets: stats.total_amount_bnb || 0,
+              total_predictions: stats.total_bets || 0
             };
           })
         );
@@ -179,7 +182,8 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
               ...prediction,
               yes_percentage: stats.yes_percentage || 0,
               no_percentage: stats.no_percentage || 0,
-              total_bets: stats.total_amount_bnb || 0
+              total_bets: stats.total_amount_bnb || 0,
+              total_predictions: stats.total_bets || 0
             };
           })
         );
@@ -338,6 +342,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             totalBets={prediction.total_bets || 0}
             imageUrl={prediction.image_url}
             poolAddress={prediction.pool_address}
+            totalPredictions={prediction.total_predictions || 0}
           />
         ))}
       </div>

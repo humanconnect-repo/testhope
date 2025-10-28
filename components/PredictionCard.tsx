@@ -17,6 +17,7 @@ interface PredictionCardProps {
   totalBets?: number;
   imageUrl?: string;
   poolAddress?: string;
+  totalPredictions?: number;
 }
 
 export default function PredictionCard({ 
@@ -29,7 +30,8 @@ export default function PredictionCard({
   status,
   totalBets = 0,
   imageUrl,
-  poolAddress
+  poolAddress,
+  totalPredictions = 0
 }: PredictionCardProps) {
   const { isConnected } = useWeb3Auth();
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -296,6 +298,13 @@ export default function PredictionCard({
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
               Volumi: <span className="font-bold text-primary">{totalBets.toFixed(4)} BNB</span>
             </span>
+            
+            {/* Predictions totali - solo se ci sono bet */}
+            {totalPredictions > 0 && (
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                Predictions totali: <span className="font-bold text-primary">{totalPredictions}</span>
+              </span>
+            )}
           </div>
         </div>
 
