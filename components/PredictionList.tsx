@@ -70,28 +70,57 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
 
         if (error) throw error;
 
-        // Calcola le percentuali e ordina per total_bets
+        // Calcola le percentuali basate solo sul numero di Sì/No
         const predictionsWithPercentages = await Promise.all(
           (data || []).map(async (prediction: any) => {
-            const { data: betStats } = await supabase
-              .rpc('get_prediction_percentages', { prediction_uuid: prediction.id });
+            // Conta le bets per Sì e No
+            const { count: totalBets } = await supabase
+              .from('bets')
+              .select('*', { count: 'exact', head: true })
+              .eq('prediction_id', prediction.id);
+            
+            const { count: yesBets } = await supabase
+              .from('bets')
+              .select('*', { count: 'exact', head: true })
+              .eq('prediction_id', prediction.id)
+              .eq('position', 'yes');
+            
+            const { count: noBets } = await supabase
+              .from('bets')
+              .select('*', { count: 'exact', head: true })
+              .eq('prediction_id', prediction.id)
+              .eq('position', 'no');
 
-            const stats = betStats?.[0] || { yes_percentage: 0, no_percentage: 0, total_bets: 0, total_amount_bnb: 0 };
+            // Calcola le percentuali con un solo decimale
+            const total = totalBets || 0;
+            const yesCount = yesBets || 0;
+            const noCount = noBets || 0;
+            
+            const yesPercentage = total > 0 ? Math.round((yesCount / total) * 100 * 10) / 10 : 0;
+            const noPercentage = total > 0 ? Math.round((noCount / total) * 100 * 10) / 10 : 0;
+
+            // Calcola il totale degli importi BNB per i volumi
+            const { data: betAmounts } = await supabase
+              .from('bets')
+              .select('amount_bnb')
+              .eq('prediction_id', prediction.id);
+            
+            const totalBnbAmount = betAmounts?.reduce((sum, bet) => sum + (bet.amount_bnb || 0), 0) || 0;
 
             return {
               ...prediction,
-              yes_percentage: stats.yes_percentage || 0,
-              no_percentage: stats.no_percentage || 0,
-              total_bets: stats.total_amount_bnb || 0,
-              total_predictions: stats.total_bets || 0
+              yes_percentage: yesPercentage,
+              no_percentage: noPercentage,
+              total_bets: totalBnbAmount, // Totale importi BNB per i volumi
+              total_predictions: total
             };
           })
         );
 
-        // Ordina per total_bets (trending) e filtra solo quelle con puntate
+        // Ordina per total_predictions (trending) e filtra solo quelle con puntate
         predictionsData = predictionsWithPercentages
-          .filter(prediction => prediction.total_bets > 0) // Solo prediction con puntate
-          .sort((a, b) => b.total_bets - a.total_bets)
+          .filter(prediction => prediction.total_predictions > 0) // Solo prediction con puntate
+          .sort((a, b) => b.total_predictions - a.total_predictions)
           .slice(0, limit);
 
       } else if (selectedCategory === 'all') {
@@ -122,20 +151,49 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
 
         if (error) throw error;
 
-        // Calcola le percentuali per ogni prediction
+        // Calcola le percentuali basate solo sul numero di Sì/No
         const predictionsWithPercentages = await Promise.all(
           (data || []).map(async (prediction: any) => {
-            const { data: betStats } = await supabase
-              .rpc('get_prediction_percentages', { prediction_uuid: prediction.id });
+            // Conta le bets per Sì e No
+            const { count: totalBets } = await supabase
+              .from('bets')
+              .select('*', { count: 'exact', head: true })
+              .eq('prediction_id', prediction.id);
+            
+            const { count: yesBets } = await supabase
+              .from('bets')
+              .select('*', { count: 'exact', head: true })
+              .eq('prediction_id', prediction.id)
+              .eq('position', 'yes');
+            
+            const { count: noBets } = await supabase
+              .from('bets')
+              .select('*', { count: 'exact', head: true })
+              .eq('prediction_id', prediction.id)
+              .eq('position', 'no');
 
-            const stats = betStats?.[0] || { yes_percentage: 0, no_percentage: 0, total_bets: 0, total_amount_bnb: 0 };
+            // Calcola le percentuali con un solo decimale
+            const total = totalBets || 0;
+            const yesCount = yesBets || 0;
+            const noCount = noBets || 0;
+            
+            const yesPercentage = total > 0 ? Math.round((yesCount / total) * 100 * 10) / 10 : 0;
+            const noPercentage = total > 0 ? Math.round((noCount / total) * 100 * 10) / 10 : 0;
+
+            // Calcola il totale degli importi BNB per i volumi
+            const { data: betAmounts } = await supabase
+              .from('bets')
+              .select('amount_bnb')
+              .eq('prediction_id', prediction.id);
+            
+            const totalBnbAmount = betAmounts?.reduce((sum, bet) => sum + (bet.amount_bnb || 0), 0) || 0;
 
             return {
               ...prediction,
-              yes_percentage: stats.yes_percentage || 0,
-              no_percentage: stats.no_percentage || 0,
-              total_bets: stats.total_amount_bnb || 0,
-              total_predictions: stats.total_bets || 0
+              yes_percentage: yesPercentage,
+              no_percentage: noPercentage,
+              total_bets: totalBnbAmount, // Totale importi BNB per i volumi
+              total_predictions: total
             };
           })
         );
@@ -168,20 +226,49 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
 
         if (error) throw error;
 
-        // Calcola le percentuali per ogni prediction
+        // Calcola le percentuali basate solo sul numero di Sì/No
         const predictionsWithPercentages = await Promise.all(
           (data || []).map(async (prediction: any) => {
-            const { data: betStats } = await supabase
-              .rpc('get_prediction_percentages', { prediction_uuid: prediction.id });
+            // Conta le bets per Sì e No
+            const { count: totalBets } = await supabase
+              .from('bets')
+              .select('*', { count: 'exact', head: true })
+              .eq('prediction_id', prediction.id);
+            
+            const { count: yesBets } = await supabase
+              .from('bets')
+              .select('*', { count: 'exact', head: true })
+              .eq('prediction_id', prediction.id)
+              .eq('position', 'yes');
+            
+            const { count: noBets } = await supabase
+              .from('bets')
+              .select('*', { count: 'exact', head: true })
+              .eq('prediction_id', prediction.id)
+              .eq('position', 'no');
 
-            const stats = betStats?.[0] || { yes_percentage: 0, no_percentage: 0, total_bets: 0, total_amount_bnb: 0 };
+            // Calcola le percentuali con un solo decimale
+            const total = totalBets || 0;
+            const yesCount = yesBets || 0;
+            const noCount = noBets || 0;
+            
+            const yesPercentage = total > 0 ? Math.round((yesCount / total) * 100 * 10) / 10 : 0;
+            const noPercentage = total > 0 ? Math.round((noCount / total) * 100 * 10) / 10 : 0;
+
+            // Calcola il totale degli importi BNB per i volumi
+            const { data: betAmounts } = await supabase
+              .from('bets')
+              .select('amount_bnb')
+              .eq('prediction_id', prediction.id);
+            
+            const totalBnbAmount = betAmounts?.reduce((sum, bet) => sum + (bet.amount_bnb || 0), 0) || 0;
 
             return {
               ...prediction,
-              yes_percentage: stats.yes_percentage || 0,
-              no_percentage: stats.no_percentage || 0,
-              total_bets: stats.total_amount_bnb || 0,
-              total_predictions: stats.total_bets || 0
+              yes_percentage: yesPercentage,
+              no_percentage: noPercentage,
+              total_bets: totalBnbAmount, // Totale importi BNB per i volumi
+              total_predictions: total
             };
           })
         );
@@ -214,20 +301,49 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
 
         if (error) throw error;
 
-        // Calcola le percentuali per ogni prediction
+        // Calcola le percentuali basate solo sul numero di Sì/No
         const predictionsWithPercentages = await Promise.all(
           (data || []).map(async (prediction: any) => {
-            const { data: betStats } = await supabase
-              .rpc('get_prediction_percentages', { prediction_uuid: prediction.id });
+            // Conta le bets per Sì e No
+            const { count: totalBets } = await supabase
+              .from('bets')
+              .select('*', { count: 'exact', head: true })
+              .eq('prediction_id', prediction.id);
+            
+            const { count: yesBets } = await supabase
+              .from('bets')
+              .select('*', { count: 'exact', head: true })
+              .eq('prediction_id', prediction.id)
+              .eq('position', 'yes');
+            
+            const { count: noBets } = await supabase
+              .from('bets')
+              .select('*', { count: 'exact', head: true })
+              .eq('prediction_id', prediction.id)
+              .eq('position', 'no');
 
-            const stats = betStats?.[0] || { yes_percentage: 0, no_percentage: 0, total_bets: 0, total_amount_bnb: 0 };
+            // Calcola le percentuali con un solo decimale
+            const total = totalBets || 0;
+            const yesCount = yesBets || 0;
+            const noCount = noBets || 0;
+            
+            const yesPercentage = total > 0 ? Math.round((yesCount / total) * 100 * 10) / 10 : 0;
+            const noPercentage = total > 0 ? Math.round((noCount / total) * 100 * 10) / 10 : 0;
+
+            // Calcola il totale degli importi BNB per i volumi
+            const { data: betAmounts } = await supabase
+              .from('bets')
+              .select('amount_bnb')
+              .eq('prediction_id', prediction.id);
+            
+            const totalBnbAmount = betAmounts?.reduce((sum, bet) => sum + (bet.amount_bnb || 0), 0) || 0;
 
             return {
               ...prediction,
-              yes_percentage: stats.yes_percentage || 0,
-              no_percentage: stats.no_percentage || 0,
-              total_bets: stats.total_amount_bnb || 0,
-              total_predictions: stats.total_bets || 0
+              yes_percentage: yesPercentage,
+              no_percentage: noPercentage,
+              total_bets: totalBnbAmount, // Totale importi BNB per i volumi
+              total_predictions: total
             };
           })
         );
