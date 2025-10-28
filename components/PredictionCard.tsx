@@ -178,6 +178,49 @@ export default function PredictionCard({
           textColor: 'text-gray-600 dark:text-gray-400'
         };
       }
+      
+      // FALLBACK: usa lo status dal database se disponibile
+      if (status) {
+        switch (status) {
+          case 'attiva':
+            return {
+              status: 'attiva',
+              displayText: 'ATTIVA',
+              emoji: '🟢',
+              textColor: 'text-green-600 dark:text-green-400'
+            };
+          case 'in_pausa':
+            return {
+              status: 'in_pausa',
+              displayText: 'IN PAUSA',
+              emoji: '🟡',
+              textColor: 'text-yellow-600 dark:text-yellow-400'
+            };
+          case 'risolta':
+            return {
+              status: 'risolta',
+              displayText: 'RISOLTA',
+              emoji: '🏆',
+              textColor: 'text-blue-600 dark:text-blue-400'
+            };
+          case 'cancellata':
+            return {
+              status: 'cancellata',
+              displayText: 'CANCELLATA',
+              emoji: '🔴',
+              textColor: 'text-red-600 dark:text-red-400'
+            };
+          case 'in_attesa':
+            return {
+              status: 'in_attesa',
+              displayText: 'IN ATTESA',
+              emoji: '🟡',
+              textColor: 'text-yellow-600 dark:text-yellow-400'
+            };
+        }
+      }
+      
+      // Solo se non c'è né contratto né DB, mostra errore
       return {
         status: 'error',
         displayText: 'ERRORE',

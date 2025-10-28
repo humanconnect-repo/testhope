@@ -301,6 +301,82 @@ export const usePoolState = (poolAddress: string, poolData: any) => {
       }
     } catch (error) {
       console.error('Errore calcolo stato pool:', error);
+      
+      // FALLBACK: usa lo status dal database se disponibile
+      const dbStatus = memoizedPoolData?.status;
+      
+      if (dbStatus) {
+        // Mappa lo status del DB ai valori di poolState
+        switch (dbStatus) {
+          case 'attiva':
+            return {
+              canBet: false,
+              canClaimRewards: false,
+              canClaimRefund: false,
+              isActive: true,
+              isPaused: false,
+              isCancelled: false,
+              isResolved: false,
+              statusText: 'ATTIVA',
+              statusColor: 'text-green-600',
+              statusIcon: '🟢'
+            };
+          case 'in_pausa':
+            return {
+              canBet: false,
+              canClaimRewards: false,
+              canClaimRefund: false,
+              isActive: false,
+              isPaused: true,
+              isCancelled: false,
+              isResolved: false,
+              statusText: 'IN PAUSA',
+              statusColor: 'text-yellow-600',
+              statusIcon: '🟡'
+            };
+          case 'risolta':
+            return {
+              canBet: false,
+              canClaimRewards: false,
+              canClaimRefund: false,
+              isActive: false,
+              isPaused: false,
+              isCancelled: false,
+              isResolved: true,
+              statusText: 'RISOLTA',
+              statusColor: 'text-blue-600',
+              statusIcon: '🏆'
+            };
+          case 'cancellata':
+            return {
+              canBet: false,
+              canClaimRewards: false,
+              canClaimRefund: false,
+              isActive: false,
+              isPaused: false,
+              isCancelled: true,
+              isResolved: false,
+              statusText: 'CANCELLATA',
+              statusColor: 'text-red-600',
+              statusIcon: '🔴'
+            };
+          case 'in_attesa':
+            return {
+              canBet: false,
+              canClaimRewards: false,
+              canClaimRefund: false,
+              isActive: false,
+              isPaused: false,
+              isCancelled: false,
+              isResolved: false,
+              statusText: 'IN ATTESA',
+              statusColor: 'text-yellow-600',
+              statusIcon: '🟡'
+            };
+        }
+      }
+      
+      // Se anche il DB non ha uno status valido, allora mostra errore
       return {
         canBet: false,
         canClaimRewards: false,
