@@ -2151,6 +2151,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                           isNewBettor ? 'animate-slide-in' : ''
                         }`}
                       >
+                        {/* Colonna 1: Numero, badge e nome */}
                         <div className="flex items-center space-x-3 flex-1 min-w-0">
                           <span className="text-sm font-medium text-gray-500 dark:text-gray-400 flex-shrink-0">
                             #{index + 1}
@@ -2160,22 +2161,28 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                               ✨ Nuovo
                             </span>
                           )}
-                          <div className="flex items-center space-x-2 min-w-0 flex-1">
-                            <span className="text-gray-900 dark:text-white font-medium truncate">
-                              {bettor.username}
-                            </span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
-                              bettor.position === 'yes' 
-                                ? 'bg-yes-button/10 text-yes-button' 
-                                : 'bg-no-button/10 text-no-button'
-                            }`}>
-                              {bettor.position === 'yes' ? 'Sì' : 'No'}
-                            </span>
-                          </div>
+                          <span className="text-gray-900 dark:text-white font-medium break-words flex-1">
+                            {bettor.username}
+                          </span>
                         </div>
-                        <span className="text-gray-900 dark:text-white font-bold flex-shrink-0 ml-3">
-                          {bettor.amount_bnb} BNB
-                        </span>
+                        
+                        {/* Colonna 2: Risultato Sì/No */}
+                        <div className="flex justify-center w-16 flex-shrink-0">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            bettor.position === 'yes' 
+                              ? 'bg-yes-button/10 text-yes-button' 
+                              : 'bg-no-button/10 text-no-button'
+                          }`}>
+                            {bettor.position === 'yes' ? 'Sì' : 'No'}
+                          </span>
+                        </div>
+                        
+                        {/* Colonna 3: Importo BNB */}
+                        <div className="flex justify-end w-24 flex-shrink-0">
+                          <span className="text-gray-900 dark:text-white font-bold">
+                            {bettor.amount_bnb} BNB
+                          </span>
+                        </div>
                       </div>
                     );
                   })
