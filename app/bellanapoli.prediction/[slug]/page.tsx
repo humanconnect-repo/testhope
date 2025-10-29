@@ -1237,6 +1237,22 @@ export default function PredictionPage({ params }: { params: { slug: string } })
 
       // Chiama la funzione reale del contratto
       const result = await placeBet(poolAddress, selectedPosition === 'yes', amount.toString());
+      
+      // Verifica esplicitamente che la transazione sia riuscita
+      if (!result || !result.hash) {
+        throw new Error('Errore: Hash della transazione non disponibile');
+      }
+      
+      if (!result.receipt || result.receipt.status !== 1) {
+        const status = result.receipt?.status;
+        console.error('❌ Transazione fallita:', {
+          hash: result.hash,
+          receipt: result.receipt,
+          status
+        });
+        throw new Error(`Transazione fallita (status: ${status || 'unknown'}). Potrebbe essere che le scommesse siano chiuse o che tu abbia già scommesso.`);
+      }
+      
       setBettingTransactionHash(result.hash);
       
       updateBettingStepStatus('wallet', 'completed');
@@ -1246,6 +1262,11 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       setCurrentBettingStep(3);
 
       // La conferma è già inclusa nel result.receipt
+      console.log('✅ Transazione confermata sulla blockchain:', {
+        hash: result.hash,
+        status: result.receipt.status,
+        blockNumber: result.receipt.blockNumber
+      });
       
       updateBettingStepStatus('blockchain', 'completed');
 
@@ -1262,20 +1283,185 @@ export default function PredictionPage({ params }: { params: { slug: string } })
           caller_wallet: address
         });
       
+      console.log('🔍 create_bet RPC risultato:', {
+        betId,
+        betId_type: typeof betId,
+        dbError,
+        result_hash: result.hash
+      });
+      
       if (dbError) {
         throw new Error(`Errore salvataggio database: ${dbError.message}`);
       }
       
       // Aggiorna il tx_hash della bet appena creata
-      if (betId && result.hash) {
-        await supabase
-          .from('bets')
-          .update({ tx_hash: result.hash })
-          .eq('id', betId);
-        
-        // Ricarica le informazioni dell'utente per includere il tx_hash
-        await checkUserHasBet();
+      if (!result.hash) {
+        console.warn('⚠️ result.hash non disponibile');
+        throw new Error('Errore: Hash della transazione non disponibile');
       }
+      
+      // Cerca la bet usando prediction_id e user_id (o caller_wallet) invece di affidarsi al betId
+      // Questo è più affidabile perché la bet potrebbe essere creata con un ID diverso
+      let betToUpdate = null;
+      
+      if (betId) {
+        // Prima prova con il betId restituito
+        const actualBetId = Array.isArray(betId) ? betId[0] : betId;
+        console.log('🔍 Tentativo aggiornamento con betId:', actualBetId);
+        
+        const { data: betById, error: errorById } = await supabase
+          .from('bets')
+          .select('id')
+          .eq('id', actualBetId)
+          .maybeSingle();
+        
+        if (!errorById && betById) {
+          betToUpdate = betById.id;
+          console.log('✅ Bet trovata con betId:', betToUpdate);
+        }
+      }
+      
+      // Se non trovata con betId, cerca con prediction_id e user_id/user wallet
+      if (!betToUpdate && user?.id) {
+        console.log('🔍 Tentativo ricerca bet con prediction_id + user_id:', {
+          prediction_id: prediction!.id,
+          user_id: user.id
+        });
+        
+        const { data: betByUser, error: errorByUser } = await supabase
+          .from('bets')
+          .select('id')
+          .eq('prediction_id', prediction!.id)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (!errorByUser && betByUser) {
+          betToUpdate = betByUser.id;
+          console.log('✅ Bet trovata con prediction_id + user_id:', betToUpdate);
+        }
+      }
+      
+      // Se ancora non trovata, aspetta un attimo (la bet potrebbe essere in fase di scrittura)
+      if (!betToUpdate) {
+        console.log('⏳ Bet non trovata immediatamente, attendo 500ms...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Ritenta la ricerca con prediction_id + user_id
+        if (user?.id) {
+          const { data: betRetry, error: errorRetry } = await supabase
+            .from('bets')
+            .select('id')
+            .eq('prediction_id', prediction!.id)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (!errorRetry && betRetry) {
+            betToUpdate = betRetry.id;
+            console.log('✅ Bet trovata dopo attesa:', betToUpdate);
+          }
+        }
+      }
+      
+      if (!betToUpdate) {
+        console.error('❌ Impossibile trovare la bet creata:', {
+          betId,
+          prediction_id: prediction!.id,
+          user_id: user?.id,
+          wallet: address
+        });
+        throw new Error('Errore: La bet è stata creata ma non è stata trovata per l\'aggiornamento del tx_hash. Riprova o contatta il supporto.');
+      }
+      
+      console.log('🔍 Aggiornamento tx_hash:', {
+        betId: betToUpdate,
+        tx_hash: result.hash,
+        prediction_id: prediction!.id,
+        user_id: user?.id,
+        wallet: address
+      });
+      
+      // Usa la funzione RPC per aggiornare il tx_hash (bypassa RLS)
+      // Usa user_id se disponibile (più affidabile), altrimenti usa wallet
+      const rpcParams: any = {
+        bet_uuid: betToUpdate,
+        tx_hash_value: result.hash
+      };
+      
+      // Preferisci user_id se disponibile (più affidabile)
+      if (user?.id) {
+        rpcParams.caller_user_id = user.id;
+      } else if (address) {
+        rpcParams.caller_wallet = address;
+      } else {
+        throw new Error('Wallet address o user_id non disponibile per l\'aggiornamento del tx_hash');
+      }
+      
+      console.log('🔍 Chiamata update_bet_tx_hash con:', {
+        bet_uuid: rpcParams.bet_uuid,
+        tx_hash_value: rpcParams.tx_hash_value,
+        caller_user_id: rpcParams.caller_user_id,
+        caller_wallet: rpcParams.caller_wallet
+      });
+      
+      const { data: updatedBetId, error: rpcError } = await supabase
+        .rpc('update_bet_tx_hash', rpcParams);
+      
+      console.log('🔍 Risultato update_bet_tx_hash RPC:', {
+        updatedBetId,
+        updatedBetId_type: typeof updatedBetId,
+        rpcError,
+        tx_hash_inserito: result.hash
+      });
+      
+      if (rpcError) {
+        console.error('❌ Errore aggiornamento tx_hash (RPC):', {
+          error: rpcError,
+          code: rpcError.code,
+          message: rpcError.message,
+          details: rpcError.details,
+          hint: rpcError.hint
+        });
+        throw new Error(`Errore aggiornamento tx_hash: ${rpcError.message || rpcError.code || 'Errore sconosciuto'}`);
+      }
+      
+      if (!updatedBetId) {
+        console.error('❌ RPC non ha restituito betId aggiornato:', {
+          betId: betToUpdate,
+          prediction_id: prediction!.id,
+          wallet: address
+        });
+        throw new Error('Errore: La bet non è stata aggiornata. L\'RPC non ha restituito un ID valido.');
+      }
+      
+      // Verifica che l'aggiornamento sia andato a buon fine
+      const { data: verifiedBet, error: verifyError } = await supabase
+        .from('bets')
+        .select('id, tx_hash')
+        .eq('id', updatedBetId)
+        .maybeSingle();
+      
+      if (verifyError) {
+        console.warn('⚠️ Errore nella verifica post-update (non critico):', verifyError);
+      } else if (verifiedBet) {
+        console.log('✅ tx_hash verificato con successo:', verifiedBet);
+        if (verifiedBet.tx_hash !== result.hash) {
+          console.warn('⚠️ tx_hash verificato non corrisponde:', {
+            expected: result.hash,
+            actual: verifiedBet.tx_hash
+          });
+        }
+      } else {
+        console.warn('⚠️ Bet non trovata nella verifica post-update (potrebbe essere un problema RLS per la SELECT)');
+      }
+      
+      console.log('✅ tx_hash salvato con successo (RPC):', updatedBetId);
+      
+      // Ricarica le informazioni dell'utente per includere il tx_hash
+      await checkUserHasBet();
 
       updateBettingStepStatus('database', 'completed');
 
@@ -1861,63 +2047,169 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                           // Step 2: Firma e invio
                           setClaimWinningsSteps(prev => prev.map(step => step.id === 'sign' ? { ...step, status: 'loading' } : step));
                           
-                          const txHash = await claimWinnings(prediction.pool_address);
+                          const result = await claimWinnings(prediction.pool_address);
+                          
+                          // Verifica che la transazione sia confermata prima di salvare
+                          if (!result.receipt || result.receipt.status !== 1) {
+                            throw new Error('Transazione non confermata. Non è stato possibile salvare i dati.');
+                          }
                           
                           setClaimWinningsSteps(prev => prev.map(step => step.id === 'sign' ? { ...step, status: 'completed' } : step));
                           setCurrentClaimWinningsStep(2);
-                          setClaimWinningsTransactionHash(txHash);
-                          setClaimWinningsTxHash(txHash);
+                          setClaimWinningsTransactionHash(result.hash);
+                          setClaimWinningsTxHash(result.hash);
+                          
+                          // Step 3: Conferma sulla blockchain (già confermata da claimWinnings)
+                          setClaimWinningsSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'loading' } : step));
+                          setCurrentClaimWinningsStep(3);
+                          
+                          console.log('✅ Transazione claim confermata sulla blockchain:', {
+                            hash: result.hash,
+                            status: result.receipt.status,
+                            blockNumber: result.receipt.blockNumber
+                          });
+                          
+                          setClaimWinningsSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'completed' } : step));
                           
                           // Salva l'hash della transazione e l'importo della ricompensa nel database
-                          // Calcola l'importo in BNB - usa totalWinnings se disponibile (più accurato)
-                          const winningRewardInBnb = userWinnings 
-                            ? (userWinnings.totalWinnings ? Number(userWinnings.totalWinnings) / 1e18 : (userWinnings.reward ? Number(userWinnings.reward) / 1e18 : 0))
-                            : 0;
+                          // IMPORTANTE: salva solo la vincita netta (reward), non il totale (totalWinnings = betAmount + reward)
+                          const winningRewardInBnb = userWinnings?.reward 
+                            ? Number(userWinnings.reward) / 1e18  // reward è in Wei, converti in BNB
+                            : (userWinnings?.totalWinnings && userWinnings?.betAmount
+                                ? (Number(userWinnings.totalWinnings) - Number(userWinnings.betAmount)) / 1e18  // totale - scommessa iniziale = vincita netta
+                                : 0);
 
                           console.log('🔍 Salvataggio claim vincite - Dati:', {
-                            txHash,
+                            txHash: result.hash,
                             winningRewardInBnb,
+                            reward_wei: userWinnings?.reward,
+                            totalWinnings_wei: userWinnings?.totalWinnings,
+                            betAmount_wei: userWinnings?.betAmount,
                             prediction_id: prediction.id,
                             user_id: user?.id,
                             userWinnings,
-                            poolAddress: prediction.pool_address
+                            receipt_status: result.receipt.status
                           });
+
+                          // Verifica che prediction.id e user.id siano disponibili
+                          if (!prediction?.id) {
+                            throw new Error('Prediction ID non disponibile per il salvataggio');
+                          }
 
                           if (!user?.id) {
                             throw new Error('User ID non disponibile per il salvataggio');
                           }
 
-                          const { data: updatedRows, error: dbError } = await supabase
+                          // Usa una funzione RPC per salvare, simile a update_bet_tx_hash (bypassa RLS)
+                          // Cerca prima la bet per ottenere il bet_id
+                          const { data: existingBet, error: checkError } = await supabase
                             .from('bets')
-                            .update({ 
-                              claim_winning_tx_hash: txHash,
-                              winning_rewards_amount: winningRewardInBnb
-                            })
+                            .select('id')
                             .eq('prediction_id', prediction.id)
                             .eq('user_id', user.id)
-                            .select(); // Seleziona per verificare quante righe sono state aggiornate
-                          
-                          if (dbError) {
-                            console.error('❌ Errore nel salvataggio hash claim vincite:', dbError);
-                            throw new Error(`Errore nel salvataggio dei dati nel database: ${dbError.message}`);
-                          } else if (!updatedRows || updatedRows.length === 0) {
-                            console.warn('⚠️ Nessuna riga trovata per l\'aggiornamento:', {
+                            .maybeSingle();
+
+                          if (checkError) {
+                            console.error('❌ Errore nel controllo bet esistente:', checkError);
+                            throw new Error(`Errore nel controllo bet esistente: ${checkError.message}`);
+                          }
+
+                          if (!existingBet) {
+                            console.error('❌ Nessuna bet trovata con questi criteri:', {
                               prediction_id: prediction.id,
-                              user_id: user.id,
-                              message: 'Verifica che esista una bet per questa prediction e questo utente'
+                              user_id: user.id
                             });
-                            throw new Error('Nessuna bet trovata nel database per questa prediction. I dati non sono stati salvati.');
+                            throw new Error(`Nessuna bet trovata nel database per prediction_id: ${prediction.id} e user_id: ${user.id}.`);
+                          }
+
+                          // Usa la funzione RPC per aggiornare (bypassa RLS)
+                          // IMPORTANTE: claim_tx_hash_param è il parametro della funzione SQL
+                          // che aggiorna claim_winning_tx_hash (non claim_tx_hash che è per i refund)
+                          const rpcParams: any = {
+                            bet_uuid: existingBet.id,
+                            claim_tx_hash_param: result.hash,  // Parametro che aggiorna claim_winning_tx_hash
+                            winning_rewards_amount_value: winningRewardInBnb
+                          };
+                          
+                          // Preferisci user_id se disponibile (più affidabile)
+                          if (user?.id) {
+                            rpcParams.caller_user_id = user.id;
+                          } else if (address) {
+                            rpcParams.caller_wallet = address;
                           } else {
-                            console.log('✅ Claim vincite salvato con successo:', updatedRows[0]);
-                            // Aggiorna lo stato che l'utente ha fatto il claim solo se il salvataggio è riuscito
-                            setUserHasClaimedWinnings(true);
+                            throw new Error('Wallet address o user_id non disponibile per l\'aggiornamento del claim');
                           }
                           
-                          // Step 3: Conferma
-                          setClaimWinningsSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'loading' } : step));
+                          console.log('🔍 Chiamata update_bet_claim_winnings con:', {
+                            bet_uuid: rpcParams.bet_uuid,
+                            claim_tx_hash_param: rpcParams.claim_tx_hash_param,
+                            winning_rewards_amount_value: rpcParams.winning_rewards_amount_value,
+                            caller_user_id: rpcParams.caller_user_id,
+                            caller_wallet: rpcParams.caller_wallet,
+                            nota: 'claim_tx_hash_param aggiorna claim_winning_tx_hash (non claim_tx_hash)'
+                          });
                           
-                          // Attendi conferma
-                          setClaimWinningsSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'completed' } : step));
+                          const { data: updatedBetId, error: rpcError } = await supabase
+                            .rpc('update_bet_claim_winnings', rpcParams);
+                          
+                          console.log('🔍 Risultato update_bet_claim_winnings RPC:', {
+                            updatedBetId,
+                            updatedBetId_type: typeof updatedBetId,
+                            rpcError,
+                            claim_tx_hash_inserito: result.hash,
+                            winning_rewards_amount_inserito: winningRewardInBnb
+                          });
+                          
+                          if (rpcError) {
+                            console.error('❌ Errore aggiornamento claim vincite (RPC):', {
+                              error: rpcError,
+                              code: rpcError.code,
+                              message: rpcError.message,
+                              details: rpcError.details,
+                              hint: rpcError.hint
+                            });
+                            throw new Error(`Errore aggiornamento claim vincite: ${rpcError.message || rpcError.code || 'Errore sconosciuto'}`);
+                          }
+                          
+                          if (!updatedBetId) {
+                            console.error('❌ RPC non ha restituito betId aggiornato:', {
+                              bet_id: existingBet.id,
+                              prediction_id: prediction.id,
+                              wallet: address
+                            });
+                            throw new Error('Errore: La bet non è stata aggiornata. L\'RPC non ha restituito un ID valido.');
+                          }
+                          
+                          // Verifica che l'aggiornamento sia andato a buon fine
+                          const { data: verifiedBet, error: verifyError } = await supabase
+                            .from('bets')
+                            .select('id, claim_winning_tx_hash, winning_rewards_amount')
+                            .eq('id', updatedBetId)
+                            .maybeSingle();
+                          
+                          if (verifyError) {
+                            console.warn('⚠️ Errore nella verifica post-update (non critico):', verifyError);
+                          } else if (verifiedBet) {
+                            console.log('✅ Claim vincite verificato con successo:', verifiedBet);
+                            if (verifiedBet.claim_winning_tx_hash !== result.hash) {
+                              console.warn('⚠️ claim_winning_tx_hash verificato non corrisponde:', {
+                                expected: result.hash,
+                                actual: verifiedBet.claim_winning_tx_hash
+                              });
+                            }
+                            if (Math.abs((verifiedBet.winning_rewards_amount || 0) - winningRewardInBnb) > 0.0001) {
+                              console.warn('⚠️ winning_rewards_amount verificato non corrisponde:', {
+                                expected: winningRewardInBnb,
+                                actual: verifiedBet.winning_rewards_amount
+                              });
+                            }
+                          } else {
+                            console.warn('⚠️ Bet non trovata nella verifica post-update (potrebbe essere un problema RLS per la SELECT)');
+                          }
+                          
+                          console.log('✅ Claim vincite salvato con successo (RPC):', updatedBetId);
+                          setUserHasClaimedWinnings(true);
+                          
                           setCurrentClaimWinningsStep(steps.length);
                         } catch (error: any) {
                           console.error('Errore durante il claim delle vincite:', error);

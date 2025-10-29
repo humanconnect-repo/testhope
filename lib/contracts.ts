@@ -343,11 +343,38 @@ export async function hasClaimedRefund(poolAddress: string, userAddress: string)
 }
 
 // Claim winnings for resolved pool
-export async function claimWinnings(poolAddress: string) {
+export async function claimWinnings(poolAddress: string): Promise<{ hash: string; receipt: any }> {
   const pool = await getPool(poolAddress);
   const tx = await pool.claimWinnings();
   const receipt = await tx.wait();
-  return tx.hash;
+  
+  // Verifica che la transazione sia stata eseguita con successo
+  if (receipt && receipt.status === 0) {
+    console.error('❌ Transazione claim revertita:', {
+      hash: tx.hash,
+      receipt
+    });
+    throw new Error('La transazione è stata revertita dal contratto.');
+  }
+  
+  if (!receipt || receipt.status !== 1) {
+    console.error('❌ Transazione claim fallita:', {
+      hash: tx.hash,
+      receipt
+    });
+    throw new Error(`Transazione fallita con status: ${receipt?.status || 'unknown'}`);
+  }
+  
+  console.log('✅ Transazione claim confermata:', {
+    hash: tx.hash,
+    blockNumber: receipt.blockNumber,
+    status: receipt.status
+  });
+  
+  return {
+    hash: tx.hash,
+    receipt: receipt
+  };
 }
 
 // Check if user has already claimed winnings (check the claimed status in userBets)
@@ -586,24 +613,124 @@ export async function placeBet(poolAddress: string, choice: boolean, amount: str
     const pool = await getPool(poolAddress);
     const provider = getProvider();
     const signer = await provider.getSigner();
+    const signerAddress = await signer.getAddress();
+    
+    // Verifica prima se l'utente può scommettere (solo se abbiamo un indirizzo valido)
+    // Questa verifica è opzionale e serve solo per dare feedback prima della transazione
+    // Se fallisce, continuiamo comunque perché il contratto farà la validazione finale
+    try {
+      if (signerAddress && signerAddress !== '0x0000000000000000000000000000000000000000') {
+        const canBet = await canUserBet(poolAddress, signerAddress);
+        if (!canBet.canBet) {
+          console.warn('⚠️ Utente potrebbe non poter scommettere:', canBet.reason);
+          // Non lanciamo errore qui, lasciamo che sia il contratto a validare
+          // Lancia solo se la ragione è chiara e definitiva
+          if (canBet.reason.includes('already placed') || canBet.reason.includes('già scommesso')) {
+            throw new Error(`Impossibile scommettere: ${canBet.reason}`);
+          }
+        }
+      }
+    } catch (preCheckError: any) {
+      // Se il pre-check fallisce con un errore significativo, rilancia
+      if (preCheckError.message && preCheckError.message.includes('Impossibile scommettere')) {
+        throw preCheckError;
+      }
+      // Altrimenti continua (potrebbe essere un problema di rete o connessione)
+      console.warn('⚠️ Pre-check fallito, continua comunque:', preCheckError);
+    }
     
     // Convert amount to wei
     const amountWei = ethers.parseEther(amount);
-    console.log('🔍 Contract placeBet:', { amount, amountWei: amountWei.toString() });
+    console.log('🔍 Contract placeBet:', { 
+      amount, 
+      amountWei: amountWei.toString(),
+      poolAddress,
+      choice,
+      signerAddress
+    });
     
     // Call placeBet function with improved metadata for wallet display
     const tx = await (pool.connect(signer) as any).placeBet(choice, { 
       value: amountWei,
       gasLimit: 200000, // Explicit gas limit for better wallet estimation
     });
+    
+    console.log('📤 Transazione inviata:', tx.hash);
     const receipt = await tx.wait();
+    
+    // Verifica che la transazione sia stata eseguita con successo
+    if (receipt && receipt.status === 0) {
+      // Prova a estrarre il revert reason se disponibile
+      let revertReason = 'Motivo sconosciuto';
+      try {
+        // Tenta di chiamare la funzione per vedere il revert reason originale
+        const code = await provider.getCode(poolAddress);
+        if (code && code !== '0x') {
+          // Pool exists, try to simulate
+          try {
+            await (pool.connect(signer) as any).placeBet.staticCall(choice, { value: amountWei });
+          } catch (simError: any) {
+            if (simError.reason) {
+              revertReason = simError.reason;
+            } else if (simError.data) {
+              revertReason = `Errore contratto: ${simError.data}`;
+            }
+          }
+        }
+      } catch (e) {
+        // Ignore errors in extracting revert reason
+      }
+      
+      console.error('❌ Transazione revertita:', {
+        hash: tx.hash,
+        receipt,
+        revertReason
+      });
+      throw new Error(`La transazione è stata revertita. ${revertReason}`);
+    }
+    
+    if (!receipt || receipt.status !== 1) {
+      console.error('❌ Transazione fallita:', {
+        hash: tx.hash,
+        receipt
+      });
+      throw new Error(`Transazione fallita con status: ${receipt?.status || 'unknown'}`);
+    }
+    
+    console.log('✅ Transazione confermata:', {
+      hash: tx.hash,
+      blockNumber: receipt.blockNumber,
+      status: receipt.status
+    });
     
     return {
       hash: tx.hash,
       receipt: receipt
     };
-  } catch (error) {
-    console.error('Error placing bet:', error);
-    throw error;
+  } catch (error: any) {
+    console.error('❌ Error placing bet:', error);
+    
+    // Estrai un messaggio di errore più utile
+    let errorMessage = 'Errore durante la scommessa';
+    
+    if (error.reason) {
+      errorMessage = error.reason;
+    } else if (error.message) {
+      errorMessage = error.message;
+      // Se l'errore contiene "revert" o "reverted", prova a estrarre il motivo
+      if (errorMessage.includes('revert') || errorMessage.includes('reverted')) {
+        // Cerca di estrarre il motivo del revert dal messaggio
+        const revertMatch = errorMessage.match(/revert (.+)/i);
+        if (revertMatch && revertMatch[1]) {
+          errorMessage = revertMatch[1];
+        } else {
+          errorMessage = 'La transazione è stata revertita dal contratto. Potrebbe essere che le scommesse siano chiuse, che tu abbia già scommesso, o che l\'importo non sia valido.';
+        }
+      }
+    } else if (error.data) {
+      errorMessage = `Errore contratto: ${error.data}`;
+    }
+    
+    throw new Error(errorMessage);
   }
 }
