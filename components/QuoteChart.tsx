@@ -6,13 +6,17 @@ interface QuoteChartProps {
   noPercentage: number;
   totalBetsAmount: number;
   betCount: number;
+  yesBetsCount?: number;
+  noBetsCount?: number;
 }
 
 export default function QuoteChart({ 
   yesPercentage, 
   noPercentage, 
   totalBetsAmount, 
-  betCount 
+  betCount,
+  yesBetsCount,
+  noBetsCount
 }: QuoteChartProps) {
   // Mostra solo i dati attuali se non ci sono scommesse storiche
   const chartData = betCount > 0 ? [
@@ -50,7 +54,7 @@ export default function QuoteChart({
               {yesPercentage.toFixed(1)}%
             </div>
             <div className="text-xs text-green-600 dark:text-green-400">
-              {Math.round((yesPercentage / 100) * betCount)} {Math.round((yesPercentage / 100) * betCount) === 1 ? 'Prediction' : 'Predictions'}
+              {yesBetsCount || Math.round((yesPercentage / 100) * betCount)} {yesBetsCount === 1 || (yesBetsCount === undefined && Math.round((yesPercentage / 100) * betCount) === 1) ? 'Prediction' : 'Predictions'}
             </div>
           </div>
           <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
@@ -62,7 +66,7 @@ export default function QuoteChart({
               {noPercentage.toFixed(1)}%
             </div>
             <div className="text-xs text-red-600 dark:text-red-400">
-              {Math.round((noPercentage / 100) * betCount)} {Math.round((noPercentage / 100) * betCount) === 1 ? 'Prediction' : 'Predictions'}
+              {noBetsCount || Math.round((noPercentage / 100) * betCount)} {noBetsCount === 1 || (noBetsCount === undefined && Math.round((noPercentage / 100) * betCount) === 1) ? 'Prediction' : 'Predictions'}
             </div>
           </div>
         </div>

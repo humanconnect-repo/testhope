@@ -81,6 +81,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   const [userWinnings, setUserWinnings] = useState<{ totalWinnings: string; betAmount: string; reward: string } | null>(null);
   const [userWon, setUserWon] = useState<boolean | null>(null);
   const [totalBetsCount, setTotalBetsCount] = useState<number>(0);
+  const [yesBetsCount, setYesBetsCount] = useState<number>(0);
+  const [noBetsCount, setNoBetsCount] = useState<number>(0);
   
   // Stati per claim delle vincite
   const [claimWinningsLoading, setClaimWinningsLoading] = useState(false);
@@ -693,62 +695,41 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         return;
       }
 
-      // Calcola il conteggio totale delle bets dal database
+      // Calcola il conteggio totale delle bets dal database e i conteggi specifici Sì/No
       const { count: totalBetsFromDB } = await supabase
         .from('bets')
         .select('*', { count: 'exact', head: true })
         .eq('prediction_id', predictionData.id);
       
+      const { count: yesBetsFromDB } = await supabase
+        .from('bets')
+        .select('*', { count: 'exact', head: true })
+        .eq('prediction_id', predictionData.id)
+        .eq('position', 'yes');
+      
+      const { count: noBetsFromDB } = await supabase
+        .from('bets')
+        .select('*', { count: 'exact', head: true })
+        .eq('prediction_id', predictionData.id)
+        .eq('position', 'no');
+      
       setTotalBetsCount(totalBetsFromDB || 0);
+      setYesBetsCount(yesBetsFromDB || 0);
+      setNoBetsCount(noBetsFromDB || 0);
 
-      // Calcola le percentuali - prima prova dal contratto, poi fallback al database
+      // Calcola le percentuali basate solo sul numero di Sì e No (non importi)
       let stats = { yes_percentage: 0, no_percentage: 0, total_bets: 0 };
       
-      // Se abbiamo dati dal contratto, usali
-      if (contractStats) {
-        const totalYes = Number(contractStats.totalYes) / 1e18; // Converti da wei
-        const totalNo = Number(contractStats.totalNo) / 1e18; // Converti da wei
-        const totalBets = totalYes + totalNo;
-        
-        stats = {
-          yes_percentage: totalBets > 0 ? (totalYes / totalBets) * 100 : 0,
-          no_percentage: totalBets > 0 ? (totalNo / totalBets) * 100 : 0,
-          total_bets: totalBets
-        };
-      } else {
-        // Fallback al database se non abbiamo dati dal contratto
-        const { data: betStats } = await supabase
-          .rpc('get_prediction_percentages', { prediction_uuid: predictionData.id });
-        
-        const dbStats = betStats?.[0] || { yes_percentage: 0, no_percentage: 0, total_bets: 0, total_amount_bnb: 0 };
-        stats = {
-          yes_percentage: dbStats.yes_percentage || 0,
-          no_percentage: dbStats.no_percentage || 0,
-          total_bets: dbStats.total_amount_bnb || 0 // Usa total_amount_bnb invece di total_bets
-        };
-        
-        // Se non abbiamo dati dalla RPC, calcoliamo manualmente
-        if (!betStats || betStats.length === 0) {
-          const { data: manualBets } = await supabase
-            .from('bets')
-            .select('amount_bnb, position')
-            .eq('prediction_id', predictionData.id);
-          
-          if (manualBets && manualBets.length > 0) {
-            const totalAmount = manualBets.reduce((sum: number, bet: any) => sum + (bet.amount_bnb || 0), 0);
-            const yesBets = manualBets.filter((bet: any) => bet.position === 'yes');
-            const noBets = manualBets.filter((bet: any) => bet.position === 'no');
-            const yesAmount = yesBets.reduce((sum: number, bet: any) => sum + (bet.amount_bnb || 0), 0);
-            const noAmount = noBets.reduce((sum: number, bet: any) => sum + (bet.amount_bnb || 0), 0);
-            
-            stats = {
-              yes_percentage: totalAmount > 0 ? (yesAmount / totalAmount) * 100 : 0,
-              no_percentage: totalAmount > 0 ? (noAmount / totalAmount) * 100 : 0,
-              total_bets: totalAmount
-            };
-          }
-        }
-      }
+      // Usa sempre i conteggi dal database per le percentuali
+      const totalBets = totalBetsFromDB || 0;
+      const yesCount = yesBetsFromDB || 0;
+      const noCount = noBetsFromDB || 0;
+      
+      stats = {
+        yes_percentage: totalBets > 0 ? Math.round((yesCount / totalBets) * 100 * 10) / 10 : 0,
+        no_percentage: totalBets > 0 ? Math.round((noCount / totalBets) * 100 * 10) / 10 : 0,
+        total_bets: totalBets
+      };
 
       // Rileva i cambiamenti nelle percentuali per l'animazione
       const newYesPercentage = stats.yes_percentage || 0;
@@ -2334,6 +2315,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                   noPercentage={prediction.no_percentage}
                   totalBetsAmount={totalBetsAmount}
                   betCount={totalBetsCount}
+                  yesBetsCount={yesBetsCount}
+                  noBetsCount={noBetsCount}
                 />
               ) : (
                 <div className="h-64 flex items-center justify-center">

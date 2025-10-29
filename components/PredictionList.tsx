@@ -105,7 +105,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
               .select('amount_bnb')
               .eq('prediction_id', prediction.id);
             
-            const totalBnbAmount = betAmounts?.reduce((sum, bet) => sum + (bet.amount_bnb || 0), 0) || 0;
+            const totalBnbAmount = betAmounts?.reduce((sum: number, bet: any) => sum + (bet.amount_bnb || 0), 0) || 0;
 
             return {
               ...prediction,
@@ -186,7 +186,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
               .select('amount_bnb')
               .eq('prediction_id', prediction.id);
             
-            const totalBnbAmount = betAmounts?.reduce((sum, bet) => sum + (bet.amount_bnb || 0), 0) || 0;
+            const totalBnbAmount = betAmounts?.reduce((sum: number, bet: any) => sum + (bet.amount_bnb || 0), 0) || 0;
 
             return {
               ...prediction,
@@ -261,7 +261,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
               .select('amount_bnb')
               .eq('prediction_id', prediction.id);
             
-            const totalBnbAmount = betAmounts?.reduce((sum, bet) => sum + (bet.amount_bnb || 0), 0) || 0;
+            const totalBnbAmount = betAmounts?.reduce((sum: number, bet: any) => sum + (bet.amount_bnb || 0), 0) || 0;
 
             return {
               ...prediction,
@@ -336,7 +336,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
               .select('amount_bnb')
               .eq('prediction_id', prediction.id);
             
-            const totalBnbAmount = betAmounts?.reduce((sum, bet) => sum + (bet.amount_bnb || 0), 0) || 0;
+            const totalBnbAmount = betAmounts?.reduce((sum: number, bet: any) => sum + (bet.amount_bnb || 0), 0) || 0;
 
             return {
               ...prediction,

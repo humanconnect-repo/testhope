@@ -289,10 +289,12 @@ export default function PredictionCard({
           
           {/* Info completamente a destra */}
           <div className="flex flex-col items-end space-y-1">
-            {/* Status */}
-            <span className={`text-xs font-medium ${getCardStatus().textColor}`}>
-              {getCardStatus().emoji} {getCardStatus().displayText}
-            </span>
+            {/* Status - nascondi se risolta */}
+            {getCardStatus().displayText !== 'RISOLTA' && (
+              <span className={`text-xs font-medium ${getCardStatus().textColor}`}>
+                {getCardStatus().emoji} {getCardStatus().displayText}
+              </span>
+            )}
             
             {/* Volumi */}
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
