@@ -2541,10 +2541,10 @@ export default function PredictionPage({ params }: { params: { slug: string } })
               </div>
             )}
 
-            {/* Top scommettitori */}
-            <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6 mt-6">
+            {/* Top scommettitori - Nascosto su mobile, visibile su desktop */}
+            <div className="hidden lg:block bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6 mt-6">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                Top Degens
+                Top Degens di questa prediction
               </h3>
               <div className="max-h-80 overflow-y-auto space-y-3 pr-2">
                 {topBettors.length > 0 ? (
@@ -2617,8 +2617,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
               )}
             </div>
 
-            {/* Ultime scommesse del sito */}
-            <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6 mt-6">
+            {/* Ultime scommesse del sito - Nascosto su mobile, visibile su desktop */}
+            <div className="hidden lg:block bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6 mt-6">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
                 🔥 Ultime predictions
               </h3>
@@ -2768,7 +2768,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                           <span className="font-medium text-gray-900 dark:text-white">
                             {w.username}
                             {showAmount && (
-                              <> riscatta <span className="text-primary font-semibold">{Number(w.rewardBnb).toFixed(4)} BNB</span></>
+                              <> <span className="text-primary font-semibold">+{Number(w.rewardBnb).toFixed(4)} BNB</span></>
                             )}
                           </span>
                         </div>
@@ -2894,6 +2894,127 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+
+            {/* Top Degens e Ultime Prediction - Solo su mobile, mostrate dopo i commenti */}
+            <div className="lg:hidden space-y-6 mt-8">
+              {/* Top scommettitori - Mobile */}
+              <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                  Top Degens di questa prediction
+                </h3>
+                <div className="max-h-80 overflow-y-auto space-y-3 pr-2">
+                  {topBettors.length > 0 ? (
+                    topBettors.map((bettor, index) => {
+                      const isNewBettor = !previousBettors.some(prev => prev.username === bettor.username);
+                      
+                      return (
+                        <div 
+                          key={`bettor-mobile-${index}`} 
+                          className={`bettor-item flex items-start justify-between py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0 ${
+                            isNewBettor ? 'animate-slide-in' : ''
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400 flex-shrink-0">
+                              #{index + 1}
+                            </span>
+                            {isNewBettor && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 animate-pulse-slow flex-shrink-0">
+                                ✨ Nuovo
+                              </span>
+                            )}
+                            <span className="text-gray-900 dark:text-white font-medium break-words flex-1">
+                              {bettor.username}
+                            </span>
+                          </div>
+                          
+                          <div className="flex justify-center w-16 flex-shrink-0">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              bettor.position === 'yes' 
+                                ? 'bg-yes-button/10 text-yes-button' 
+                                : 'bg-no-button/10 text-no-button'
+                            }`}>
+                              {bettor.position === 'yes' ? 'Sì' : 'No'}
+                            </span>
+                          </div>
+                          
+                          <div className="flex justify-end w-24 flex-shrink-0">
+                            <span className="text-gray-900 dark:text-white font-bold">
+                              {bettor.amount_bnb} BNB
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center text-gray-500 dark:text-gray-400 py-4">
+                      Nessuna scommessa ancora
+                    </div>
+                  )}
+                </div>
+                
+                {topBettors.length > 5 && (
+                  <div className="flex justify-center mt-3">
+                    <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                      <span>Scorri per vedere più</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Ultime scommesse del sito - Mobile */}
+              <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                  🔥 Ultime predictions
+                </h3>
+                <div className="space-y-3">
+                  {recentLoading && (
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Caricamento...</div>
+                  )}
+                  {!recentLoading && recentBets.length === 0 && (
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Nessuna prediction presente</div>
+                  )}
+                  {!recentLoading && recentBets.map((bet) => {
+                    const isNewBet = !previousRecentBets.some(prev => prev.id === bet.id);
+                    
+                    return (
+                      <Link 
+                        key={`bet-mobile-${bet.id}`} 
+                        href={`/bellanapoli.prediction/${bet.prediction_slug}`}
+                        className={`bet-item flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 cursor-pointer ${
+                          isNewBet ? 'animate-slide-in' : ''
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          {isNewBet && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 animate-pulse-slow">
+                              🆕 Nuovo
+                            </span>
+                          )}
+                          <div className="flex flex-col">
+                            <span className="text-gray-900 dark:text-white font-medium text-sm">{bet.username}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{formatTimeAgoMinutes(bet.created_at)}</span>
+                          </div>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${bet.position === 'yes' ? 'bg-yes-button/10 text-yes-button' : 'bg-no-button/10 text-no-button'}`}>
+                            {bet.position === 'yes' ? 'Sì' : 'No'}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-gray-900 dark:text-white font-bold text-sm">{bet.amount_bnb} BNB</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{bet.prediction_title}</p>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             </div>

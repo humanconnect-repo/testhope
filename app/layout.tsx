@@ -52,15 +52,22 @@ export default function RootLayout({
                   originalWarn(...args);
                 };
                 
-                // Filtra errori Coinbase Analytics
+                // Filtra errori Coinbase Analytics e Web3Modal/WalletConnect
                 const originalError = console.error;
                 console.error = (...args) => {
                   const message = args[0]?.toString() || '';
+                  const url = args.length > 1 && typeof args[1] === 'string' ? args[1] : '';
+                  const fullMessage = message + (url ? ' ' + url : '');
+                  
                   if (
                     message.includes('cca-lite.coinbase.com') ||
                     message.includes('ERR_BLOCKED_BY_CLIENT') ||
                     message.includes('Analytics SDK') ||
-                    message.includes('Failed to fetch')
+                    message.includes('Failed to fetch') ||
+                    fullMessage.includes('api.web3modal.org') ||
+                    fullMessage.includes('appkit/v1/config') ||
+                    (fullMessage.includes('403') && fullMessage.includes('web3modal')) ||
+                    (fullMessage.includes('Forbidden') && fullMessage.includes('web3modal'))
                   ) {
                     return; // Non mostrare questi errori
                   }
