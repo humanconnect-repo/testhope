@@ -84,6 +84,12 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   const [yesBetsCount, setYesBetsCount] = useState<number>(0);
   const [noBetsCount, setNoBetsCount] = useState<number>(0);
   
+  // Vincitori (solo per prediction risolta)
+  type WinnerItem = { username: string; rewardBnb: number | null };
+  const [winners, setWinners] = useState<WinnerItem[]>([]);
+  const [winnersLoading, setWinnersLoading] = useState<boolean>(false);
+  const [winnersError, setWinnersError] = useState<string | null>(null);
+  
   // Stati per claim delle vincite
   const [claimWinningsLoading, setClaimWinningsLoading] = useState(false);
   const [showClaimWinningsModal, setShowClaimWinningsModal] = useState(false);
@@ -1055,6 +1061,59 @@ export default function PredictionPage({ params }: { params: { slug: string } })
             setUserWon(false);
             setUserWinnings(null);
           }
+        }
+
+        // Carica elenco vincitori da DB
+        try {
+          setWinnersLoading(true);
+          setWinnersError(null);
+
+          // Mappa boolean winner -> 'yes' | 'no'
+          const winningSide = winnerInfo.winner ? 'yes' : 'no';
+
+          // Prova join con profili per ottenere gli username
+          const { data: betRows, error: betErr } = await supabase
+            .from('bets')
+            .select(`
+              winning_rewards_amount,
+              position,
+              profiles:profiles(username)
+            `)
+            .eq('prediction_id', prediction.id)
+            .eq('position', winningSide);
+
+          if (betErr) {
+            throw betErr;
+          }
+
+          const mapped: WinnerItem[] = (betRows || []).map((row: any) => ({
+            username: row?.profiles?.username || 'Anonimo',
+            // winning_rewards_amount è in BNB se presente; se assente (non ancora claimata) lasciamo null
+            rewardBnb: typeof row?.winning_rewards_amount === 'number' ? row.winning_rewards_amount : null
+          }));
+
+          // Ordina: prima chi ha reward noto (claim fatti) per importo decrescente, poi alfabetico chi non ha fatto claim
+          mapped.sort((a, b) => {
+            // Prima separa chi ha fatto claim da chi non l'ha fatto
+            if (a.rewardBnb !== null && b.rewardBnb === null) return -1;
+            if (a.rewardBnb === null && b.rewardBnb !== null) return 1;
+            
+            // Se entrambi hanno fatto claim, ordina per importo decrescente
+            if (a.rewardBnb !== null && b.rewardBnb !== null) {
+              return b.rewardBnb - a.rewardBnb;
+            }
+            
+            // Se nessuno ha fatto claim, ordina alfabeticamente
+            return a.username.localeCompare(b.username);
+          });
+
+          setWinners(mapped);
+        } catch (e) {
+          console.warn('Error loading winners:', e);
+          setWinners([]);
+          setWinnersError('Impossibile caricare i vincitori');
+        } finally {
+          setWinnersLoading(false);
         }
       }
     } catch (error) {
@@ -2326,6 +2385,46 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                 </div>
               )}
             </div>
+
+            {/* Vincitori (solo quando risolta) */}
+            {prediction?.status === 'risolta' && (
+              <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                  🏆 I migliori visionari!
+                </h3>
+
+                {winnersLoading ? (
+                  <div className="text-gray-600 dark:text-gray-400">Caricamento vincitori...</div>
+                ) : winnersError ? (
+                  <div className="text-red-600 dark:text-red-400">{winnersError}</div>
+                ) : winners.length === 0 ? (
+                  <div className="text-gray-600 dark:text-gray-400">Nessun vincitore trovato</div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {winners.map((w, idx) => {
+                      const canShowAmounts = !(userWon === true && userHasClaimedWinnings === false);
+                      const showAmount = canShowAmounts && w.rewardBnb !== null;
+                      return (
+                        <div key={`${w.username}-${idx}`} className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2">
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {w.username}
+                            {showAmount && (
+                              <> riscatta <span className="text-primary font-semibold">{Number(w.rewardBnb).toFixed(4)} BNB</span></>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {userWon === true && userHasClaimedWinnings === false && (
+                  <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                    Importi nascosti finché non riscatti la tua vincita.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Commenti */}
             <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6">
