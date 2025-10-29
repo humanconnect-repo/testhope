@@ -114,6 +114,139 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   // Hook per stato del pool (legge dal smart contract)
   const poolState = usePoolState(poolAddress, poolData);
 
+  // Funzione per aggiungere al calendario (formato ICS)
+  const addToCalendar = () => {
+    if (!prediction || !prediction.closing_date || !prediction.closing_bid) {
+      return;
+    }
+
+    // Formatta la data in formato ICS (YYYYMMDDTHHmmssZ per UTC)
+    const formatICSDate = (d: Date) => {
+      // Crea una nuova data convertita in UTC mantenendo gli stessi valori di tempo locale
+      const utcDate = new Date(Date.UTC(
+        d.getFullYear(),
+        d.getMonth(),
+        d.getDate(),
+        d.getHours(),
+        d.getMinutes(),
+        d.getSeconds()
+      ));
+      const year = utcDate.getUTCFullYear();
+      const month = String(utcDate.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(utcDate.getUTCDate()).padStart(2, '0');
+      const hours = String(utcDate.getUTCHours()).padStart(2, '0');
+      const minutes = String(utcDate.getUTCMinutes()).padStart(2, '0');
+      const seconds = String(utcDate.getUTCSeconds()).padStart(2, '0');
+      return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+    };
+
+    // Escape caratteri speciali per formato ICS
+    const escapeICS = (text: string): string => {
+      return text
+        .replace(/\\/g, '\\\\')  // Escape backslash
+        .replace(/;/g, '\\;')     // Escape semicolon
+        .replace(/,/g, '\\,')     // Escape comma
+        .replace(/\n/g, '\\n')    // Escape newline
+        .replace(/\r/g, '')       // Rimuovi carriage return
+        .substring(0, 200);       // Limita lunghezza
+    };
+
+    const now = new Date();
+    // Converti le date in UTC
+    const closingDate = new Date(prediction.closing_date);
+    const closingBid = new Date(prediction.closing_bid);
+    
+    // Evento 1: Scadenza scommesse
+    const bettingEndDate = new Date(closingDate.getTime() + 60 * 60 * 1000); // +1 ora
+    
+    // Evento 2: Scadenza finale
+    const deadlineEndDate = new Date(closingBid.getTime() + 60 * 60 * 1000); // +1 ora
+
+    const safeTitle = escapeICS(prediction.title);
+    const websiteUrl = 'https://testhope.vercel.app/';
+
+    // Genera contenuto ICS con due eventi - senza LOCATION per evitare "unknown service" e "join"
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Bella Napoli//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:${Date.now()}-betting-${Math.random().toString(36).substring(7)}@bellanapoli.com`,
+      `DTSTAMP:${formatICSDate(now)}`,
+      `DTSTART:${formatICSDate(closingDate)}`,
+      `DTEND:${formatICSDate(bettingEndDate)}`,
+      `SUMMARY:${safeTitle} - Scadenza scommesse`,
+      `DESCRIPTION:Dopo questa data non puoi più scommettere\\n\\n${websiteUrl}`,
+      'END:VEVENT',
+      'BEGIN:VEVENT',
+      `UID:${Date.now()}-deadline-${Math.random().toString(36).substring(7)}@bellanapoli.com`,
+      `DTSTAMP:${formatICSDate(now)}`,
+      `DTSTART:${formatICSDate(closingBid)}`,
+      `DTEND:${formatICSDate(deadlineEndDate)}`,
+      `SUMMARY:${safeTitle} - Scadenza prediction`,
+      `DESCRIPTION:Scadenza della prediction\\n\\n${websiteUrl}`,
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    // Crea e apre il file ICS - ottimizzato per desktop e mobile
+    // Su mobile, i browser generalmente aprono direttamente l'app calendario
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    
+    // Rileva se siamo su mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // Su mobile, usa blob URL con attributo download e poi lascia che il sistema gestisca
+      // I browser mobili riconoscono il tipo text/calendar e aprono con l'app predefinita
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.style.display = 'none';
+      // Su iOS e Android, non usare 'download' così il sistema offre di aprire con il calendario
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      }, 200);
+    } else {
+      // Su desktop, prova data URI prima
+      try {
+        const dataUri = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsContent);
+        const newWindow = window.open(dataUri, '_blank');
+        
+        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+          // Fallback: usa blob URL
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(blobUrl);
+          }, 100);
+        } else {
+          URL.revokeObjectURL(blobUrl);
+        }
+      } catch (error) {
+        // Se data URI fallisce, usa blob URL
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(blobUrl);
+        }, 100);
+      }
+    }
+  };
+
   // Funzione helper per determinare lo stato basato su contratto + database
   const getPredictionStatus = useMemo(() => {
     return (prediction: PredictionData | null) => {
@@ -1591,9 +1724,33 @@ export default function PredictionPage({ params }: { params: { slug: string } })
             
             {/* Testo */}
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 {prediction.title}
               </h1>
+
+              {/* Link Aggiungi al calendario - solo se attiva */}
+              {getPredictionStatus(prediction).status === 'attiva' && prediction.closing_date && prediction.closing_bid && (
+                <button
+                  onClick={addToCalendar}
+                  className="text-xs text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-primary transition-colors mb-4 flex items-center space-x-1"
+                  title="Scarica file calendario ICS con date di scommesse e scadenza"
+                >
+                  <svg 
+                    className="w-4 h-4" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                    />
+                  </svg>
+                  <span>Aggiungi al calendario (ICS)</span>
+                </button>
+              )}
 
               <p className="text-gray-600 dark:text-gray-400 text-lg leading-relaxed mb-4">
                 {prediction.description}
