@@ -29,6 +29,9 @@ export default function UserMenu() {
     address: address as `0x${string}`,
   });
 
+  // Verifica se è connesso a BSC Testnet (chain ID 97)
+  const isConnectedToBscTestnet = chain?.id === 97;
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -64,7 +67,9 @@ export default function UserMenu() {
 
   if (!mounted) {
     return (
-      <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+      <div className="flex items-center space-x-2">
+        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+      </div>
     );
   }
 
@@ -88,45 +93,111 @@ export default function UserMenu() {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Avatar utente o icona Pizza */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-10 h-10 rounded-full overflow-hidden bg-primary/10 border-2 border-gray-300 dark:border-gray-600 hover:border-primary transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary"
-        aria-label="Menu utente"
-      >
-        {shouldShowPizza ? (
-          <img 
-            src="/media/image/pizzacolorsmall.png" 
-            alt="Menu utente" 
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <>
-            {imageLoading && (
-              <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-              </div>
-            )}
-            <img 
-              src={userAvatar} 
-              alt="Avatar utente" 
-              className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoading ? 'opacity-0 absolute' : 'opacity-100'}`}
-              onLoad={() => setImageLoading(false)}
-              onError={() => {
-                setImageError(true);
-                setImageLoading(false);
-              }}
-            />
-            {imageError && (
-              <img 
-                src="/media/image/pizzacolorsmall.png" 
-                alt="Avatar fallback" 
-                className="w-full h-full object-cover"
+      {/* Container con check e avatar */}
+      <div className="flex items-center space-x-2">
+        {/* Check verde per BSC Testnet */}
+        {isConnected && isConnectedToBscTestnet && (
+          <div className="flex items-center justify-center w-5 h-5 bg-green-500 rounded-full border-2 border-white dark:border-dark-bg shadow-sm" title="Connesso a BSC Testnet">
+            <svg 
+              className="w-3 h-3 text-white" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={3} 
+                d="M5 13l4 4L19 7" 
               />
-            )}
-          </>
+            </svg>
+          </div>
         )}
-      </button>
+        
+        {/* Avviso se non è su BSC Testnet */}
+        {isConnected && !isConnectedToBscTestnet && chain && (
+          <div 
+            className="flex items-center justify-center w-5 h-5 bg-yellow-500 rounded-full border-2 border-white dark:border-dark-bg shadow-sm cursor-help" 
+            title="Collegati alla BNB Chain Testnet dal tuo wallet!"
+          >
+            <svg 
+              className="w-3 h-3 text-white" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={3} 
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
+              />
+            </svg>
+          </div>
+        )}
+        
+        {/* Avviso se è connesso ma la chain è undefined */}
+        {isConnected && !chain && (
+          <div 
+            className="flex items-center justify-center w-5 h-5 bg-red-500 rounded-full border-2 border-white dark:border-dark-bg shadow-sm cursor-help" 
+            title="Collegati alla BNB Chain Testnet dal tuo wallet!"
+          >
+            <svg 
+              className="w-3 h-3 text-white" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={3} 
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
+              />
+            </svg>
+          </div>
+        )}
+        
+        {/* Avatar utente o icona Pizza */}
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-10 h-10 rounded-full overflow-hidden bg-primary/10 border-2 border-gray-300 dark:border-gray-600 hover:border-primary transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary"
+          aria-label="Menu utente"
+        >
+          {shouldShowPizza ? (
+            <img 
+              src="/media/image/pizzacolorsmall.png" 
+              alt="Menu utente" 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <>
+              {imageLoading && (
+                <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                  <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                </div>
+              )}
+              <img 
+                src={userAvatar} 
+                alt="Avatar utente" 
+                className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoading ? 'opacity-0 absolute' : 'opacity-100'}`}
+                onLoad={() => setImageLoading(false)}
+                onError={() => {
+                  setImageError(true);
+                  setImageLoading(false);
+                }}
+              />
+              {imageError && (
+                <img 
+                  src="/media/image/pizzacolorsmall.png" 
+                  alt="Avatar fallback" 
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </>
+          )}
+        </button>
+      </div>
 
       {/* Dropdown Menu */}
       {isOpen && (
@@ -145,15 +216,22 @@ export default function UserMenu() {
               {/* Chain */}
               {chain && (
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <div className={`w-2 h-2 rounded-full ${isConnectedToBscTestnet ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
                   <span className="text-xs text-gray-500 dark:text-gray-500 font-medium">
                     {chain.name}
                   </span>
                 </div>
               )}
               
-              {/* Saldo */}
-              {balance && (
+              {/* Avviso se non è su BSC Testnet */}
+              {isConnected && !isConnectedToBscTestnet && (
+                <div className="px-2 py-1.5 bg-yellow-500/20 dark:bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+                  ⚠️ Collegati alla BNB Chain Testnet dal tuo wallet!
+                </div>
+              )}
+              
+              {/* Saldo - mostrato solo se su BSC Testnet */}
+              {balance && isConnectedToBscTestnet && (
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 rounded-full bg-green-500"></div>
                   <span className="text-xs text-gray-500 dark:text-gray-500 font-medium">
