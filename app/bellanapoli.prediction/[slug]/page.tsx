@@ -120,24 +120,18 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       return;
     }
 
-    // Formatta la data in formato ICS (YYYYMMDDTHHmmssZ per UTC)
+    // Formatta la data in formato ICS (YYYYMMDDTHHmmss - floating time, senza timezone)
+    // Usa floating time per mantenere l'ora locale senza conversioni UTC
     const formatICSDate = (d: Date) => {
-      // Crea una nuova data convertita in UTC mantenendo gli stessi valori di tempo locale
-      const utcDate = new Date(Date.UTC(
-        d.getFullYear(),
-        d.getMonth(),
-        d.getDate(),
-        d.getHours(),
-        d.getMinutes(),
-        d.getSeconds()
-      ));
-      const year = utcDate.getUTCFullYear();
-      const month = String(utcDate.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(utcDate.getUTCDate()).padStart(2, '0');
-      const hours = String(utcDate.getUTCHours()).padStart(2, '0');
-      const minutes = String(utcDate.getUTCMinutes()).padStart(2, '0');
-      const seconds = String(utcDate.getUTCSeconds()).padStart(2, '0');
-      return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+      // Mantiene l'ora locale senza conversione UTC
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      const seconds = String(d.getSeconds()).padStart(2, '0');
+      // NOTA: Non aggiungiamo 'Z' (UTC) per usare floating time (ora locale)
+      return `${year}${month}${day}T${hours}${minutes}${seconds}`;
     };
 
     // Escape caratteri speciali per formato ICS
