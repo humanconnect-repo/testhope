@@ -114,13 +114,13 @@ export default function Home() {
 
         <PredictionList selectedCategory={selectedCategory} searchQuery={searchQuery} />
         
+        {/* Prediction Risolte */}
+        <ResolvedPredictionsList />
+
         {/* Pools Cancellate */}
         <div className="mt-12">
           <CancelledPredictionsList />
         </div>
-
-        {/* Prediction Risolte */}
-        <ResolvedPredictionsList />
       </main>
 
       <Footer />

@@ -723,12 +723,18 @@ export default function PredictionPage({ params }: { params: { slug: string } })
             .eq('prediction_id', prediction.id)
             .eq('user_id', user.id)
             .maybeSingle();
+          console.log('🔍 Load bet for refund:', { betData, betError, predictionId: prediction.id, userId: user.id });
           
-          if (betData && betData.claim_tx_hash) {
+            if (betData && betData.claim_tx_hash) {
             // Ha già fatto claim, mostra il messaggio con l'hash
             setUserHasClaimedRefund(true);
             setClaimTxHash(betData.claim_tx_hash);
-            setUserBetAmountInBnb(betData.amount_bnb.toString());
+            if (betData.amount_bnb !== null && betData.amount_bnb !== undefined) {
+              const amt = Number(betData.amount_bnb);
+              if (!Number.isNaN(amt)) {
+                setUserBetAmountInBnb(amt.toFixed(4));
+              }
+            }
             return;
           }
           
@@ -2069,15 +2075,15 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                                 <div className="text-sm text-green-700 dark:text-green-300">
                                   <div className="flex justify-between items-center mb-1">
                                     <span>Importo scommesso:</span>
-                                    <span className="font-bold">{(Number(userWinnings.betAmount) / 1e18).toFixed(2)} BNB</span>
+                                    <span className="font-bold">{(Number(userWinnings.betAmount) / 1e18).toFixed(3)} BNB</span>
                                   </div>
                                   <div className="flex justify-between items-center mb-1">
                                     <span>Vincita:</span>
-                                    <span className="font-bold">{(Number(userWinnings.reward) / 1e18).toFixed(2)} BNB</span>
+                                    <span className="font-bold">{(Number(userWinnings.reward) / 1e18).toFixed(3)} BNB</span>
                                   </div>
                                   <div className="flex justify-between items-center pt-2 border-t border-green-300 dark:border-green-700 mt-2">
                                     <span className="font-semibold">Totale da ricevere:</span>
-                                    <span className="font-bold text-green-800 dark:text-green-200">{(Number(userWinnings.totalWinnings) / 1e18).toFixed(2)} BNB</span>
+                                    <span className="font-bold text-green-800 dark:text-green-200">{(Number(userWinnings.totalWinnings) / 1e18).toFixed(3)} BNB</span>
                                   </div>
                                 </div>
                               </div>
@@ -2158,7 +2164,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                       </div>
                       {userWinnings && userWinnings.reward && (
                         <p className="text-sm text-green-700 dark:text-green-300 mb-2">
-                          Ricompensa: {(Number(userWinnings.reward) / 1e18).toFixed(4)} BNB
+                          Ricompensa: {(Number(userWinnings.reward) / 1e18).toFixed(3)} BNB
                         </p>
                       )}
                       {claimWinningsTxHash && (
@@ -2187,7 +2193,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                             { 
                               id: 'prepare', 
                               title: 'Preparazione transazione', 
-                              description: `Preparazione del claim di ${(Number(userWinnings.totalWinnings) / 1e18).toFixed(4)} BNB...`, 
+                              description: `Preparazione del claim di ${(Number(userWinnings.totalWinnings) / 1e18).toFixed(3)} BNB...`, 
                               status: 'pending' 
                             },
                             { 
@@ -2406,7 +2412,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                           <span>⏳ Elaborazione...</span>
                         </>
                       ) : (
-                        <span>💰 Reclama le tue vincite ({(Number(userWinnings.totalWinnings) / 1e18).toFixed(4)} BNB)</span>
+                        <span>💰 Reclama le tue vincite ({(Number(userWinnings.totalWinnings) / 1e18).toFixed(3)} BNB)</span>
                       )}
                     </button>
                   )}
@@ -2500,15 +2506,56 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                         setClaimRefundTransactionHash(txHash);
                         setClaimTxHash(txHash);
                         
-                        // Salva l'hash della transazione nel database
-                        const { error: dbError } = await supabase
+                        // Salva l'hash della transazione nel database tramite RPC (bypassa RLS)
+                        console.log('🔍 RPC update_bet_claim_refund params:', {
+                          user_id: user.id,
+                          prediction_id: prediction.id,
+                          claim_tx_hash: txHash
+                        });
+
+                        const { data: rpcData, error: rpcError } = await supabase.rpc('update_bet_claim_refund_v2', {
+                          p_user_id: user.id,
+                          p_prediction_id: prediction.id,
+                          p_claim_tx_hash: txHash
+                        });
+
+                        if (rpcError) {
+                          console.error('❌ RPC update_bet_claim_refund_v2 error:', {
+                            message: (rpcError as any)?.message,
+                            details: (rpcError as any)?.details,
+                            hint: (rpcError as any)?.hint,
+                            code: (rpcError as any)?.code
+                          });
+                        } else {
+                          console.log('✅ RPC update_bet_claim_refund_v2 ok:', rpcData);
+                        }
+
+                        // Verifica readback
+                        const { data: verifyBet, error: verifyErr } = await supabase
                           .from('bets')
-                          .update({ claim_tx_hash: txHash })
+                          .select('id, claim_tx_hash')
                           .eq('prediction_id', prediction.id)
-                          .eq('user_id', user.id);
-                        
-                        if (dbError) {
-                          console.error('Errore nel salvataggio hash claim:', dbError);
+                          .eq('user_id', user.id)
+                          .single();
+
+                        console.log('🔎 Verify claim_tx_hash:', { verifyBet, verifyErr });
+                        if (verifyErr || !verifyBet || verifyBet.claim_tx_hash !== txHash) {
+                          console.warn('⚠️ claim_tx_hash non verificato o non corrisponde', { expected: txHash, got: verifyBet?.claim_tx_hash });
+                        }
+
+                        // Carica l'importo scommesso dal DB per mostrarlo nel messaggio (senza refresh)
+                        const { data: betAmountRow, error: betAmountErr } = await supabase
+                          .from('bets')
+                          .select('amount_bnb')
+                          .eq('prediction_id', prediction.id)
+                          .eq('user_id', user.id)
+                          .maybeSingle();
+                        console.log('🔍 Load amount_bnb after claim:', { betAmountRow, betAmountErr });
+                        if (betAmountRow && betAmountRow.amount_bnb !== null && betAmountRow.amount_bnb !== undefined) {
+                          const amtDb = Number(betAmountRow.amount_bnb);
+                          if (!Number.isNaN(amtDb)) {
+                            setUserBetAmountInBnb(amtDb.toFixed(4));
+                          }
                         }
                         
                         // Aggiorna lo stato che l'utente ha fatto il claim
@@ -2940,7 +2987,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                           <span className="font-medium text-gray-900 dark:text-white">
                             {w.username}
                             {showAmount && (
-                              <> <span className="text-primary font-semibold">+{Number(w.rewardBnb).toFixed(4)} BNB</span></>
+                              <> <span className="text-primary font-semibold">+{Number(w.rewardBnb).toFixed(3)} BNB</span></>
                             )}
                           </span>
                         </div>

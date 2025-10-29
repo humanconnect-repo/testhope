@@ -262,6 +262,8 @@ export default function AdminPanel() {
 
   // Filtra le predictions per titolo
   const filteredPredictions = predictions.filter(prediction => {
+    // Escludi quelle nascoste dal DB
+    if (prediction.status === 'nascosta') return false;
     if (!predictionsSearchQuery.trim()) return true;
     return prediction.title.toLowerCase().includes(predictionsSearchQuery.toLowerCase());
   });

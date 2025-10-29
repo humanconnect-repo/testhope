@@ -303,8 +303,8 @@ export default function PredictionCard({
           </div>
         </div>
 
-        {/* Data di chiusura (solo se non attiva/in_attesa) */}
-        {status !== 'attiva' && status !== 'in_attesa' && (
+        {/* Data di chiusura (non mostrare quando cancellata) */}
+        {status !== 'attiva' && status !== 'in_attesa' && status !== 'cancellata' && (
           <div className="mb-3">
             <div className="flex items-center">
               <span className="text-xs text-gray-700 dark:text-gray-300">{closingDate}</span>
