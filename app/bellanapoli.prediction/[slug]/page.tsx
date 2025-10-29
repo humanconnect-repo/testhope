@@ -2069,15 +2069,15 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                                 <div className="text-sm text-green-700 dark:text-green-300">
                                   <div className="flex justify-between items-center mb-1">
                                     <span>Importo scommesso:</span>
-                                    <span className="font-bold">{(Number(userWinnings.betAmount) / 1e18).toFixed(4)} BNB</span>
+                                    <span className="font-bold">{(Number(userWinnings.betAmount) / 1e18).toFixed(2)} BNB</span>
                                   </div>
                                   <div className="flex justify-between items-center mb-1">
                                     <span>Vincita:</span>
-                                    <span className="font-bold">{(Number(userWinnings.reward) / 1e18).toFixed(4)} BNB</span>
+                                    <span className="font-bold">{(Number(userWinnings.reward) / 1e18).toFixed(2)} BNB</span>
                                   </div>
                                   <div className="flex justify-between items-center pt-2 border-t border-green-300 dark:border-green-700 mt-2">
                                     <span className="font-semibold">Totale da ricevere:</span>
-                                    <span className="font-bold text-green-800 dark:text-green-200">{(Number(userWinnings.totalWinnings) / 1e18).toFixed(4)} BNB</span>
+                                    <span className="font-bold text-green-800 dark:text-green-200">{(Number(userWinnings.totalWinnings) / 1e18).toFixed(2)} BNB</span>
                                   </div>
                                 </div>
                               </div>
