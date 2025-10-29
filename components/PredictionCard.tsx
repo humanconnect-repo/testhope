@@ -289,8 +289,17 @@ export default function PredictionCard({
           
           {/* Info completamente a destra */}
           <div className="flex flex-col items-end space-y-1">
-            {/* Status - nascondi se risolta */}
-            {getCardStatus().displayText !== 'RISOLTA' && (
+            {/* Status - mostra sempre tranne casi specifici */}
+            {(() => {
+              const cardStatus = getCardStatus();
+              // Mostra sempre lo status tranne quando:
+              // 1. È risolta dal database (status === 'risolta') E non è risolta dal contract
+              // 2. Non mostrare nulla solo se non c'è status da mostrare
+              const isResolvedFromDB = status === 'risolta';
+              const isResolvedFromContract = poolAddress && poolState && cardStatus.displayText === 'RISOLTA';
+              const shouldHide = isResolvedFromDB && !isResolvedFromContract;
+              return !shouldHide;
+            })() && (
               <span className={`text-xs font-medium ${getCardStatus().textColor}`}>
                 {getCardStatus().emoji} {getCardStatus().displayText}
               </span>

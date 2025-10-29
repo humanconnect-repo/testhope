@@ -47,9 +47,9 @@ export const getStatusText = (status: string): string => {
 export const getClosingDateText = (closingDate: string | Date, status?: string): string => {
   const dateObj = typeof closingDate === 'string' ? new Date(closingDate) : closingDate;
   
-  // Rispetta SOLO lo status del database, non controllare la data
+  // Non mostrare "Risolta" per status risolta dal database
   if (status === 'risolta') {
-    return 'Risolta';
+    return '';
   }
   
   if (status === 'cancellata') {
