@@ -376,7 +376,7 @@ export default function AdminPanel() {
         };
       } else if (contractState.emergencyStop) {
         return {
-          text: 'IN PAUSA',
+          text: 'CHIUSA',
           emoji: '🟡',
           bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
         };
@@ -387,13 +387,13 @@ export default function AdminPanel() {
           bgColor: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
         };
       } else {
-        // Contratto chiuso ma non in emergency stop
+        // Contratto chiuso ma non in emergency stop -> CHIUSA
         const now = Math.floor(Date.now() / 1000);
         const closingBid = Math.floor(new Date(prediction.closing_bid).getTime() / 1000);
         
         if (now < closingBid) {
           return {
-            text: 'ATTIVA',
+            text: 'CHIUSA',
             emoji: '🟡',
             bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
           };
@@ -483,7 +483,7 @@ export default function AdminPanel() {
         };
       } else if (contractState.emergencyStop) {
         return {
-          text: 'IN PAUSA',
+          text: 'CHIUSA',
           emoji: '🟡',
           bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
         };
@@ -494,12 +494,12 @@ export default function AdminPanel() {
           bgColor: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
         };
       } else {
-        // Contratto chiuso ma non in emergency stop
+        // Contratto chiuso ma non in emergency stop -> CHIUSA
         const now = Math.floor(Date.now() / 1000);
         
         if (now < pool.closingBid) {
           return {
-            text: 'ATTIVA',
+            text: 'CHIUSA',
             emoji: '🟡',
             bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
           };
@@ -3304,11 +3304,19 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                               }`}>
                                 Risultato: {pool.winner ? 'YES' : 'NO'}
                               </span>
-                            ) : isPredictionEnded(pool.closingBid) ? (
-                              <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
-                                In Attesa Risoluzione
-                              </span>
-                            ) : null}
+                            ) : (() => {
+                              // Trova la prediction corrispondente per controllare se è risolta
+                              const correspondingPrediction = predictions.find(p => p.pool_address === pool.address);
+                              // Mostra "In Attesa Risoluzione" solo se non è risolta
+                              if (isPredictionEnded(pool.closingBid) && (!correspondingPrediction || correspondingPrediction.status !== 'risolta')) {
+                                return (
+                                  <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
+                                    In Attesa Risoluzione
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                           
                           {/* Menu a tendina Funzioni CONTRACT */}
@@ -3843,11 +3851,19 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                             }`}>
                               Risultato: {pool.winner ? 'YES' : 'NO'}
                             </span>
-                          ) : isPredictionEnded(pool.closingBid) ? (
-                            <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
-                              In Attesa Risoluzione
-                            </span>
-                          ) : null}
+                          ) : (() => {
+                            // Trova la prediction corrispondente per controllare se è risolta
+                            const correspondingPrediction = predictions.find(p => p.pool_address === pool.address);
+                            // Mostra "In Attesa Risoluzione" solo se non è risolta
+                            if (isPredictionEnded(pool.closingBid) && (!correspondingPrediction || correspondingPrediction.status !== 'risolta')) {
+                              return (
+                                <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
+                                  In Attesa Risoluzione
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
 
                         </div>

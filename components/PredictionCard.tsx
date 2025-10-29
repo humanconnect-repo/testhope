@@ -74,17 +74,15 @@ export default function PredictionCard({
             emoji: '🔴',
             textColor: 'text-red-600 dark:text-red-400'
           };
-        } else if (poolState.statusText === 'CHIUSA') {
+        } 
+        // Quando la pool è chiusa o in pausa o scommesse chiuse o attesa risultati -> CHIUSA
+        else if (poolState.statusText === 'CHIUSA' || 
+                 poolState.isPaused || 
+                 poolState.statusText === 'SCOMMESSE CHIUSE' || 
+                 poolState.statusText === 'ATTESA RISULTATI') {
           return {
             status: 'chiusa',
             displayText: 'CHIUSA',
-            emoji: '🟡',
-            textColor: 'text-yellow-600 dark:text-yellow-400'
-          };
-        } else if (poolState.isPaused) {
-          return {
-            status: 'in_pausa',
-            displayText: 'IN PAUSA',
             emoji: '🟡',
             textColor: 'text-yellow-600 dark:text-yellow-400'
           };
@@ -94,20 +92,6 @@ export default function PredictionCard({
             displayText: 'ATTIVA',
             emoji: '🟢',
             textColor: 'text-green-600 dark:text-green-400'
-          };
-        } else if (poolState.statusText === 'SCOMMESSE CHIUSE') {
-          return {
-            status: 'attiva',
-            displayText: 'ATTIVA',
-            emoji: '🟡',
-            textColor: 'text-yellow-600 dark:text-yellow-400'
-          };
-        } else if (poolState.statusText === 'ATTESA RISULTATI') {
-          return {
-            status: 'risolta',
-            displayText: 'RISOLTA',
-            emoji: '🏆',
-            textColor: 'text-blue-600 dark:text-blue-400'
           };
         }
       }

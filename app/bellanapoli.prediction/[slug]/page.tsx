@@ -159,8 +159,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
           };
         } else if (poolState.statusText === 'SCOMMESSE CHIUSE') {
           return {
-            status: 'attiva',
-            displayText: 'Attiva (Scommesse chiuse)',
+            status: 'chiusa',
+            displayText: 'Chiusa',
             emoji: '🟡',
             bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
           };
@@ -264,7 +264,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         } else if (poolState.statusText === 'SCOMMESSE CHIUSE') {
           return {
             type: 'closed_waiting',
-            message: 'Non puoi più scommettere, attendi la scadenza della prediction',
+            message: 'Prediction chiusa',
             status: 'Predictions chiuse - In attesa risultati'
           };
         } else if (poolState.statusText === 'ATTESA RISULTATI') {
@@ -322,7 +322,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
           } else if (now >= closingDate && now < closingBid) {
             return {
               type: 'closed_waiting',
-              message: 'Non puoi più scommettere, attendi la scadenza della prediction',
+              message: 'Prediction chiusa',
               status: 'Predictions chiuse - In attesa risultati'
             };
           } else {
@@ -1551,23 +1551,45 @@ export default function PredictionPage({ params }: { params: { slug: string } })
 
               {/* Avviso se l'utente ha già scommesso - Non mostrare se la pool è cancellata o risolta */}
               {userHasBet && getBettingContainerStatus(prediction).type !== 'cancelled' && getBettingContainerStatus(prediction).type !== 'resolved' && (
-                <div className="mb-6 p-4 rounded-lg border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-green-800 dark:text-green-200">
-                        Hai già eseguito la tua prediction in questa pool.
-                      </h3>
-                      <div className="mt-2 text-sm text-green-700 dark:text-green-300">
-                        <p>Non puoi scommettere più volte sulla stessa prediction.</p>
+                <>
+                  <div className="mb-6 p-4 rounded-lg border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-green-800 dark:text-green-200">
+                          Hai già eseguito la tua prediction in questa pool.
+                        </h3>
+                        <div className="mt-2 text-sm text-green-700 dark:text-green-300">
+                          <p>Non puoi scommettere più volte sulla stessa prediction.</p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+
+                  {/* Area Aggiornamenti - Mostra solo quando type === 'open' (altrimenti viene mostrata nella sezione generale) */}
+                  {getBettingContainerStatus(prediction).type === 'open' && (
+                    <div className="mb-6">
+                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                        Aggiornamenti:
+                      </h4>
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                        {prediction?.notes ? (
+                          <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                            {prediction.notes}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+                            Nessun aggiornamento disponibile al momento.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Avviso basato sullo status del container */}
@@ -1847,22 +1869,49 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                           setClaimWinningsTxHash(txHash);
                           
                           // Salva l'hash della transazione e l'importo della ricompensa nel database
-                          const winningRewardInBnb = userWinnings ? Number(userWinnings.reward) / 1e18 : 0;
-                          const { error: dbError } = await supabase
+                          // Calcola l'importo in BNB - usa totalWinnings se disponibile (più accurato)
+                          const winningRewardInBnb = userWinnings 
+                            ? (userWinnings.totalWinnings ? Number(userWinnings.totalWinnings) / 1e18 : (userWinnings.reward ? Number(userWinnings.reward) / 1e18 : 0))
+                            : 0;
+
+                          console.log('🔍 Salvataggio claim vincite - Dati:', {
+                            txHash,
+                            winningRewardInBnb,
+                            prediction_id: prediction.id,
+                            user_id: user?.id,
+                            userWinnings,
+                            poolAddress: prediction.pool_address
+                          });
+
+                          if (!user?.id) {
+                            throw new Error('User ID non disponibile per il salvataggio');
+                          }
+
+                          const { data: updatedRows, error: dbError } = await supabase
                             .from('bets')
                             .update({ 
                               claim_winning_tx_hash: txHash,
                               winning_rewards_amount: winningRewardInBnb
                             })
                             .eq('prediction_id', prediction.id)
-                            .eq('user_id', user.id);
+                            .eq('user_id', user.id)
+                            .select(); // Seleziona per verificare quante righe sono state aggiornate
                           
                           if (dbError) {
-                            console.error('Errore nel salvataggio hash claim vincite:', dbError);
+                            console.error('❌ Errore nel salvataggio hash claim vincite:', dbError);
+                            throw new Error(`Errore nel salvataggio dei dati nel database: ${dbError.message}`);
+                          } else if (!updatedRows || updatedRows.length === 0) {
+                            console.warn('⚠️ Nessuna riga trovata per l\'aggiornamento:', {
+                              prediction_id: prediction.id,
+                              user_id: user.id,
+                              message: 'Verifica che esista una bet per questa prediction e questo utente'
+                            });
+                            throw new Error('Nessuna bet trovata nel database per questa prediction. I dati non sono stati salvati.');
+                          } else {
+                            console.log('✅ Claim vincite salvato con successo:', updatedRows[0]);
+                            // Aggiorna lo stato che l'utente ha fatto il claim solo se il salvataggio è riuscito
+                            setUserHasClaimedWinnings(true);
                           }
-                          
-                          // Aggiorna lo stato che l'utente ha fatto il claim
-                          setUserHasClaimedWinnings(true);
                           
                           // Step 3: Conferma
                           setClaimWinningsSteps(prev => prev.map(step => step.id === 'confirm' ? { ...step, status: 'loading' } : step));
@@ -2033,7 +2082,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                 </div>
               )}
 
-              {/* Area Scommesse - Mostra solo quando le scommesse sono aperte */}
+              {/* Area Scommesse - Mostra solo quando il contratto permette di scommettere */}
               {getBettingContainerStatus(prediction).type === 'open' && !userHasBet && (
                 <>
                   <div className="space-y-4 mb-6">
@@ -2129,6 +2178,24 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                       : 'Piazza la tua scommessa'
                     }
                   </button>
+
+                  {/* Area Aggiornamenti - Mostra sempre dopo il bottone quando la prediction è attiva */}
+                  <div className="mt-6">
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                      Aggiornamenti:
+                    </h4>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      {prediction?.notes ? (
+                        <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                          {prediction.notes}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+                          Nessun aggiornamento disponibile al momento.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </>
               )}
             </div>
@@ -2402,8 +2469,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {winners.map((w, idx) => {
-                      const canShowAmounts = !(userWon === true && userHasClaimedWinnings === false);
-                      const showAmount = canShowAmounts && w.rewardBnb !== null;
+                      // Mostra sempre l'importo se disponibile (rewardBnb !== null significa che ha fatto claim)
+                      const showAmount = w.rewardBnb !== null;
                       return (
                         <div key={`${w.username}-${idx}`} className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2">
                           <span className="font-medium text-gray-900 dark:text-white">
