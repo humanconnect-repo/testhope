@@ -146,15 +146,16 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     };
 
     const now = new Date();
-    // Converti le date in UTC
+    // Converti le date
     const closingDate = new Date(prediction.closing_date);
     const closingBid = new Date(prediction.closing_bid);
     
-    // Evento 1: Scadenza scommesse
-    const bettingEndDate = new Date(closingDate.getTime() + 60 * 60 * 1000); // +1 ora
+    // Evento 1: Scadenza scommesse - evento puntuale (1 minuto di durata)
+    // Alcuni calendari richiedono DTEND > DTSTART, quindi usiamo 1 minuto come durata minima
+    const bettingEndDate = new Date(closingDate.getTime() + 1 * 60 * 1000); // +1 minuto
     
-    // Evento 2: Scadenza finale
-    const deadlineEndDate = new Date(closingBid.getTime() + 60 * 60 * 1000); // +1 ora
+    // Evento 2: Scadenza finale - evento puntuale (1 minuto di durata)
+    const deadlineEndDate = new Date(closingBid.getTime() + 1 * 60 * 1000); // +1 minuto
 
     const safeTitle = escapeICS(prediction.title);
     const websiteUrl = 'https://testhope.vercel.app/';
