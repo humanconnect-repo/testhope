@@ -150,9 +150,10 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     const closingDate = new Date(prediction.closing_date);
     const closingBid = new Date(prediction.closing_bid);
     
-    // Evento 1: Scadenza scommesse - evento puntuale (1 minuto di durata)
-    // Alcuni calendari richiedono DTEND > DTSTART, quindi usiamo 1 minuto come durata minima
-    const bettingEndDate = new Date(closingDate.getTime() + 1 * 60 * 1000); // +1 minuto
+    // Evento 1: Scadenza scommesse - range di 1 ora che termina esattamente alla scadenza
+    // Inizia 1 ora prima della scadenza e finisce esattamente all'orario di fine scommesse
+    const bettingStartDate = new Date(closingDate.getTime() - 1 * 60 * 60 * 1000); // -1 ora
+    const bettingEndDate = closingDate; // Finisce esattamente alla scadenza
     
     // Evento 2: Scadenza finale - evento puntuale (1 minuto di durata)
     const deadlineEndDate = new Date(closingBid.getTime() + 1 * 60 * 1000); // +1 minuto
@@ -161,25 +162,44 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     const websiteUrl = 'https://testhope.vercel.app/';
 
     // Genera contenuto ICS con due eventi - senza LOCATION per evitare "unknown service" e "join"
+    const tzid = 'Europe/Rome';
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
       'PRODID:-//Bella Napoli//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
+      'BEGIN:VTIMEZONE',
+      `TZID:${tzid}`,
+      'X-LIC-LOCATION:Europe/Rome',
+      'BEGIN:DAYLIGHT',
+      'TZOFFSETFROM:+0100',
+      'TZOFFSETTO:+0200',
+      'TZNAME:CEST',
+      'DTSTART:19700329T020000',
+      'RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU',
+      'END:DAYLIGHT',
+      'BEGIN:STANDARD',
+      'TZOFFSETFROM:+0200',
+      'TZOFFSETTO:+0100',
+      'TZNAME:CET',
+      'DTSTART:19701025T030000',
+      'RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU',
+      'END:STANDARD',
+      'END:VTIMEZONE',
       'BEGIN:VEVENT',
       `UID:${Date.now()}-betting-${Math.random().toString(36).substring(7)}@bellanapoli.com`,
       `DTSTAMP:${formatICSDate(now)}`,
-      `DTSTART:${formatICSDate(closingDate)}`,
-      `DTEND:${formatICSDate(bettingEndDate)}`,
+      `DTSTART;TZID=${tzid}:${formatICSDate(bettingStartDate)}`,
+      `DTEND;TZID=${tzid}:${formatICSDate(bettingEndDate)}`,
       `SUMMARY:${safeTitle} - Scadenza scommesse`,
       `DESCRIPTION:Dopo questa data non puoi più scommettere\\n\\n${websiteUrl}`,
       'END:VEVENT',
       'BEGIN:VEVENT',
       `UID:${Date.now()}-deadline-${Math.random().toString(36).substring(7)}@bellanapoli.com`,
       `DTSTAMP:${formatICSDate(now)}`,
-      `DTSTART:${formatICSDate(closingBid)}`,
-      `DTEND:${formatICSDate(deadlineEndDate)}`,
+      `DTSTART;TZID=${tzid}:${formatICSDate(closingBid)}`,
+      `DTEND;TZID=${tzid}:${formatICSDate(deadlineEndDate)}`,
       `SUMMARY:${safeTitle} - Scadenza prediction`,
       `DESCRIPTION:Scadenza della prediction\\n\\n${websiteUrl}`,
       'END:VEVENT',
