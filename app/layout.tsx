@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import '../lib/consoleFilter' // Filtra warning server-side e client-side
 import './globals.css'
 import '../styles/animations.css'
 import Web3Provider from '../components/Web3Provider'
@@ -29,16 +30,25 @@ export default function RootLayout({
               
               // Filtri console per errori non bloccanti
               if (typeof window !== 'undefined') {
-                // Filtra warning Lit, WalletConnect e Webpack
+                // Filtra warning Lit, WalletConnect, Webpack e NPM Audit
                 const originalWarn = console.warn;
                 console.warn = (...args) => {
-                  if (typeof args[0] === "string" && (
-                    args[0].includes("Lit is in dev mode") ||
-                    args[0].includes("Multiple versions of Lit loaded") ||
-                    args[0].includes("WalletConnect Core is already initialized") ||
-                    args[0].includes("webpack.cache.PackFileCacheStrategy") ||
-                    args[0].includes("Caching failed for pack")
-                  )) return;
+                  const message = args[0]?.toString() || '';
+                  if (
+                    message.includes("Lit is in dev mode") ||
+                    message.includes("Multiple versions of Lit loaded") ||
+                    message.includes("WalletConnect Core is already initialized") ||
+                    message.includes("Init() was called") ||
+                    message.includes("AppKit SDK") ||
+                    message.includes("AppKit") ||
+                    message.includes("is outdated") ||
+                    message.includes("webpack.cache.PackFileCacheStrategy") ||
+                    message.includes("Caching failed for pack") ||
+                    message.includes("npm warn deprecated") ||
+                    message.includes("vulnerable") ||
+                    message.includes("npm audit") ||
+                    message.includes("prototype pollution")
+                  ) return;
                   originalWarn(...args);
                 };
                 

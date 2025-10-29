@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import PredictionCard from './PredictionCard';
 import { supabase } from '../lib/supabase';
+import { getPoolWinner } from '../lib/contracts';
 import { formatItalianDateShort, getClosingDateText } from '../lib/dateUtils';
 
 interface Prediction {
@@ -60,7 +61,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             pool_address,
             created_at
           `)
-          .in('status', ['attiva', 'in_attesa', 'in_pausa', 'risolta']);
+          .in('status', ['attiva', 'in_attesa', 'in_pausa']);
 
         if (hasSearchQuery) {
           query = query.ilike('title', `%${searchQuery.trim()}%`);
@@ -117,9 +118,34 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
           })
         );
 
+        // Filtra le prediction risolte dal contratto anche se hanno status diverso nel DB
+        const filteredTrending = await Promise.all(
+          predictionsWithPercentages.map(async (prediction: any) => {
+            if (prediction.pool_address) {
+              try {
+                const winnerInfo = await getPoolWinner(prediction.pool_address);
+                if (winnerInfo && winnerInfo.winnerSet) {
+                  return null; // Escludi questa prediction
+                }
+              } catch (error) {
+                // In caso di errore, usa fallback DB: escludi se status è 'risolta'
+                if (prediction.status === 'risolta') {
+                  return null;
+                }
+              }
+            } else {
+              // Senza pool_address, usa fallback DB: escludi se status è 'risolta'
+              if (prediction.status === 'risolta') {
+                return null;
+              }
+            }
+            return prediction;
+          })
+        );
+        
         // Ordina per total_predictions (trending) e filtra solo quelle con puntate
-        predictionsData = predictionsWithPercentages
-          .filter(prediction => prediction.total_predictions > 0) // Solo prediction con puntate
+        predictionsData = filteredTrending
+          .filter((p: any) => p !== null && p.total_predictions > 0) // Solo prediction con puntate e non risolte
           .sort((a, b) => b.total_predictions - a.total_predictions)
           .slice(0, limit);
 
@@ -139,7 +165,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             pool_address,
             created_at
           `)
-          .in('status', ['attiva', 'in_attesa', 'in_pausa', 'risolta'])
+          .in('status', ['attiva', 'in_attesa', 'in_pausa'])
           .order('created_at', { ascending: false })
           .limit(limit);
 
@@ -198,7 +224,31 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
           })
         );
 
-        predictionsData = predictionsWithPercentages;
+        // Filtra le prediction risolte dal contratto anche se hanno status diverso nel DB
+        const filteredPredictions = await Promise.all(
+          predictionsWithPercentages.map(async (prediction: any) => {
+            if (prediction.pool_address) {
+              try {
+                const winnerInfo = await getPoolWinner(prediction.pool_address);
+                if (winnerInfo && winnerInfo.winnerSet) {
+                  return null; // Escludi questa prediction
+                }
+              } catch (error) {
+                // In caso di errore, usa fallback DB: escludi se status è 'risolta'
+                if (prediction.status === 'risolta') {
+                  return null;
+                }
+              }
+            } else {
+              // Senza pool_address, usa fallback DB: escludi se status è 'risolta'
+              if (prediction.status === 'risolta') {
+                return null;
+              }
+            }
+            return prediction;
+          })
+        );
+        predictionsData = filteredPredictions.filter((p: any) => p !== null);
 
       } else if (selectedCategory === 'closing_soon') {
         // In scadenza: tutte le prediction ATTIVE ordinate per data di chiusura (DB)
@@ -273,7 +323,31 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
           })
         );
 
-        predictionsData = predictionsWithPercentages;
+        // Filtra le prediction risolte dal contratto anche se hanno status diverso nel DB
+        const filteredClosing = await Promise.all(
+          predictionsWithPercentages.map(async (prediction: any) => {
+            if (prediction.pool_address) {
+              try {
+                const winnerInfo = await getPoolWinner(prediction.pool_address);
+                if (winnerInfo && winnerInfo.winnerSet) {
+                  return null; // Escludi questa prediction
+                }
+              } catch (error) {
+                // In caso di errore, usa fallback DB: escludi se status è 'risolta'
+                if (prediction.status === 'risolta') {
+                  return null;
+                }
+              }
+            } else {
+              // Senza pool_address, usa fallback DB: escludi se status è 'risolta'
+              if (prediction.status === 'risolta') {
+                return null;
+              }
+            }
+            return prediction;
+          })
+        );
+        predictionsData = filteredClosing.filter((p: any) => p !== null);
 
       } else {
         // Categoria specifica: tutte le prediction di quella categoria
@@ -348,8 +422,35 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
           })
         );
 
+        // Filtra le prediction risolte dal contratto anche se hanno status diverso nel DB
+        const filteredCategory = await Promise.all(
+          predictionsWithPercentages.map(async (prediction: any) => {
+            if (prediction.pool_address) {
+              try {
+                const winnerInfo = await getPoolWinner(prediction.pool_address);
+                if (winnerInfo && winnerInfo.winnerSet) {
+                  return null; // Escludi questa prediction
+                }
+              } catch (error) {
+                // In caso di errore, usa fallback DB: escludi se status è 'risolta'
+                if (prediction.status === 'risolta') {
+                  return null;
+                }
+              }
+            } else {
+              // Senza pool_address, usa fallback DB: escludi se status è 'risolta'
+              if (prediction.status === 'risolta') {
+                return null;
+              }
+            }
+            return prediction;
+          })
+        );
+        
         // ORDINA PER PREDICTIONS TOTALI (numero di bet)
-        predictionsData = predictionsWithPercentages.sort((a, b) => b.total_predictions - a.total_predictions);
+        predictionsData = filteredCategory
+          .filter((p: any) => p !== null)
+          .sort((a, b) => b.total_predictions - a.total_predictions);
       }
 
       setPredictions(predictionsData);

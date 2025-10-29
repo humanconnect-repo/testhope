@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import PredictionList from '../components/PredictionList';
 import CancelledPredictionsList from '../components/CancelledPredictionsList';
+import ResolvedPredictionsList from '../components/ResolvedPredictionsList';
 import CategoryTabs from '../components/CategoryTabs';
 
 export default function Home() {
@@ -117,6 +118,9 @@ export default function Home() {
         <div className="mt-12">
           <CancelledPredictionsList />
         </div>
+
+        {/* Prediction Risolte */}
+        <ResolvedPredictionsList />
       </main>
 
       <Footer />
