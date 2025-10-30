@@ -814,18 +814,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     }
   }, [contractBets, contractStats]); // Rimosso lastDataHash dalle dipendenze per evitare loop
 
-  // useEffect per reindirizzare alla homepage se il wallet si disconnette
-  useEffect(() => {
-    // Aggiungi un delay per evitare reindirizzamenti prematuri durante il refresh
-    const timeoutId = setTimeout(() => {
-      // Se l'utente era connesso e ora non lo è più, reindirizza alla homepage
-      if (isAuthenticated === false && address === undefined) {
-        router.push('/');
-      }
-    }, 5000); // 5 secondi di delay per dare tempo al sistema di caricare l'autenticazione
-
-    return () => clearTimeout(timeoutId);
-  }, [isAuthenticated, address, router]);
+  
 
   const loadPredictionData = async () => {
     try {
@@ -2088,7 +2077,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                         {/* Se l'utente non ha scommesso */}
                         {!(isAuthenticated && userHasBet) && (
                           <div className="mt-2 text-sm text-gray-600 dark:text-gray-400 italic">
-                            {isAuthenticated ? 'Non hai scommesso su questa prediction' : 'Connetti il wallet per vedere il tuo risultato'}
+                            {isAuthenticated ? 'Non hai scommesso su questa prediction' : 'Connetti il wallet...'}
                           </div>
                         )}
                       </div>
@@ -2663,7 +2652,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                   >
                     {bettingLoading ? 'Elaborazione...' : 
                      !isAuthenticated
-                      ? 'Connetti Wallet'
+                      ? 'Connetti il tuo wallet...'
                       : !selectedPosition || !betAmount
                       ? 'Seleziona posizione e importo'
                       : 'Piazza la tua scommessa'

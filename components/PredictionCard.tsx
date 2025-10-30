@@ -217,13 +217,7 @@ export default function PredictionCard({
   }, [poolAddress, poolState, status, isConnected]);
 
   const handleCardClick = (e: React.MouseEvent) => {
-    if (!isConnected) {
-      e.preventDefault();
-      setShowWalletModal(true);
-      return;
-    }
-    
-    // Se connesso, mostra loading e naviga
+    // Naviga sempre ai dettagli senza richiedere wallet connesso
     e.preventDefault();
     setIsLoading(true);
     router.push(`/bellanapoli.prediction/${id}`);

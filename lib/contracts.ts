@@ -281,7 +281,7 @@ export async function emergencyResolve(poolAddress: string, winner: boolean, rea
 // Check if betting is currently open (including emergency stop)
 export async function isBettingCurrentlyOpen(poolAddress: string): Promise<boolean> {
   try {
-    const pool = await getPool(poolAddress);
+    const pool = await getPool(poolAddress, true);
     return await pool.isBettingOpen(); // Corretto: isBettingOpen invece di isBettingCurrentlyOpen
   } catch (error) {
     console.warn('Errore nel controllo stato scommesse:', error);
@@ -291,7 +291,7 @@ export async function isBettingCurrentlyOpen(poolAddress: string): Promise<boole
 
 // Check emergency stop status
 export async function getEmergencyStopStatus(poolAddress: string): Promise<boolean> {
-  const pool = await getPool(poolAddress);
+  const pool = await getPool(poolAddress, true);
   return await pool.emergencyStop();
 }
 
@@ -322,7 +322,7 @@ export async function claimRefund(poolAddress: string) {
 // Check if user can claim refund
 export async function canClaimRefund(poolAddress: string, userAddress: string): Promise<boolean> {
   try {
-    const pool = await getPool(poolAddress);
+    const pool = await getPool(poolAddress, true);
     return await pool.canClaimRefund(userAddress);
   } catch (error) {
     console.error('Error checking can claim refund:', error);
@@ -333,7 +333,7 @@ export async function canClaimRefund(poolAddress: string, userAddress: string): 
 // Check if user already claimed refund (check the claimed status in userBets)
 export async function hasClaimedRefund(poolAddress: string, userAddress: string): Promise<boolean> {
   try {
-    const pool = await getPool(poolAddress);
+    const pool = await getPool(poolAddress, true);
     const bet = await pool.userBets(userAddress);
     return bet.claimed === true;
   } catch (error) {
@@ -394,7 +394,7 @@ export async function hasClaimedWinnings(poolAddress: string, userAddress: strin
 // Get all bettors from a pool contract
 export async function getPoolBettors(poolAddress: string): Promise<string[]> {
   try {
-    const pool = await getPool(poolAddress);
+    const pool = await getPool(poolAddress, true);
     return await pool.getBettors();
   } catch (error) {
     console.error('Error getting pool bettors:', error);
@@ -405,7 +405,7 @@ export async function getPoolBettors(poolAddress: string): Promise<string[]> {
 // Get user bet information from contract
 export async function getUserBetFromContract(poolAddress: string, userAddress: string) {
   try {
-    const pool = await getPool(poolAddress);
+    const pool = await getPool(poolAddress, true);
     // userBets è un mapping pubblico, quindi possiamo chiamarlo direttamente
     const bet = await pool.userBets(userAddress);
     return {
@@ -451,7 +451,7 @@ export async function getRecentBetsFromContract(poolAddress: string, limit: numb
 // Get pool statistics from contract
 export async function getPoolStatsFromContract(poolAddress: string) {
   try {
-    const pool = await getPool(poolAddress);
+    const pool = await getPool(poolAddress, true);
     const [totalYes, totalNo, totalBets, bettorCount, isClosed, winnerSet, cancelled] = await pool.getPoolStats();
     
     // Read winner separately
@@ -548,7 +548,7 @@ export async function calculateUserWinnings(
 // Check if pool is cancelled
 export async function isPoolCancelled(poolAddress: string): Promise<boolean> {
   try {
-    const pool = await getPool(poolAddress);
+    const pool = await getPool(poolAddress, true);
     return await pool.cancelled();
   } catch (error) {
     console.warn('Errore nel controllo cancellazione pool:', error);
@@ -559,7 +559,7 @@ export async function isPoolCancelled(poolAddress: string): Promise<boolean> {
 // Check if pool is closed
 export async function isPoolClosed(poolAddress: string): Promise<boolean> {
   try {
-    const pool = await getPool(poolAddress);
+    const pool = await getPool(poolAddress, true);
     return await pool.isClosed();
   } catch (error) {
     console.warn('Errore nel controllo chiusura pool:', error);
@@ -570,7 +570,7 @@ export async function isPoolClosed(poolAddress: string): Promise<boolean> {
 // Get bet description from pool contract
 export async function getBetDescription(poolAddress: string): Promise<string> {
   try {
-    const pool = await getPool(poolAddress);
+    const pool = await getPool(poolAddress, true);
     return await pool.getBetDescription();
   } catch (error) {
     console.warn('Error getting bet description:', error);
@@ -581,7 +581,7 @@ export async function getBetDescription(poolAddress: string): Promise<string> {
 // Get betting status from pool contract
 export async function getBettingStatus(poolAddress: string): Promise<string> {
   try {
-    const pool = await getPool(poolAddress);
+    const pool = await getPool(poolAddress, true);
     return await pool.getBettingStatus();
   } catch (error) {
     console.warn('Error getting betting status:', error);
@@ -592,7 +592,7 @@ export async function getBettingStatus(poolAddress: string): Promise<string> {
 // Check if user can bet with detailed reason
 export async function canUserBet(poolAddress: string, userAddress: string): Promise<{ canBet: boolean; reason: string }> {
   try {
-    const pool = await getPool(poolAddress);
+    const pool = await getPool(poolAddress, true);
     const result = await pool.canUserBet(userAddress);
     return {
       canBet: result[0],
