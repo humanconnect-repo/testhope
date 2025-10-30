@@ -8,6 +8,8 @@ interface QuoteChartProps {
   betCount: number;
   yesBetsCount?: number;
   noBetsCount?: number;
+  yesBetsAmount?: number;
+  noBetsAmount?: number;
 }
 
 export default function QuoteChart({ 
@@ -16,7 +18,9 @@ export default function QuoteChart({
   totalBetsAmount, 
   betCount,
   yesBetsCount,
-  noBetsCount
+  noBetsCount,
+  yesBetsAmount = 0,
+  noBetsAmount = 0
 }: QuoteChartProps) {
   // Mostra solo i dati attuali se non ci sono scommesse storiche
   const chartData = betCount > 0 ? [
@@ -68,6 +72,20 @@ export default function QuoteChart({
             <div className="text-xs text-red-600 dark:text-red-400">
               {noBetsCount || Math.round((noPercentage / 100) * betCount)} {noBetsCount === 1 || (noBetsCount === undefined && Math.round((noPercentage / 100) * betCount) === 1) ? 'Prediction' : 'Predictions'}
             </div>
+          </div>
+        </div>
+
+        {/* Volumi Sì/No (sotto i riquadri percentuali, sopra il grafico) */}
+        <div className="mt-4 grid grid-cols-2 gap-4">
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+            <div className="text-xs uppercase tracking-wide text-green-600 dark:text-green-400">Volumi per il Sì</div>
+            <div className="text-base font-bold text-green-600 dark:text-green-400">{yesBetsAmount.toFixed(4)} BNB</div>
+            <div className="text-xs text-green-600 dark:text-green-400">{totalBetsAmount > 0 ? ((yesBetsAmount / totalBetsAmount) * 100).toFixed(1) : '0.0'}%</div>
+          </div>
+          <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+            <div className="text-xs uppercase tracking-wide text-red-600 dark:text-red-400">Volumi per il No</div>
+            <div className="text-base font-bold text-red-600 dark:text-red-400">{noBetsAmount.toFixed(4)} BNB</div>
+            <div className="text-xs text-red-600 dark:text-red-400">{totalBetsAmount > 0 ? ((noBetsAmount / totalBetsAmount) * 100).toFixed(1) : '0.0'}%</div>
           </div>
         </div>
       </div>

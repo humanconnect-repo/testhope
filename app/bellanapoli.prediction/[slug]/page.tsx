@@ -83,6 +83,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   const [totalBetsCount, setTotalBetsCount] = useState<number>(0);
   const [yesBetsCount, setYesBetsCount] = useState<number>(0);
   const [noBetsCount, setNoBetsCount] = useState<number>(0);
+  const [yesBetsAmount, setYesBetsAmount] = useState<number>(0);
+  const [noBetsAmount, setNoBetsAmount] = useState<number>(0);
   
   // Vincitori (solo per prediction risolta)
   type WinnerItem = { username: string; rewardBnb: number | null };
@@ -902,9 +904,25 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         no: newNoPercentage
       });
 
-      // Calcola il totale delle scommesse
+      // Calcola il totale delle scommesse (tutte)
       const totalAmount = await calculateTotalBets(predictionData.id);
       setTotalBetsAmount(totalAmount);
+
+      // Calcola volume YES e NO (in BNB) dal DB bets
+      try {
+        const [{ data: yesRows }, { data: noRows }] = await Promise.all([
+          supabase.from('bets').select('amount_bnb').eq('prediction_id', predictionData.id).eq('position', 'yes'),
+          supabase.from('bets').select('amount_bnb').eq('prediction_id', predictionData.id).eq('position', 'no')
+        ]);
+        const yesTotalAmt = yesRows?.reduce((sum: number, r: any) => sum + (r.amount_bnb || 0), 0) || 0;
+        const noTotalAmt = noRows?.reduce((sum: number, r: any) => sum + (r.amount_bnb || 0), 0) || 0;
+        setYesBetsAmount(Number(yesTotalAmt));
+        setNoBetsAmount(Number(noTotalAmt));
+      } catch (e) {
+        // Se fallisce, lascia 0 (non bloccare UI)
+        setYesBetsAmount(0);
+        setNoBetsAmount(0);
+      }
 
       // Imposta il pool address se disponibile
       if (predictionData.pool_address) {
@@ -2975,6 +2993,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                   betCount={totalBetsCount}
                   yesBetsCount={yesBetsCount}
                   noBetsCount={noBetsCount}
+                  yesBetsAmount={yesBetsAmount}
+                  noBetsAmount={noBetsAmount}
                 />
               ) : (
                 <div className="h-64 flex items-center justify-center">
