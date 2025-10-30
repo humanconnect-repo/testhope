@@ -1330,6 +1330,48 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     }
   };
 
+  // Pulsante Condividi: prova Web Share API, fallback a copia link
+  const handleShareClick = async () => {
+    const shareUrl = typeof window !== 'undefined'
+      ? window.location.href
+      : `https://bellanapoli.io/bellanapoli.prediction/${params.slug}`;
+
+    // 1) Tentativo con Web Share API (mobile)
+    if (typeof navigator !== 'undefined' && (navigator as any).share) {
+      try {
+        await (navigator as any).share({
+          title: prediction?.title || 'Bella Napoli',
+          text: 'Guarda questa prediction su Bella Napoli',
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        // Ignora annullamento o errori e passa al fallback
+      }
+    }
+
+    // 2) Fallback: copia link negli appunti
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = shareUrl;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      alert('Link copiato negli appunti');
+    } catch (e) {
+      console.error('Impossibile condividere/copire:', e);
+      alert('Condivisione non riuscita. Copia il link dalla barra degli indirizzi.');
+    }
+  };
+
   // Funzione per gestire le scommesse con modal di progresso
   const handleBet = async () => {
     if (!isAuthenticated || !address || !selectedPosition || !betAmount || !prediction) {
@@ -1697,6 +1739,16 @@ export default function PredictionPage({ params }: { params: { slug: string } })
               <span className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary dark:bg-primary/20">
                 {prediction.category}
               </span>
+              <button
+                type="button"
+                onClick={handleShareClick}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 8a3 3 0 10-3-3m3 3L6 12m9 4a3 3 0 11-3 3m3-3l-9-4" />
+                </svg>
+                <span>Condividi</span>
+              </button>
             </div>
             <div className="flex items-center gap-3">
               {poolAddress && (
