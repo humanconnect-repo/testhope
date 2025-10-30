@@ -590,20 +590,24 @@ export async function getBettingStatus(poolAddress: string): Promise<string> {
 }
 
 // Check if user can bet with detailed reason
-export async function canUserBet(poolAddress: string, userAddress: string): Promise<{ canBet: boolean; reason: string }> {
+export async function canUserBet(
+  poolAddress: string,
+  userAddress: string
+): Promise<{ canBet: boolean; reason: string }> {
   try {
-    const pool = await getPool(poolAddress, true);
-    const result = await pool.canUserBet(userAddress);
-    return {
-      canBet: result[0],
-      reason: result[1]
-    };
-  } catch (error) {
-    console.warn('Error checking if user can bet:', error);
-    return {
-      canBet: false,
-      reason: 'Unable to check betting eligibility'
-    };
+    const pool = await getPool(poolAddress, true); // read-only provider
+    const anyPool = pool as any;
+
+    // Se il contratto non espone canUserBet, non bloccare la UX
+    if (typeof anyPool.canUserBet !== 'function') {
+      return { canBet: true, reason: 'pre-check non supportato dal contratto' };
+    }
+
+    const result = await anyPool.canUserBet(userAddress);
+    return { canBet: Boolean(result[0]), reason: String(result[1]) };
+  } catch (_err) {
+    // In caso di errore di rete/ABI, non bloccare la scommessa: il contratto validerà on-chain
+    return { canBet: true, reason: 'pre-check saltato' };
   }
 }
 
@@ -621,13 +625,9 @@ export async function placeBet(poolAddress: string, choice: boolean, amount: str
     try {
       if (signerAddress && signerAddress !== '0x0000000000000000000000000000000000000000') {
         const canBet = await canUserBet(poolAddress, signerAddress);
-        if (!canBet.canBet) {
-          console.warn('⚠️ Utente potrebbe non poter scommettere:', canBet.reason);
-          // Non lanciamo errore qui, lasciamo che sia il contratto a validare
-          // Lancia solo se la ragione è chiara e definitiva
-          if (canBet.reason.includes('already placed') || canBet.reason.includes('già scommesso')) {
-            throw new Error(`Impossibile scommettere: ${canBet.reason}`);
-          }
+        if (!canBet.canBet && (canBet.reason.includes('already placed') || canBet.reason.includes('già scommesso'))) {
+          // Solo il caso bloccante viene mostrato all'utente
+          throw new Error(`Impossibile scommettere: ${canBet.reason}`);
         }
       }
     } catch (preCheckError: any) {
@@ -635,8 +635,7 @@ export async function placeBet(poolAddress: string, choice: boolean, amount: str
       if (preCheckError.message && preCheckError.message.includes('Impossibile scommettere')) {
         throw preCheckError;
       }
-      // Altrimenti continua (potrebbe essere un problema di rete o connessione)
-      console.warn('⚠️ Pre-check fallito, continua comunque:', preCheckError);
+      // Altrimenti continua silenziosamente (sarà il contratto a validare)
     }
     
     // Convert amount to wei
