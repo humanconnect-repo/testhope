@@ -1752,7 +1752,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
 
         {/* Header della prediction */}
         <div className="bg-transparent rounded-2xl border border-gray-200 dark:border-gray-700 shadow-md p-8 mb-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
             <div className="flex items-center gap-3">
               <span className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary dark:bg-primary/20">
                 {prediction.category}
