@@ -94,6 +94,52 @@ export default function RootLayout({
                   }
                   originalError(...args);
                 };
+
+                // Blocca richieste di analytics verso domini noti (es. Coinbase) per evitare errori in console
+                try {
+                  const blockedHosts = ['cca-lite.coinbase.com'];
+                  const shouldBlock = (u) => {
+                    try {
+                      const s = typeof u === 'string' ? u : (u?.url || '');
+                      return blockedHosts.some((h) => s.includes(h));
+                    } catch { return false; }
+                  };
+
+                  // fetch()
+                  if (typeof window.fetch === 'function') {
+                    const originalFetch = window.fetch.bind(window);
+                    window.fetch = (...args) => {
+                      const url = args[0];
+                      if (shouldBlock(url)) {
+                        return Promise.resolve(new Response('', { status: 204 }));
+                      }
+                      return originalFetch(...args);
+                    };
+                  }
+
+                  // XMLHttpRequest
+                  if (typeof XMLHttpRequest !== 'undefined') {
+                    const origOpen = XMLHttpRequest.prototype.open;
+                    const origSend = XMLHttpRequest.prototype.send;
+                    XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+                      try { this.__blocked = shouldBlock(url); } catch { this.__blocked = false; }
+                      return origOpen.call(this, method, url, ...rest);
+                    };
+                    XMLHttpRequest.prototype.send = function(body) {
+                      if (this.__blocked) { try { this.abort(); } catch {} return; }
+                      return origSend.call(this, body);
+                    };
+                  }
+
+                  // sendBeacon
+                  if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+                    const origBeacon = navigator.sendBeacon.bind(navigator);
+                    navigator.sendBeacon = (url, data) => {
+                      if (shouldBlock(url)) return true;
+                      return origBeacon(url, data);
+                    };
+                  }
+                } catch {}
                 
                 // Disabilita warning Lit e configurazione
                 window.litDisableBundleWarning = true;
