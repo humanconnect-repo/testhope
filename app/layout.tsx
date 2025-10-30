@@ -95,9 +95,9 @@ export default function RootLayout({
                   originalError(...args);
                 };
 
-                // Blocca richieste di analytics verso domini noti (es. Coinbase) per evitare errori in console
+                // Blocca richieste di analytics verso domini noti (es. Coinbase/WalletConnect) per evitare errori in console
                 try {
-                  const blockedHosts = ['cca-lite.coinbase.com'];
+                  const blockedHosts = ['cca-lite.coinbase.com', 'pulse.walletconnect.org'];
                   const shouldBlock = (u) => {
                     try {
                       const s = typeof u === 'string' ? u : (u?.url || '');
@@ -111,7 +111,8 @@ export default function RootLayout({
                     window.fetch = (...args) => {
                       const url = args[0];
                       if (shouldBlock(url)) {
-                        return Promise.resolve(new Response('', { status: 204 }));
+                        // Risposta valida senza body per status 204
+                        return Promise.resolve(new Response(null, { status: 204 }));
                       }
                       return originalFetch(...args);
                     };
