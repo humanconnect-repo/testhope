@@ -118,7 +118,7 @@ export default function UserMenu() {
         {isConnected && !isConnectedToBscTestnet && chain && (
           <div 
             className="flex items-center justify-center w-5 h-5 bg-yellow-500 rounded-full border-2 border-white dark:border-dark-bg shadow-sm cursor-help" 
-            title="Collegati alla BNB Chain Testnet dal tuo wallet!"
+            title="Collegati alla BSC Testnet dal tuo wallet!"
           >
             <svg 
               className="w-3 h-3 text-white" 
@@ -140,7 +140,7 @@ export default function UserMenu() {
         {isConnected && !chain && (
           <div 
             className="flex items-center justify-center w-5 h-5 bg-red-500 rounded-full border-2 border-white dark:border-dark-bg shadow-sm cursor-help" 
-            title="Collegati alla BNB Chain Testnet dal tuo wallet!"
+            title="Collegati alla BSC Testnet dal tuo wallet!"
           >
             <svg 
               className="w-3 h-3 text-white" 
@@ -218,7 +218,7 @@ export default function UserMenu() {
                 <div className="flex items-center space-x-2">
                   <div className={`w-2 h-2 rounded-full ${isConnectedToBscTestnet ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
                   <span className="text-xs text-gray-500 dark:text-gray-500 font-medium">
-                    {chain.name}
+                    {chain.id === 97 ? 'BSC Testnet' : chain.name}
                   </span>
                 </div>
               )}
@@ -226,7 +226,7 @@ export default function UserMenu() {
               {/* Avviso se non è su BSC Testnet */}
               {isConnected && !isConnectedToBscTestnet && (
                 <div className="px-2 py-1.5 bg-yellow-500/20 dark:bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-600 dark:text-yellow-400 font-medium">
-                  ⚠️ Collegati alla BNB Chain Testnet dal tuo wallet!
+                  ⚠️ Collegati alla BSC Testnet dal tuo wallet!
                 </div>
               )}
               
@@ -257,7 +257,7 @@ export default function UserMenu() {
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2.69l5.66 5.66a8 8 0 11-11.32 0L12 2.69z"/>
                   </svg>
-                  <span className="font-semibold">BNB Chain Faucet</span>
+                  <span className="font-semibold">BNB Faucet</span>
                 </a>
                 <button
                   onClick={handleProfileClick}

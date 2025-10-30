@@ -6,7 +6,7 @@ import Web3Provider from '../components/Web3Provider'
 
 export const metadata: Metadata = {
   title: 'Bella Napoli - Scommetti sul futuro, con stile degen italiano',
-  description: 'Prediction market italiano per scommettere sul futuro con stile degen',
+  description: 'Prediction market italiano su https://bellanapoli.io per scommettere sul futuro con stile degen',
 }
 
 export default function RootLayout({

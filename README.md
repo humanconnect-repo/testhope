@@ -45,6 +45,7 @@ Bella Napoli è una piattaforma Web3 innovativa che ti permette di:
 ## 📱 Accesso
 
 La piattaforma è accessibile da qualsiasi dispositivo con un browser moderno e un wallet crypto. Non è necessario scaricare app.
+Sito live: https://bellanapoli.io
 
 ## 🛠️ Tecnologie
 

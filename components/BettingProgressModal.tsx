@@ -362,10 +362,7 @@ export default function BettingProgressModal({
             </button>
           ) : currentStep >= steps.length ? (
             <button
-              onClick={() => {
-                onClose();
-                window.location.reload();
-              }}
+              onClick={() => window.location.reload()}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
             >
               Completato

@@ -1708,7 +1708,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
               <span className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary dark:bg-primary/20">
                 {prediction.category}
               </span>
-              {/* Link al contract se c'è pool_address */}
+            </div>
+            <div className="flex items-center gap-3">
               {poolAddress && (
                 <a
                   href={`https://testnet.bscscan.com/address/${poolAddress}`}
@@ -1717,17 +1718,16 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                   className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/30 transition-colors inline-flex items-center gap-1"
                   title="Visualizza contratto su BSCScan"
                 >
-                  📄 Contract
+                  📄 Pool Contract
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
                 </a>
               )}
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPredictionStatus(prediction).bgColor}`}>
+                {getPredictionStatus(prediction).emoji} {getPredictionStatus(prediction).displayText}
+              </span>
             </div>
-            {/* Status della prediction */}
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPredictionStatus(prediction).bgColor}`}>
-              {getPredictionStatus(prediction).emoji} {getPredictionStatus(prediction).displayText}
-            </span>
           </div>
 
           {/* Immagine e contenuto */}
@@ -1738,7 +1738,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                 <img
                   src={prediction.image_url}
                   alt={prediction.title}
-                  className="w-48 h-48 lg:w-64 lg:h-64 object-cover rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
+                  className="w-48 h-48 lg:w-64 lg:h-64 object-cover"
                 />
               </div>
             )}

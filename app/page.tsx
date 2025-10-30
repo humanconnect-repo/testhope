@@ -73,6 +73,17 @@ export default function Home() {
           </div>
         </div>
 
+        {/* CTA classifica */}
+        <div className="mb-4 flex justify-center">
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary dark:bg-primary/20 hover:bg-primary/15 dark:hover:bg-primary/30 transition-colors font-medium"
+            disabled
+          >
+            Uè guagliò, vedi 'sta classifica!
+          </button>
+        </div>
+
         {/* Categorie */}
         <div className="mb-8">
           <CategoryTabs 
