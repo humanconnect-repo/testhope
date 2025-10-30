@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const baseUrl = 'https://bellanapoli.io'; // senza www
+  const baseUrl = 'https://bellanapoli.io';
   const title = 'Bella Napoli - Scommetti sul futuro, con stile degen italiano';
   const url = `${baseUrl}/bellanapoli.prediction/${params.slug}`;
-  const image = `${baseUrl}/media/image/BellaNapoli1200%20x%20630.png`;
+  const image = `${baseUrl}/media/image/BellaNapoli1200x630.png`;
 
   return {
     title,
