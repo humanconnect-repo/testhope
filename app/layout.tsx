@@ -5,33 +5,8 @@ import '../styles/animations.css'
 import Web3Provider from '../components/Web3Provider'
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://bellanapoli.io'),
   title: 'Bella Napoli - Scommetti sul futuro, con stile degen italiano',
-  description: 'https://bellanapoli.io',
-  openGraph: {
-    title: 'Bella Napoli - Scommetti sul futuro, con stile degen italiano',
-    description: 'https://bellanapoli.io',
-    url: 'https://bellanapoli.io/',
-    siteName: 'Bella Napoli',
-    type: 'website',
-    images: [
-      {
-        url: 'https://bellanapoli.io/media/image/BellaNapoli1200%20x%20630.png',
-        width: 1200,
-        height: 630,
-        alt: 'Bella Napoli',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Bella Napoli - Scommetti sul futuro, con stile degen italiano',
-    description: 'https://bellanapoli.io',
-    images: ['https://bellanapoli.io/media/image/BellaNapoli1200%20x%20630.png'],
-  },
-  alternates: {
-    canonical: 'https://bellanapoli.io/',
-  },
+  description: 'Prediction market italiano su https://bellanapoli.io per scommettere sul futuro con stile degen',
 }
 
 export default function RootLayout({
