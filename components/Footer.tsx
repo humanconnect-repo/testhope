@@ -27,7 +27,14 @@ export default function Footer() {
                 className="text-primary hover:underline cursor-pointer"
               >
                 Keet
-              </button> |{' '}
+              </button> {' | '} 
+              <a 
+                href="https://x.com/bellanapoli_io"
+                className="text-primary hover:underline"
+                target="_blank" rel="noopener noreferrer"
+              >
+                X
+              </a> {' | '}
               <a 
                 href="mailto:bellanapoli@tuta.com" 
                 className="text-primary hover:underline"
