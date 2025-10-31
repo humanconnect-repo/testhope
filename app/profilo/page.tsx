@@ -158,7 +158,7 @@ export default function ProfiloPage() {
     <div className="min-h-screen bg-white dark:bg-dark-bg">
       <Header />
       
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-10">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-[7.5rem] pb-10">
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
