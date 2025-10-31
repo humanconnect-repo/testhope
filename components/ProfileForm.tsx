@@ -35,6 +35,7 @@ export default function ProfileForm() {
   const [pending, setPending] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(true)
   const [urlError, setUrlError] = useState<string | null>(null)
+  const [isExpanded, setIsExpanded] = useState<boolean>(false)
 
   // Carica profilo esistente
   useEffect(() => {
@@ -197,88 +198,114 @@ export default function ProfileForm() {
     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4 shadow-sm">
       
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Avatar */}
-        <div className="flex items-center space-x-4">
-          <Avatar 
-            src={profile.avatar_url}
-            alt="Avatar"
-            size="md"
-            fallbackText={profile.nickname?.[0] || address?.slice(2, 4)}
-          />
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
-              {profile.nickname || `Wallet ${address?.slice(0, 6)}...`}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Immagine profilo
-            </p>
+        {/* Avatar e Nickname - sempre visibili */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Avatar 
+              src={profile.avatar_url}
+              alt="Avatar"
+              size="md"
+              fallbackText={profile.nickname?.[0] || address?.slice(2, 4)}
+            />
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                {profile.nickname || `Wallet ${address?.slice(0, 6)}...`}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Immagine profilo
+              </p>
+            </div>
           </div>
+          
+          {/* Freccia per espandere/contrarre */}
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-2 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded-lg transition-colors duration-200"
+            aria-label={isExpanded ? 'Contrai' : 'Espandi'}
+          >
+            <svg 
+              className={`w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform duration-200 ${
+                isExpanded ? 'transform rotate-180' : ''
+              }`}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
         </div>
 
-        {/* Avatar URL */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            URL Immagine Profilo
-          </label>
-          <input
-            type="url"
-            value={profile.avatar_url}
-            onChange={(e) => handleAvatarUrlChange(e.target.value)}
-            placeholder="https://esempio.com/immagine.jpg (opzionale)"
-            className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-          />
-          {urlError && (
-            <p className="text-red-500 text-xs mt-1">{urlError}</p>
-          )}
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Lascia vuoto per usare l'immagine predefinita. Supporta: jpg, png, gif, webp, svg.
-          </p>
-        </div>
+        {/* Campi modificabili - visibili solo quando espanso */}
+        {isExpanded && (
+          <div className="space-y-4 pt-4 border-t border-blue-200 dark:border-blue-700 animate-in fade-in slide-in-from-top-2 duration-200">
+            {/* Avatar URL */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                URL Immagine Profilo
+              </label>
+              <input
+                type="url"
+                value={profile.avatar_url}
+                onChange={(e) => handleAvatarUrlChange(e.target.value)}
+                placeholder="https://esempio.com/immagine.jpg (opzionale)"
+                className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+              {urlError && (
+                <p className="text-red-500 text-xs mt-1">{urlError}</p>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Lascia vuoto per usare l'immagine predefinita. Supporta: jpg, png, gif, webp, svg.
+              </p>
+            </div>
 
-        {/* Nickname */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Nickname
-          </label>
-          <input
-            type="text"
-            value={profile.nickname}
-            onChange={(e) => setProfile(prev => ({ ...prev, nickname: e.target.value }))}
-            placeholder="Il tuo nickname degen"
-            maxLength={20}
-            className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-          />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {profile.nickname.length}/20 caratteri
-          </p>
-        </div>
+            {/* Nickname */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Nickname
+              </label>
+              <input
+                type="text"
+                value={profile.nickname}
+                onChange={(e) => setProfile(prev => ({ ...prev, nickname: e.target.value }))}
+                placeholder="Il tuo nickname degen"
+                maxLength={20}
+                className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {profile.nickname.length}/20 caratteri
+              </p>
+            </div>
 
-        {/* Bio */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Bio
-          </label>
-          <textarea
-            value={profile.bio}
-            onChange={(e) => setProfile(prev => ({ ...prev, bio: e.target.value }))}
-            placeholder="Raccontaci qualcosa di te..."
-            rows={3}
-            maxLength={150}
-            className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-          />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {profile.bio.length}/150 caratteri
-          </p>
-        </div>
+            {/* Bio */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Bio
+              </label>
+              <textarea
+                value={profile.bio}
+                onChange={(e) => setProfile(prev => ({ ...prev, bio: e.target.value }))}
+                placeholder="Raccontaci qualcosa di te..."
+                rows={3}
+                maxLength={150}
+                className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {profile.bio.length}/150 caratteri
+              </p>
+            </div>
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={pending}
-          className="w-full bg-primary hover:bg-primary/90 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-        >
-          {pending ? '💾 Salvataggio...' : '💾 Salva profilo'}
-        </button>
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={pending}
+              className="w-full bg-primary hover:bg-primary/90 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+            >
+              {pending ? '💾 Salvataggio...' : '💾 Salva profilo'}
+            </button>
+          </div>
+        )}
       </form>
     </div>
   )

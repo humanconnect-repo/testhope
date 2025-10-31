@@ -250,6 +250,81 @@ export default function ProfiloPage() {
                 </div>
               </div>
             </div>
+
+            {/* Le tue Prediction in corso */}
+            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                📊 Le tue Prediction in corso
+              </h3>
+              {predictionsLoading ? (
+                <div className="space-y-3">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                </div>
+              ) : predictionsError ? (
+                <div className="text-center py-4">
+                  <p className="text-red-500 dark:text-red-400 text-sm">{predictionsError}</p>
+                </div>
+              ) : activePredictions.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    Non hai prediction attive al momento
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3">
+                  {activePredictions.map((prediction) => (
+                    <div
+                      key={prediction.id}
+                      onClick={() => handlePredictionClick(prediction.slug, prediction.id)}
+                      className={`flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg transition-colors border border-gray-200 dark:border-gray-700 cursor-pointer ${
+                        navigatingTo === prediction.id
+                          ? 'bg-primary/10 dark:bg-primary/20 border-primary/30'
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {navigatingTo === prediction.id ? (
+                        <div className="flex items-center justify-center flex-1 py-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-4 h-4 bg-primary/20 rounded-full animate-pulse"></div>
+                            <span className="text-sm text-primary dark:text-primary-400 font-medium">
+                              Caricamento...
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {prediction.image_url && (
+                            <img
+                              src={prediction.image_url}
+                              alt={prediction.title}
+                              className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
+                              {prediction.title}
+                            </h4>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {prediction.category}
+                            </p>
+                          </div>
+                          <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Info aggiuntive */}
@@ -325,83 +400,6 @@ export default function ProfiloPage() {
               </div>
             </div>
 
-            {/* Le tue Prediction in corso */}
-            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                📊 Le tue Prediction in corso
-              </h3>
-              {predictionsLoading ? (
-                <div className="space-y-3">
-                  <div className="animate-pulse">
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-                  </div>
-                  <div className="animate-pulse">
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-                  </div>
-                </div>
-              ) : predictionsError ? (
-                <div className="text-center py-4">
-                  <p className="text-red-500 dark:text-red-400 text-sm">{predictionsError}</p>
-                </div>
-              ) : activePredictions.length === 0 ? (
-                <div className="text-center py-4">
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">
-                    Non hai prediction attive al momento
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {activePredictions.map((prediction) => (
-                    <div
-                      key={prediction.id}
-                      onClick={() => handlePredictionClick(prediction.slug, prediction.id)}
-                      className={`block p-3 rounded-md transition-colors duration-200 cursor-pointer ${
-                        navigatingTo === prediction.id
-                          ? 'bg-primary/10 dark:bg-primary/20'
-                          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      {navigatingTo === prediction.id ? (
-                        <div className="flex items-center justify-center py-2">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-4 h-4 bg-primary/20 rounded-full animate-pulse"></div>
-                            <span className="text-sm text-primary dark:text-primary-400 font-medium">
-                              Caricamento...
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
-                              {prediction.title}
-                            </h4>
-                            <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary dark:bg-primary/20 ml-2 flex-shrink-0">
-                              {prediction.category}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-                            <span>
-                              Scommessa: {prediction.amount_bnb.toFixed(4)} BNB
-                            </span>
-                            <span className={`px-2 py-1 rounded ${
-                              prediction.position === 'yes' 
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                                : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                            }`}>
-                              {prediction.position === 'yes' ? 'Sì' : 'No'}
-                            </span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
             {/* Le tue Prediction risolte */}
             <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -429,19 +427,19 @@ export default function ProfiloPage() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-64 overflow-y-auto">
+                <div className="grid grid-cols-1 gap-3">
                   {resolvedPredictions.map((prediction) => (
                     <div
                       key={prediction.id}
                       onClick={() => handlePredictionClick(prediction.slug, prediction.id)}
-                      className={`block p-3 rounded-md transition-colors duration-200 cursor-pointer ${
+                      className={`flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg transition-colors border border-gray-200 dark:border-gray-700 cursor-pointer ${
                         navigatingTo === prediction.id
-                          ? 'bg-primary/10 dark:bg-primary/20'
-                          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          ? 'bg-primary/10 dark:bg-primary/20 border-primary/30'
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-700'
                       }`}
                     >
                       {navigatingTo === prediction.id ? (
-                        <div className="flex items-center justify-center py-2">
+                        <div className="flex items-center justify-center flex-1 py-2">
                           <div className="flex items-center space-x-2">
                             <div className="w-4 h-4 bg-primary/20 rounded-full animate-pulse"></div>
                             <span className="text-sm text-primary dark:text-primary-400 font-medium">
@@ -451,33 +449,24 @@ export default function ProfiloPage() {
                         </div>
                       ) : (
                         <>
-                          <div className="flex justify-between items-start mb-2">
+                          {prediction.image_url && (
+                            <img
+                              src={prediction.image_url}
+                              alt={prediction.title}
+                              className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
                             <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
                               {prediction.title}
                             </h4>
-                            <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 ml-2 flex-shrink-0">
-                              🏆 Risolta
-                            </span>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {prediction.category}
+                            </p>
                           </div>
-                          <div className="space-y-1">
-                            <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-                              <span>
-                                Scommessa: {prediction.amount_bnb.toFixed(4)} BNB
-                              </span>
-                              <span className={`px-2 py-1 rounded ${
-                                prediction.position === 'yes' 
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                                  : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                              }`}>
-                                {prediction.position === 'yes' ? 'Sì' : 'No'}
-                              </span>
-                            </div>
-                            {prediction.winning_rewards_amount && (
-                              <div className="text-xs font-medium text-green-600 dark:text-green-400">
-                                💰 Vincita: {prediction.winning_rewards_amount.toFixed(4)} BNB
-                              </div>
-                            )}
-                          </div>
+                          <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
                         </>
                       )}
                     </div>
@@ -486,12 +475,12 @@ export default function ProfiloPage() {
               )}
             </div>
 
-            {/* Le tue Prediction cancellate */}
-            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                ❌ Le tue Prediction cancellate
-              </h3>
-              {cancelledLoading ? (
+            {/* Le tue Prediction cancellate - mostrato solo se ci sono prediction cancellate */}
+            {cancelledLoading ? (
+              <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  ❌ Le tue Prediction cancellate
+                </h3>
                 <div className="space-y-3">
                   <div className="animate-pulse">
                     <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
@@ -502,30 +491,34 @@ export default function ProfiloPage() {
                     <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
                   </div>
                 </div>
-              ) : cancelledError ? (
+              </div>
+            ) : cancelledError ? (
+              <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  ❌ Le tue Prediction cancellate
+                </h3>
                 <div className="text-center py-4">
                   <p className="text-red-500 dark:text-red-400 text-sm">{cancelledError}</p>
                 </div>
-              ) : cancelledPredictions.length === 0 ? (
-                <div className="text-center py-4">
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">
-                    Non hai prediction cancellate al momento
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-64 overflow-y-auto">
+              </div>
+            ) : cancelledPredictions.length > 0 ? (
+              <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  ❌ Le tue Prediction cancellate
+                </h3>
+                <div className="grid grid-cols-1 gap-3">
                   {cancelledPredictions.map((prediction) => (
                     <div
                       key={prediction.id}
                       onClick={() => handlePredictionClick(prediction.slug, prediction.id)}
-                      className={`block p-3 rounded-md transition-colors duration-200 cursor-pointer ${
+                      className={`flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg transition-colors border border-gray-200 dark:border-gray-700 cursor-pointer ${
                         navigatingTo === prediction.id
-                          ? 'bg-primary/10 dark:bg-primary/20'
-                          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          ? 'bg-primary/10 dark:bg-primary/20 border-primary/30'
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-700'
                       }`}
                     >
                       {navigatingTo === prediction.id ? (
-                        <div className="flex items-center justify-center py-2">
+                        <div className="flex items-center justify-center flex-1 py-2">
                           <div className="flex items-center space-x-2">
                             <div className="w-4 h-4 bg-primary/20 rounded-full animate-pulse"></div>
                             <span className="text-sm text-primary dark:text-primary-400 font-medium">
@@ -535,35 +528,31 @@ export default function ProfiloPage() {
                         </div>
                       ) : (
                         <>
-                          <div className="flex justify-between items-start mb-2">
+                          {prediction.image_url && (
+                            <img
+                              src={prediction.image_url}
+                              alt={prediction.title}
+                              className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
                             <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
                               {prediction.title}
                             </h4>
-                            <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 ml-2 flex-shrink-0">
-                              ❌ Cancellata
-                            </span>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {prediction.category}
+                            </p>
                           </div>
-                          <div className="space-y-1">
-                            <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-                              <span>
-                                Scommessa: {prediction.amount_bnb.toFixed(4)} BNB
-                              </span>
-                              <span className={`px-2 py-1 rounded ${
-                                prediction.position === 'yes' 
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                                  : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                              }`}>
-                                {prediction.position === 'yes' ? 'Sì' : 'No'}
-                              </span>
-                            </div>
-                          </div>
+                          <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
                         </>
                       )}
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </main>
