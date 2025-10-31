@@ -10,6 +10,7 @@ interface ActivePrediction {
   amount_bnb: number;
   position: string;
   created_at: string;
+  image_url?: string;
 }
 
 export function useUserActivePredictions(userId: string | null) {
@@ -43,7 +44,8 @@ export function useUserActivePredictions(userId: string | null) {
               slug,
               category,
               closing_date,
-              status
+              status,
+              image_url
             )
           `)
           .eq('user_id', userId)
@@ -66,7 +68,8 @@ export function useUserActivePredictions(userId: string | null) {
             closing_date: bet.predictions.closing_date,
             amount_bnb: bet.amount_bnb,
             position: bet.position,
-            created_at: bet.created_at
+            created_at: bet.created_at,
+            image_url: bet.predictions.image_url
           }));
           
           setPredictions(activePredictions);

@@ -584,6 +584,14 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   const [topBettors, setTopBettors] = useState<BetData[]>([]);
   const [previousBettors, setPreviousBettors] = useState<BetData[]>([]);
   const [comments, setComments] = useState<CommentData[]>([]);
+  const [relatedPredictions, setRelatedPredictions] = useState<Array<{
+    id: string;
+    title: string;
+    slug: string;
+    category: string;
+    status: string;
+    image_url?: string;
+  }>>([]);
   const [recentBets, setRecentBets] = useState<Array<{
     id: string;
     amount_bnb: number;
@@ -960,6 +968,22 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       }
 
       // I commenti vengono caricati dopo setPrediction
+
+      // Carica altre prediction della stessa categoria (status attiva)
+      if (predictionData.category) {
+        const { data: relatedData, error: relatedError } = await supabase
+          .from('predictions')
+          .select('id, title, slug, category, status, image_url')
+          .eq('category', predictionData.category)
+          .eq('status', 'attiva')
+          .neq('id', predictionData.id)
+          .order('created_at', { ascending: false })
+          .limit(4);
+        
+        if (!relatedError && relatedData) {
+          setRelatedPredictions(relatedData);
+        }
+      }
 
     } catch (error) {
       console.error('Error loading prediction data:', error);
@@ -2875,6 +2899,43 @@ export default function PredictionPage({ params }: { params: { slug: string } })
               )}
             </div>
 
+            {/* Altre prediction della stessa categoria - Desktop */}
+            {relatedPredictions.length > 0 && (
+              <div className="hidden lg:block bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6 mt-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                  Altre prediction {prediction?.category}
+                </h3>
+                <div className="grid grid-cols-1 gap-3">
+                  {relatedPredictions.map((related) => (
+                    <Link
+                      key={related.id}
+                      href={`/bellanapoli.prediction/${related.slug}`}
+                      className="flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700"
+                    >
+                      {related.image_url && (
+                        <img
+                          src={related.image_url}
+                          alt={related.title}
+                          className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
+                          {related.title}
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {related.category}
+                        </p>
+                      </div>
+                      <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Ultime scommesse del sito - Nascosto su mobile, visibile su desktop */}
             <div className="hidden lg:block bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6 mt-6">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
@@ -3230,6 +3291,43 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                   </div>
                 )}
               </div>
+
+              {/* Altre prediction della stessa categoria - Mobile */}
+              {relatedPredictions.length > 0 && (
+                <div className="lg:hidden bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                    Altre prediction {prediction?.category}
+                  </h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    {relatedPredictions.map((related) => (
+                      <Link
+                        key={related.id}
+                        href={`/bellanapoli.prediction/${related.slug}`}
+                        className="flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700"
+                      >
+                        {related.image_url && (
+                          <img
+                            src={related.image_url}
+                            alt={related.title}
+                            className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
+                            {related.title}
+                          </h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {related.category}
+                          </p>
+                        </div>
+                        <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Ultime scommesse del sito - Mobile */}
               <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6">

@@ -61,7 +61,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             pool_address,
             created_at
           `)
-          .in('status', ['attiva', 'in_attesa', 'in_pausa']);
+          .in('status', ['attiva', 'in_attesa']);
 
         if (hasSearchQuery) {
           query = query.ilike('title', `%${searchQuery.trim()}%`);
@@ -118,9 +118,14 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
           })
         );
 
-        // Filtra le prediction risolte dal contratto anche se hanno status diverso nel DB
+        // Filtra le prediction risolte e in pausa dal contratto anche se hanno status diverso nel DB
         const filteredTrending = await Promise.all(
           predictionsWithPercentages.map(async (prediction: any) => {
+            // Escludi sempre quelle con status 'in_pausa'
+            if (prediction.status === 'in_pausa') {
+              return null;
+            }
+            
             if (prediction.pool_address) {
               try {
                 const winnerInfo = await getPoolWinner(prediction.pool_address);
@@ -364,10 +369,8 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             pool_address,
             created_at
           `)
-          // Per la categoria "Degen" includiamo anche le prediction risolte
-          .in('status', selectedCategory === 'Degen' 
-            ? ['attiva', 'in_attesa', 'in_pausa', 'risolta'] 
-            : ['attiva', 'in_attesa', 'in_pausa'])
+          // Per le categorie NON includiamo le risolte (hanno sezione dedicata)
+          .in('status', ['attiva', 'in_attesa', 'in_pausa'])
           .eq('category', selectedCategory);
 
         if (hasSearchQuery) {
@@ -425,32 +428,30 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
           })
         );
 
-        // Filtra le prediction risolte solo se NON siamo nella categoria "Degen"
-        const filteredCategory = selectedCategory === 'Degen'
-          ? predictionsWithPercentages // non escludere le risolte
-          : await Promise.all(
-              predictionsWithPercentages.map(async (prediction: any) => {
-                if (prediction.pool_address) {
-                  try {
-                    const winnerInfo = await getPoolWinner(prediction.pool_address);
-                    if (winnerInfo && winnerInfo.winnerSet) {
-                      return null; // Escludi questa prediction
-                    }
-                  } catch (error) {
-                    // In caso di errore, usa fallback DB: escludi se status è 'risolta'
-                    if (prediction.status === 'risolta') {
-                      return null;
-                    }
-                  }
-                } else {
-                  // Senza pool_address, usa fallback DB: escludi se status è 'risolta'
-                  if (prediction.status === 'risolta') {
-                    return null;
-                  }
+        // Filtra le prediction risolte - hanno sezione dedicata
+        const filteredCategory = await Promise.all(
+          predictionsWithPercentages.map(async (prediction: any) => {
+            if (prediction.pool_address) {
+              try {
+                const winnerInfo = await getPoolWinner(prediction.pool_address);
+                if (winnerInfo && winnerInfo.winnerSet) {
+                  return null; // Escludi questa prediction
                 }
-                return prediction;
-              })
-            );
+              } catch (error) {
+                // In caso di errore, usa fallback DB: escludi se status è 'risolta'
+                if (prediction.status === 'risolta') {
+                  return null;
+                }
+              }
+            } else {
+              // Senza pool_address, usa fallback DB: escludi se status è 'risolta'
+              if (prediction.status === 'risolta') {
+                return null;
+              }
+            }
+            return prediction;
+          })
+        );
         
         // ORDINA PER PREDICTIONS TOTALI (numero di bet)
         predictionsData = filteredCategory

@@ -12,6 +12,7 @@ interface ResolvedPrediction {
   created_at: string;
   claim_winning_tx_hash?: string;
   winning_rewards_amount?: number;
+  image_url?: string;
 }
 
 export function useUserResolvedPredictions(userId: string | null) {
@@ -47,7 +48,8 @@ export function useUserResolvedPredictions(userId: string | null) {
               slug,
               category,
               closing_date,
-              status
+              status,
+              image_url
             )
           `)
           .eq('user_id', userId)
@@ -72,7 +74,8 @@ export function useUserResolvedPredictions(userId: string | null) {
             position: bet.position,
             created_at: bet.created_at,
             claim_winning_tx_hash: bet.claim_winning_tx_hash,
-            winning_rewards_amount: bet.winning_rewards_amount
+            winning_rewards_amount: bet.winning_rewards_amount,
+            image_url: bet.predictions.image_url
           }));
           
           setPredictions(resolvedPredictions);
