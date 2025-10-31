@@ -2,11 +2,13 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import UserMenu from './UserMenu'
 import { useWeb3Auth } from '../hooks/useWeb3Auth'
+import { useAccount } from 'wagmi'
 import { useState, useEffect } from 'react'
 
 export default function Web3Login() {
   const [mounted, setMounted] = useState(false)
   const { isConnected } = useWeb3Auth()
+  const { isConnected: isWagmiConnected } = useAccount()
 
   useEffect(() => {
     setMounted(true)
@@ -18,8 +20,8 @@ export default function Web3Login() {
     )
   }
 
-  // Se l'utente è connesso (con o senza autenticazione), mostra il menu utente
-  if (isConnected) {
+  // Se l'account è connesso via wagmi o il nostro hook risulta connesso, mostra il menu utente
+  if (isWagmiConnected || isConnected) {
     return <UserMenu />
   }
 
@@ -55,6 +57,10 @@ export default function Web3Login() {
             })}
           >
             {(() => {
+              // Evita di mostrare i "pill" chain/account per prevenire flicker
+              if (connected) {
+                return null;
+              }
               if (!connected) {
                 return (
                   <button
@@ -83,61 +89,7 @@ export default function Web3Login() {
                 );
               }
 
-              if (chain.unsupported) {
-                return (
-                  <button
-                    onClick={openChainModal}
-                    type="button"
-                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 font-medium text-sm"
-                  >
-                    Wrong network
-                  </button>
-                );
-              }
-
-              return (
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <button
-                    onClick={openChainModal}
-                    style={{ display: 'flex', alignItems: 'center' }}
-                    type="button"
-                    className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 rounded-lg text-sm font-medium"
-                  >
-                    {chain.hasIcon && (
-                      <div
-                        style={{
-                          background: chain.iconBackground,
-                          width: 12,
-                          height: 12,
-                          borderRadius: 999,
-                          overflow: 'hidden',
-                          marginRight: 4,
-                        }}
-                      >
-                        {chain.iconUrl && (
-                          <img
-                            alt={chain.name ?? 'Chain icon'}
-                            src={chain.iconUrl}
-                            style={{ width: 12, height: 12 }}
-                          />
-                        )}
-                      </div>
-                    )}
-                    {chain.name}
-                  </button>
-
-                  <button
-                    onClick={openAccountModal}
-                    type="button"
-                    className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg transition-colors duration-200 font-medium text-sm"
-                  >
-                    {account.displayName}
-                    {account.displayBalance
-                      ? ` (${account.displayBalance})`
-                      : ''}
-                  </button>
-                </div>
-              );
+              return null;
             })()}
           </div>
         );
