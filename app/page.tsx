@@ -74,10 +74,10 @@ export default function Home() {
         </div>
 
         {/* CTA classifica */}
-        <div className="mb-4 flex justify-center">
+        <div className="my-8 flex justify-center">
           <a
             href="/classifica"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary dark:bg-primary/20 hover:bg-primary/15 dark:hover:bg-primary/30 transition-colors font-medium"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-transparent border-2 border-primary text-white font-medium pulse-border-blue hover:border-primary/80 transition-colors"
           >
             Uè guagliò, vedi 'sta classifica!
           </a>
