@@ -70,8 +70,14 @@ export default function ProfileForm() {
 
         console.log('🔍 Database query result:', { data, error })
 
-        if (error && error.code !== 'PGRST116') {
-          console.error('Errore caricamento profilo:', error)
+        // Gestisci errore 406 (Not Acceptable) o PGRST116 (No rows) come casi normali
+        // (quando il profilo non esiste ancora)
+        if (error) {
+          if (error.code === 'PGRST116' || error.status === 406) {
+            console.log('📋 Nessun profilo trovato per questo wallet (normale per nuovi utenti)')
+          } else {
+            console.error('Errore caricamento profilo:', error)
+          }
         } else if (data) {
           console.log('📋 Dati caricati dal database:', data)
           setProfile({

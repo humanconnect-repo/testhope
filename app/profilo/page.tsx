@@ -65,7 +65,8 @@ export default function ProfiloPage() {
         return
       }
       
-      // Se è connesso ma non autenticato, aspetta di più per il controllo
+      // Se è connesso ma non autenticato, aspetta un po' per il controllo
+      // (potrebbe essere in fase di autenticazione)
       console.log('🔍 Wallet connesso, controllo autenticazione...')
       timeoutId = setTimeout(() => {
         // Usa una funzione che accede ai valori più recenti
@@ -81,7 +82,7 @@ export default function ProfiloPage() {
           }
         }
         checkAfterDelay()
-      }, 5000) // Aumentato a 5 secondi
+      }, 2000) // Ridotto a 2 secondi per essere più reattivi
     }
     
     checkAuth()
@@ -92,7 +93,7 @@ export default function ProfiloPage() {
         clearTimeout(timeoutId)
       }
     }
-  }, [isAuthenticated, isConnected, address, hasBeenAuthenticated]) // Aggiungi le dipendenze
+  }, [isAuthenticated, isConnected, address, hasBeenAuthenticated, router])
 
   // Monitora i cambiamenti di stato senza reindirizzare
   useEffect(() => {
@@ -112,13 +113,24 @@ export default function ProfiloPage() {
     }
   }, [isAuthenticated])
 
-  // Cancella il timeout se l'utente diventa autenticato
+  // Reindirizza immediatamente se cambia wallet e non è autenticato
   useEffect(() => {
-    if (isAuthenticated) {
-      console.log('✅ Utente autenticato, cancellando timeout di reindirizzamento')
-      // Il timeout verrà cancellato automaticamente dal cleanup del primo useEffect
+    if (isConnected && address && !isAuthenticated && !isChecking && hasBeenAuthenticated) {
+      console.log('❌ Wallet cambiato e non autenticato, reindirizzamento immediato...')
+      router.push('/')
     }
-  }, [isAuthenticated])
+  }, [address, isAuthenticated, isConnected, isChecking, hasBeenAuthenticated, router])
+
+  // Reindirizza immediatamente quando non autenticato (dopo il controllo iniziale)
+  useEffect(() => {
+    if (!isAuthenticated && !isChecking) {
+      console.log('❌ Non autenticato, reindirizzamento immediato...')
+      const timeoutId = setTimeout(() => {
+        router.push('/')
+      }, 100) // Piccolo delay per evitare loop infiniti
+      return () => clearTimeout(timeoutId)
+    }
+  }, [isAuthenticated, isChecking, router])
 
   if (isChecking) {
     return (
@@ -154,9 +166,12 @@ export default function ProfiloPage() {
             </h1>
             <button
               onClick={() => router.push('/')}
-              className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-medium rounded-lg transition-colors duration-200"
+              className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-medium rounded-lg transition-colors duration-200 inline-flex items-center"
             >
-              🏠 HOME
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              HOME
             </button>
           </div>
           <p className="text-gray-600 dark:text-gray-400">
