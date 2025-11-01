@@ -18,17 +18,25 @@ export const useWeb3Auth = () => {
         return
       }
 
-      // Se l'utente è già autenticato, non ricontrollare
+      // Se l'utente è già autenticato E il wallet corrisponde, non ricontrollare
+      // Ma se user è null, dobbiamo comunque fare il check!
       if (user && user.user_metadata?.wallet_address === address) {
+        console.log('✅ Utente già autenticato, skip check')
         return
       }
 
+      console.log('🔍 Controllo profilo per wallet:', address)
+      
       try {
+        // Normalizza l'indirizzo per il match (come fa upsert_profile)
+        const normalizedAddress = address.toLowerCase().trim()
+        
         // Controlla SEMPRE il database Supabase per lo stato reale
+        // IMPORTANTE: Normalizza anche il wallet_address nel DB per il match case-insensitive
         const { data: existingProfile, error } = await supabase
           .from('profiles')
           .select('*')
-          .eq('wallet_address', address)
+          .ilike('wallet_address', normalizedAddress) // Usa ilike per case-insensitive match
           .maybeSingle() // FIX: Cambiato da .single() a .maybeSingle() per evitare errori 406
 
         if (error && error.code !== 'PGRST116') {
@@ -41,6 +49,7 @@ export const useWeb3Auth = () => {
           // Controlla se il profilo ha una firma valida
           if (existingProfile.signature) {
             // Se esiste un profilo con firma, autentica l'utente
+            console.log('✅ Profilo trovato con firma, autenticando utente:', existingProfile.id)
             const mockUser = {
               id: existingProfile.id, // Usa l'ID del profilo dal database
               email: `${address}@wallet.local`,
@@ -54,10 +63,12 @@ export const useWeb3Auth = () => {
             setUser(mockUser)
           } else {
             // Se esiste un profilo ma senza firma, richiedi la firma
+            console.log('⚠️ Profilo trovato ma senza firma')
             setUser(null)
           }
         } else {
           // Se non esiste, mostra il pulsante per firmare
+          console.log('⚠️ Nessun profilo trovato')
           setUser(null)
         }
       } catch (error) {
@@ -66,10 +77,10 @@ export const useWeb3Auth = () => {
       }
     }
     
-    // Aggiungi un piccolo delay per evitare controlli troppo frequenti
-    const timeoutId = setTimeout(checkUser, 200)
-    return () => clearTimeout(timeoutId)
-  }, [address, user]) // Aggiungi user come dipendenza
+    // Esegui immediatamente, senza delay, quando cambia l'indirizzo
+    // Il delay era utile per evitare controlli durante la navigazione, ma ora lo gestiamo meglio
+    checkUser()
+  }, [address]) // Rimosso user dalle dipendenze per evitare loop infiniti
 
   const signInWithWallet = async () => {
     if (!address || !supabase) {
@@ -112,16 +123,25 @@ Issued At: ${new Date().toISOString()}`
             throw new Error(`Errore Supabase: ${rpcError.message}`)
           }
 
-          // Ora carica il profilo completo
+          if (!profileId) {
+            throw new Error('Impossibile creare o recuperare il profilo')
+          }
+
+          // Ora carica il profilo completo usando l'ID restituito dalla funzione
+          // Usa maybeSingle() per gestire il caso in cui non esiste (non dovrebbe succedere)
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('*')
-            .eq('wallet_address', address)
-            .single()
+            .eq('id', profileId)
+            .maybeSingle()
 
           if (profileError) {
             console.error('❌ Errore caricamento profilo:', profileError)
             throw new Error(`Errore Supabase: ${profileError.message}`)
+          }
+
+          if (!profileData) {
+            throw new Error('Profilo non trovato dopo la creazione')
           }
 
 
@@ -139,7 +159,17 @@ Issued At: ${new Date().toISOString()}`
             }
           }
 
+          console.log('✅ Profilo creato/aggiornato, impostando utente:', { 
+            profileId: profile?.id, 
+            walletAddress: address,
+            hasSignature: !!signature 
+          })
+          
           setUser(mockUser)
+          
+          // Piccolo delay per assicurarsi che lo stato sia propagato
+          // Questo aiuta la pagina profilo a riconoscere l'autenticazione
+          await new Promise(resolve => setTimeout(resolve, 100))
       
     } catch (error) {
       console.error('❌ Errore durante il login:', error)
@@ -163,10 +193,13 @@ Issued At: ${new Date().toISOString()}`
 
     try {
       // SICUREZZA: Carica solo il profilo del wallet corrente
+      // Normalizza l'indirizzo per il match (come fa upsert_profile)
+      const normalizedAddress = address.toLowerCase().trim()
+      
       const { data: existingProfile, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('wallet_address', address) // SICUREZZA: Solo il wallet corrente
+        .ilike('wallet_address', normalizedAddress) // Usa ilike per case-insensitive match
         .maybeSingle() // FIX: Cambiato da .single() a .maybeSingle()
 
       if (error && error.code !== 'PGRST116') {

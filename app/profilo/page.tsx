@@ -97,19 +97,11 @@ export default function ProfiloPage() {
 
   // Monitora i cambiamenti di stato senza reindirizzare
   useEffect(() => {
-    if (isAuthenticated && isChecking) {
-      console.log('✅ Autenticazione rilevata, fermando il loading')
-      setIsChecking(false)
-      setHasBeenAuthenticated(true)
-    }
-  }, [isAuthenticated, isChecking])
-
-  // Prevenire reindirizzamento se l'utente diventa autenticato
-  useEffect(() => {
     if (isAuthenticated) {
-      console.log('✅ Utente autenticato, fermando qualsiasi reindirizzamento')
+      console.log('✅ Autenticazione rilevata, fermando il loading e prevenendo reindirizzamento')
       setIsChecking(false)
       setHasBeenAuthenticated(true)
+      // Se era in checking, ora ferma qualsiasi timeout o reindirizzamento
     }
   }, [isAuthenticated])
 
@@ -121,16 +113,16 @@ export default function ProfiloPage() {
     }
   }, [address, isAuthenticated, isConnected, isChecking, hasBeenAuthenticated, router])
 
-  // Reindirizza immediatamente quando non autenticato (dopo il controllo iniziale)
+  // Reindirizza quando non autenticato (dopo il controllo iniziale e solo se ha già controllato)
   useEffect(() => {
-    if (!isAuthenticated && !isChecking) {
-      console.log('❌ Non autenticato, reindirizzamento immediato...')
+    if (!isAuthenticated && !isChecking && hasBeenAuthenticated) {
+      console.log('❌ Non autenticato dopo controllo, reindirizzamento...')
       const timeoutId = setTimeout(() => {
         router.push('/')
-      }, 100) // Piccolo delay per evitare loop infiniti
+      }, 500) // Aumentato a 500ms per dare tempo all'autenticazione di propagarsi
       return () => clearTimeout(timeoutId)
     }
-  }, [isAuthenticated, isChecking, router])
+  }, [isAuthenticated, isChecking, hasBeenAuthenticated, router])
 
   if (isChecking) {
     return (

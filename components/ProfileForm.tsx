@@ -63,18 +63,20 @@ export default function ProfileForm() {
 
         // Se non ci sono dati nell'utente, carica dal database
         console.log('📋 Caricando profilo dal database...')
+        // Normalizza l'indirizzo per il match case-insensitive
+        const normalizedAddress = address.toLowerCase().trim()
+        
         const { data, error } = await supabase
           .from('profiles')
           .select('username, avatar_url, bio')
-          .eq('wallet_address', address)
-          .single()
+          .ilike('wallet_address', normalizedAddress) // Case-insensitive match
+          .maybeSingle() // Usa maybeSingle invece di single per evitare errori 406
 
         console.log('🔍 Database query result:', { data, error })
 
-        // Gestisci errore 406 (Not Acceptable) o PGRST116 (No rows) come casi normali
-        // (quando il profilo non esiste ancora)
+        // Gestisci errore PGRST116 (No rows) come caso normale (quando il profilo non esiste ancora)
         if (error) {
-          if (error.code === 'PGRST116' || error.status === 406) {
+          if (error.code === 'PGRST116') {
             console.log('📋 Nessun profilo trovato per questo wallet (normale per nuovi utenti)')
           } else {
             console.error('Errore caricamento profilo:', error)
@@ -159,11 +161,14 @@ export default function ProfileForm() {
       }
       
       // Ricarica i dati freschi dal database per aggiornare il form
+      // Normalizza l'indirizzo per il match case-insensitive
+      const normalizedAddress = address.toLowerCase().trim()
+      
       const { data: freshData, error: freshError } = await supabase
         .from('profiles')
         .select('username, avatar_url, bio')
-        .eq('wallet_address', address)
-        .single()
+        .ilike('wallet_address', normalizedAddress) // Case-insensitive match
+        .maybeSingle() // Usa maybeSingle invece di single
 
       if (!freshError && freshData) {
         setProfile({
