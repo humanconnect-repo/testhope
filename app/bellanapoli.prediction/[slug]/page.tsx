@@ -2664,8 +2664,10 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                       onClick={() => setSelectedPosition('yes')}
                       className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
                         selectedPosition === 'yes'
-                          ? 'bg-yes-button text-white'
-                          : 'bg-yes-button/10 text-yes-button hover:bg-yes-button/20'
+                          ? 'bg-green-600 text-white ring-2 ring-offset-2 ring-green-400'
+                          : selectedPosition === 'no'
+                          ? 'bg-green-600/30 text-white/50'
+                          : 'bg-green-600 text-white hover:bg-green-700 animate-pulse shadow-lg shadow-green-500/50'
                       }`}
                     >
                       Sì ({prediction.yes_percentage}%)
@@ -2674,8 +2676,10 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                       onClick={() => setSelectedPosition('no')}
                       className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
                         selectedPosition === 'no'
-                          ? 'bg-no-button text-white'
-                          : 'bg-no-button/10 text-no-button hover:bg-no-button/20'
+                          ? 'bg-red-600 text-black ring-2 ring-offset-2 ring-red-400'
+                          : selectedPosition === 'yes'
+                          ? 'bg-red-600/30 text-black/50'
+                          : 'bg-red-600 text-black hover:bg-red-700 animate-pulse shadow-lg shadow-red-500/50'
                       }`}
                     >
                       No ({prediction.no_percentage}%)
