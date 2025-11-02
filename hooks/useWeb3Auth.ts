@@ -1,7 +1,11 @@
 "use client";
 import { useAccount, useSignMessage, useDisconnect } from 'wagmi'
 import { supabase } from '../lib/supabase'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+
+// Set globale per tracciare gli address per cui abbiamo già loggato l'autenticazione
+// Condiviso tra tutte le istanze dell'hook per evitare log duplicati
+const globalHasLoggedAuth = new Set<string>()
 
 export const useWeb3Auth = () => {
   const { address, isConnected } = useAccount()
@@ -9,23 +13,26 @@ export const useWeb3Auth = () => {
   const { disconnect } = useDisconnect()
   const [isLoading, setIsLoading] = useState(false)
   const [user, setUser] = useState<any>(null)
+  const lastCheckedAddressRef = useRef<string | null>(null)
 
   // Controlla se l'utente è già autenticato
   useEffect(() => {
     const checkUser = async () => {
       if (!address || !supabase) {
         setUser(null)
+        lastCheckedAddressRef.current = null
         return
       }
 
-      // Se l'utente è già autenticato E il wallet corrisponde, non ricontrollare
-      // Ma se user è null, dobbiamo comunque fare il check!
-      if (user && user.user_metadata?.wallet_address === address) {
-        console.log('✅ Utente già autenticato, skip check')
+      // Se abbiamo già controllato questo indirizzo e l'utente è autenticato e corrisponde, skip
+      if (user && user.user_metadata?.wallet_address === address && lastCheckedAddressRef.current === address) {
         return
       }
 
-      console.log('🔍 Controllo profilo per wallet:', address)
+      // Se l'address non è cambiato MA user è null o non corrisponde, dobbiamo ricontrollare
+      // Quindi NON facciamo return qui - permettiamo il controllo se user è null o non corrisponde
+      
+      lastCheckedAddressRef.current = address
       
       try {
         // Normalizza l'indirizzo per il match (come fa upsert_profile)
@@ -49,7 +56,11 @@ export const useWeb3Auth = () => {
           // Controlla se il profilo ha una firma valida
           if (existingProfile.signature) {
             // Se esiste un profilo con firma, autentica l'utente
-            console.log('✅ Profilo trovato con firma, autenticando utente:', existingProfile.id)
+            // Logga solo una volta per questo address (globale tra tutte le istanze)
+            if (!globalHasLoggedAuth.has(address)) {
+              console.log('✅ Profilo trovato con firma, autenticando utente:', existingProfile.id)
+              globalHasLoggedAuth.add(address)
+            }
             const mockUser = {
               id: existingProfile.id, // Usa l'ID del profilo dal database
               email: `${address}@wallet.local`,
@@ -63,12 +74,10 @@ export const useWeb3Auth = () => {
             setUser(mockUser)
           } else {
             // Se esiste un profilo ma senza firma, richiedi la firma
-            console.log('⚠️ Profilo trovato ma senza firma')
             setUser(null)
           }
         } else {
           // Se non esiste, mostra il pulsante per firmare
-          console.log('⚠️ Nessun profilo trovato')
           setUser(null)
         }
       } catch (error) {
@@ -77,8 +86,7 @@ export const useWeb3Auth = () => {
       }
     }
     
-    // Esegui immediatamente, senza delay, quando cambia l'indirizzo
-    // Il delay era utile per evitare controlli durante la navigazione, ma ora lo gestiamo meglio
+    // Esegui immediatamente quando cambia l'indirizzo
     checkUser()
   }, [address]) // Rimosso user dalle dipendenze per evitare loop infiniti
 
@@ -182,6 +190,12 @@ Issued At: ${new Date().toISOString()}`
   const signOut = async () => {
     try {
       setUser(null)
+      // Reset dei ref quando l'utente si disconnette
+      lastCheckedAddressRef.current = null
+      // Rimuovi solo questo address dal Set globale (non cancellare tutto per evitare conflitti)
+      if (address) {
+        globalHasLoggedAuth.delete(address)
+      }
       disconnect()
     } catch (error) {
       console.error('Errore durante il logout:', error)

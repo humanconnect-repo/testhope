@@ -73,7 +73,7 @@ export default function RootLayout({
                   originalWarn(...args);
                 };
                 
-                // Filtra errori Coinbase Analytics e Web3Modal/WalletConnect
+                // Filtra errori Coinbase Analytics, Web3Modal/WalletConnect e estensioni wallet (Vultisig)
                 const originalError = console.error;
                 console.error = (...args) => {
                   const message = args[0]?.toString() || '';
@@ -88,12 +88,33 @@ export default function RootLayout({
                     fullMessage.includes('api.web3modal.org') ||
                     fullMessage.includes('appkit/v1/config') ||
                     (fullMessage.includes('403') && fullMessage.includes('web3modal')) ||
-                    (fullMessage.includes('Forbidden') && fullMessage.includes('web3modal'))
+                    (fullMessage.includes('Forbidden') && fullMessage.includes('web3modal')) ||
+                    message.includes('Cannot redefine property: ethereum') ||
+                    (message.includes('Cannot redefine property') && message.includes('ethereum'))
                   ) {
                     return; // Non mostrare questi errori
                   }
                   originalError(...args);
                 };
+
+                // Gestisce errori di ridefinizione window.ethereum da estensioni (Vultisig)
+                window.addEventListener('error', (event) => {
+                  if (event.message && event.message.includes('Cannot redefine property: ethereum')) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return false;
+                  }
+                }, true);
+
+                // Gestisce promise rejection non gestite per errori ethereum
+                window.addEventListener('unhandledrejection', (event) => {
+                  const message = event.reason?.message || event.reason?.toString() || '';
+                  if (message.includes('Cannot redefine property: ethereum') ||
+                      (message.includes('Cannot redefine property') && message.includes('ethereum'))) {
+                    event.preventDefault();
+                    return false;
+                  }
+                });
 
                 // Blocca richieste di analytics verso domini noti (es. Coinbase/WalletConnect) per evitare errori in console
                 try {
