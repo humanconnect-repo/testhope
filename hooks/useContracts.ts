@@ -80,16 +80,13 @@ export const useContracts = () => {
   // Carica tutti i pool
   const loadPools = async () => {
     if (!isFactoryOwner) {
-      console.log('❌ Non sei owner della factory, skip caricamento pool');
       return;
     }
 
     try {
-      console.log('🚀 Inizio caricamento pool...');
       setLoading(true);
       setError(null);
       const poolAddresses = await listPools();
-      console.log('📋 Indirizzi pool ricevuti:', poolAddresses);
       
       // Carica le predictions dal database per popolare i dati
       const { data: predictions, error: predictionsError } = await supabase
@@ -118,7 +115,6 @@ export const useContracts = () => {
         })
       );
       
-      console.log('📊 Predictions caricate dal DB:', predictionsWithBetCount);
       
       // Crea le pool summary usando i dati del database
       const poolSummaries = poolAddresses.map(address => {
@@ -126,11 +122,8 @@ export const useContracts = () => {
         const prediction = predictionsWithBetCount?.find((p: any) => p.pool_address === address);
         
         if (!prediction) {
-          console.log('⚠️ Nessuna prediction trovata per pool:', address);
           return null;
         }
-        
-        console.log('✅ Prediction trovata per pool:', address, prediction.title);
         
         // Crea il pool summary con i dati del database
         return {
@@ -160,7 +153,6 @@ export const useContracts = () => {
       });
       
       const validPools = poolSummaries.filter(Boolean) as PoolSummary[];
-      console.log('✅ Pool caricate con successo:', validPools.length, validPools);
       setPools(validPools);
     } catch (err) {
       console.error('❌ Errore caricamento pools:', err);

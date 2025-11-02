@@ -73,12 +73,21 @@ export default function RootLayout({
                   originalWarn(...args);
                 };
                 
-                // Filtra errori Coinbase Analytics, Web3Modal/WalletConnect e estensioni wallet (Vultisig)
+                // Filtra errori Coinbase Analytics, Web3Modal/WalletConnect, estensioni wallet (Vultisig) e RPC
                 const originalError = console.error;
                 console.error = (...args) => {
                   const message = args[0]?.toString() || '';
                   const url = args.length > 1 && typeof args[1] === 'string' ? args[1] : '';
                   const fullMessage = message + (url ? ' ' + url : '');
+                  
+                  // Controlla anche gli argomenti per URL di RPC
+                  const hasRpcError = args.some(arg => {
+                    const str = String(arg);
+                    return str.includes('bsc-testnet.publicnode.com') ||
+                           str.includes('ERR_CONNECTION_CLOSED') ||
+                           str.includes('JsonRpcProvider failed to detect network') ||
+                           str.includes('retry in');
+                  });
                   
                   if (
                     message.includes('cca-lite.coinbase.com') ||
@@ -90,27 +99,46 @@ export default function RootLayout({
                     (fullMessage.includes('403') && fullMessage.includes('web3modal')) ||
                     (fullMessage.includes('Forbidden') && fullMessage.includes('web3modal')) ||
                     message.includes('Cannot redefine property: ethereum') ||
-                    (message.includes('Cannot redefine property') && message.includes('ethereum'))
+                    (message.includes('Cannot redefine property') && message.includes('ethereum')) ||
+                    hasRpcError ||
+                    fullMessage.includes('ERR_CONNECTION_CLOSED') ||
+                    fullMessage.includes('bsc-testnet.publicnode.com') ||
+                    message.includes('JsonRpcProvider failed to detect network') ||
+                    message.includes('cannot start up; retry')
                   ) {
                     return; // Non mostrare questi errori
                   }
                   originalError(...args);
                 };
 
-                // Gestisce errori di ridefinizione window.ethereum da estensioni (Vultisig)
+                // Gestisce errori di ridefinizione window.ethereum da estensioni (Vultisig) e errori RPC
                 window.addEventListener('error', (event) => {
-                  if (event.message && event.message.includes('Cannot redefine property: ethereum')) {
+                  const message = event.message || '';
+                  const source = event.filename || '';
+                  
+                  if (
+                    message.includes('Cannot redefine property: ethereum') ||
+                    message.includes('ERR_CONNECTION_CLOSED') ||
+                    (source.includes('bsc-testnet.publicnode.com') && message.includes('network')) ||
+                    message.includes('JsonRpcProvider failed to detect network')
+                  ) {
                     event.preventDefault();
                     event.stopPropagation();
                     return false;
                   }
                 }, true);
 
-                // Gestisce promise rejection non gestite per errori ethereum
+                // Gestisce promise rejection non gestite per errori ethereum e RPC
                 window.addEventListener('unhandledrejection', (event) => {
                   const message = event.reason?.message || event.reason?.toString() || '';
-                  if (message.includes('Cannot redefine property: ethereum') ||
-                      (message.includes('Cannot redefine property') && message.includes('ethereum'))) {
+                  
+                  if (
+                    message.includes('Cannot redefine property: ethereum') ||
+                    (message.includes('Cannot redefine property') && message.includes('ethereum')) ||
+                    message.includes('ERR_CONNECTION_CLOSED') ||
+                    message.includes('JsonRpcProvider failed to detect network') ||
+                    message.includes('cannot start up; retry')
+                  ) {
                     event.preventDefault();
                     return false;
                   }

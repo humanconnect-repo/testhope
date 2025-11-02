@@ -8,6 +8,7 @@ import Link from 'next/link';
 import TransactionProgressModal, { TransactionStep } from './TransactionProgressModal';
 import AdminProgressModal, { AdminStep } from './AdminProgressModal';
 import ImageUpload from './ImageUpload';
+import FootballMatches from './FootballMatches';
 
 interface Prediction {
   id: string;
@@ -233,7 +234,10 @@ export default function AdminPanel() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [visiblePoolsCount, setVisiblePoolsCount] = useState(5);
   const [predictionsSearchQuery, setPredictionsSearchQuery] = useState<string>('');
+  const [predictionsStatusFilter, setPredictionsStatusFilter] = useState<string>('all');
   const [visiblePredictionsCount, setVisiblePredictionsCount] = useState(5);
+  const [poolsStatusFilter, setPoolsStatusFilter] = useState<string>('all');
+  const [adminLogsActionFilter, setAdminLogsActionFilter] = useState<string>('all');
 
   // Chiudi menu a tendina quando si clicca fuori
   useEffect(() => {
@@ -255,15 +259,27 @@ export default function AdminPanel() {
     setVisiblePoolsCount(5);
   }, [searchQuery]);
 
-  // Reset contatore predictions quando cambia la ricerca
+  // Reset contatore predictions quando cambia la ricerca o il filtro status
   useEffect(() => {
     setVisiblePredictionsCount(5);
-  }, [predictionsSearchQuery]);
+  }, [predictionsSearchQuery, predictionsStatusFilter]);
 
-  // Filtra le predictions per titolo
+  // Reset contatore pools quando cambia il filtro status
+  useEffect(() => {
+    setVisiblePoolsCount(5);
+  }, [poolsStatusFilter]);
+
+  // Filtra le predictions per titolo e status
   const filteredPredictions = predictions.filter(prediction => {
     // Escludi quelle nascoste dal DB
     if (prediction.status === 'nascosta') return false;
+    
+    // Filtro per status
+    if (predictionsStatusFilter !== 'all' && prediction.status !== predictionsStatusFilter) {
+      return false;
+    }
+    
+    // Filtro per titolo
     if (!predictionsSearchQuery.trim()) return true;
     return prediction.title.toLowerCase().includes(predictionsSearchQuery.toLowerCase());
   });
@@ -296,6 +312,15 @@ export default function AdminPanel() {
 
   // Stato per le predictions espanse nell'accordion
   const [expandedPredictions, setExpandedPredictions] = useState<Set<string>>(new Set());
+  
+  // Stato per l'espansione della sezione "Prediction Esistenti"
+  const [isPredictionsSectionExpanded, setIsPredictionsSectionExpanded] = useState(false);
+  
+  // Stato per l'espansione della sezione "Smart Contracts"
+  const [isSmartContractsSectionExpanded, setIsSmartContractsSectionExpanded] = useState(false);
+  
+  // Stato per l'espansione della sezione "LOG Contracts"
+  const [isLogContractsSectionExpanded, setIsLogContractsSectionExpanded] = useState(false);
 
   // Carica le prediction esistenti
   useEffect(() => {
@@ -310,21 +335,44 @@ export default function AdminPanel() {
     const loadContractStates = async () => {
       const predictionsWithPool = predictions.filter(p => p.pool_address);
       
-      for (const prediction of predictionsWithPool) {
-        try {
-          const [isOpen, emergencyStop, cancelled, isClosed] = await Promise.all([
-            isBettingCurrentlyOpen(prediction.pool_address!),
-            getEmergencyStopStatus(prediction.pool_address!),
-            isPoolCancelled(prediction.pool_address!),
-            isPoolClosed(prediction.pool_address!)
-          ]);
-          
-          setContractStates(prev => ({
-            ...prev,
-            [prediction.pool_address!]: { isOpen, emergencyStop, cancelled, isClosed }
-          }));
-        } catch (error) {
-          console.warn(`Errore caricamento stato contratto ${prediction.pool_address}:`, error);
+      // Processa le pool in parallelo ma con limitazione per evitare troppe richieste simultanee
+      const batchSize = 3;
+      for (let i = 0; i < predictionsWithPool.length; i += batchSize) {
+        const batch = predictionsWithPool.slice(i, i + batchSize);
+        
+        await Promise.allSettled(
+          batch.map(async (prediction) => {
+            try {
+              const [isOpen, emergencyStop, cancelled, isClosed] = await Promise.all([
+                isBettingCurrentlyOpen(prediction.pool_address!),
+                getEmergencyStopStatus(prediction.pool_address!),
+                isPoolCancelled(prediction.pool_address!),
+                isPoolClosed(prediction.pool_address!)
+              ]);
+              
+              setContractStates(prev => ({
+                ...prev,
+                [prediction.pool_address!]: { isOpen, emergencyStop, cancelled, isClosed }
+              }));
+            } catch (error: any) {
+              // Silenzia solo gli errori di connessione temporanei
+              const isConnectionError = 
+                error?.message?.includes('CONNECTION_CLOSED') ||
+                error?.message?.includes('timeout') ||
+                error?.message?.includes('network') ||
+                error?.message?.includes('RPC timeout') ||
+                error?.code === 'NETWORK_ERROR';
+              
+              if (!isConnectionError) {
+                console.warn(`Errore caricamento stato contratto ${prediction.pool_address}:`, error);
+              }
+            }
+          })
+        );
+        
+        // Piccola pausa tra i batch per evitare rate limiting
+        if (i + batchSize < predictionsWithPool.length) {
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
       }
     };
@@ -604,23 +652,25 @@ export default function AdminPanel() {
     }
   };
 
-  // Filtra i pool per mostrare solo quelli attivi/pausa/risolte/cancellate e applica la ricerca
+  // Filtra i pool per mostrare solo quelli attivi/pausa/risolte/cancellate e applica la ricerca e il filtro status
   const filteredPools = pools.filter(pool => {
-    // Mostra pool che hanno una prediction attiva, in pausa, risolta o cancellata
-    const hasActivePrediction = predictions.some(prediction => 
-      prediction.pool_address === pool.address && 
-      (prediction.status === 'attiva' || prediction.status === 'in_pausa' || prediction.status === 'risolta' || prediction.status === 'cancellata')
-    );
+    // Trova la prediction corrispondente per questa pool
+    const prediction = predictions.find(p => p.pool_address === pool.address);
     
-    if (!hasActivePrediction) return false;
+    // Se non c'è una prediction associata, escludi la pool
+    if (!prediction) return false;
+    
+    // Escludi quelle nascoste dal DB
+    if (prediction.status === 'nascosta') return false;
+    
+    // Filtro per status
+    if (poolsStatusFilter !== 'all' && prediction.status !== poolsStatusFilter) {
+      return false;
+    }
     
     // Applica la ricerca se c'è una query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      const prediction = predictions.find(p => p.pool_address === pool.address);
-      
-      if (!prediction) return false;
-      
       return prediction.title.toLowerCase().includes(query);
     }
     
@@ -2722,42 +2772,75 @@ contract PredictionPool is Ownable, ReentrancyGuard {
       )}
 
       {/* Lista delle prediction esistenti */}
-      <div className="bg-transparent rounded-2xl border border-gray-200 dark:border-gray-700 shadow-md">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+      <div>
+        <div 
+          className="p-6 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+          onClick={() => setIsPredictionsSectionExpanded(!isPredictionsSectionExpanded)}
+        >
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Prediction Esistenti ({filteredPredictions.length})
-            </h2>
-            
-            {/* Search bar per le predictions */}
-            <div className="relative w-64">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <input
-                type="text"
-                placeholder="Cerca per titolo..."
-                value={predictionsSearchQuery}
-                onChange={(e) => setPredictionsSearchQuery(e.target.value)}
-                className="block w-full pl-9 pr-8 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              {predictionsSearchQuery && (
-                <button
-                  onClick={() => setPredictionsSearchQuery('')}
-                  className="absolute inset-y-0 right-0 pr-2 flex items-center"
-                >
-                  <svg className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
+            <div className="flex items-center gap-3">
+              <svg
+                className={`w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform ${isPredictionsSectionExpanded ? 'transform rotate-90' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Prediction Esistenti ({filteredPredictions.length})
+              </h2>
             </div>
+            
+            {/* Filtri per le predictions - solo quando espansa */}
+            {isPredictionsSectionExpanded && (
+              <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                {/* Filtro per status */}
+                <select
+                  value={predictionsStatusFilter}
+                  onChange={(e) => setPredictionsStatusFilter(e.target.value)}
+                  className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">Tutti gli status</option>
+                  <option value="attiva">Attiva</option>
+                  <option value="in_pausa">In pausa</option>
+                  <option value="risolta">Risolta</option>
+                  <option value="cancellata">Cancellata</option>
+                </select>
+                
+                {/* Search bar per le predictions */}
+                <div className="relative w-64">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Cerca per titolo..."
+                    value={predictionsSearchQuery}
+                    onChange={(e) => setPredictionsSearchQuery(e.target.value)}
+                    className="block w-full pl-9 pr-8 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  {predictionsSearchQuery && (
+                    <button
+                      onClick={() => setPredictionsSearchQuery('')}
+                      className="absolute inset-y-0 right-0 pr-2 flex items-center"
+                    >
+                      <svg className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
         
-        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+        {/* Contenuto espandibile */}
+        {isPredictionsSectionExpanded && (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
           {visiblePredictions.map((prediction) => {
             const isExpanded = expandedPredictions.has(prediction.id);
             return (
@@ -3183,7 +3266,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
           
           {/* Scritta Carica altri per predictions */}
           {hasMorePredictions && (
-            <div className="flex justify-center mt-6">
+            <div className="flex justify-center pt-6 mt-6">
               <span
                 onClick={loadMorePredictions}
                 className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer font-medium"
@@ -3192,847 +3275,937 @@ contract PredictionPool is Ownable, ReentrancyGuard {
               </span>
             </div>
           )}
-        </div>
+          </div>
+        )}
       </div>
 
+      {/* Sezione Prediction Serie A */}
+      <FootballMatches />
+
       {/* Sezione Smart Contracts */}
-      {isFactoryOwner && (
-        <div className="mt-12">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+      <div>
+        <div 
+          className="p-6 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+          onClick={() => setIsSmartContractsSectionExpanded(!isSmartContractsSectionExpanded)}
+        >
+          <div className="flex items-center gap-3">
+            <svg
+              className={`w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform ${isSmartContractsSectionExpanded ? 'transform rotate-90' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               Smart Contracts
             </h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Gestione pool di Predictions on-chain!
-            </p>
           </div>
+        </div>
 
-          {/* Stato connessione */}
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
-                <span className="text-green-800 dark:text-green-200 font-medium">
-                  Connesso come Owner della Factory
-                </span>
-              </div>
-              <a
-                href={`https://testnet.bscscan.com/address/${process.env.NEXT_PUBLIC_FACTORY_ADDRESS || ''}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 hover:underline font-mono text-sm"
-              >
-                {process.env.NEXT_PUBLIC_FACTORY_ADDRESS || 'Not configured'}
-              </a>
-            </div>
-          </div>
-
-          {/* Lista Pool On-Chain */}
-          <div className="bg-transparent rounded-2xl border border-gray-200 dark:border-gray-700 shadow-md">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Pool di Predictions On-Chain
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {filteredPools.length} Pools trovate
-                  </p>
-                </div>
-                <div className="relative w-64">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+        {/* Contenuto espandibile */}
+        {isSmartContractsSectionExpanded && (
+          <div>
+            {/* Stato connessione */}
+            {isFactoryOwner && (
+              <>
+                <div className="px-6 py-4">
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                        <span className="text-green-800 dark:text-green-200 font-medium">
+                          Connesso come Owner della Factory
+                        </span>
+                      </div>
+                      <a
+                        href={`https://testnet.bscscan.com/address/${process.env.NEXT_PUBLIC_FACTORY_ADDRESS || ''}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 hover:underline font-mono text-sm"
+                      >
+                        {process.env.NEXT_PUBLIC_FACTORY_ADDRESS || 'Not configured'}
+                      </a>
+                    </div>
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Cerca prediction..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="block w-full pl-9 pr-8 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute inset-y-0 right-0 pr-2 flex items-center"
-                    >
-                      <svg className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
                 </div>
-              </div>
-            </div>
 
-            <div className="p-6">
-              {contractsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  <span className="ml-3 text-gray-600 dark:text-gray-400">Caricamento pool...</span>
-                </div>
-              ) : contractsError ? (
-                <div className="text-center py-8">
-                  <div className="text-red-600 dark:text-red-400 mb-2">Errore caricamento pool</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-500">{contractsError}</div>
-                </div>
-              ) : pools.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  Nessuna pool on-chain trovata
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {visiblePools.map((pool) => (
-                    <div key={pool.address} className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                      {/* Layout mobile: badge, titolo, descrizione, dati, pulsanti uno per riga */}
-                      <div className="block sm:hidden p-4">
-                        {/* Header con badge status e pulsante Funzioni CONTRACT */}
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex gap-2">
-                            {(() => {
-                              const poolStatus = getPoolBadgeStatus(pool);
-                              return (
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${poolStatus.bgColor}`}>
-                                  {poolStatus.emoji} {poolStatus.text}
-                                </span>
-                              );
-                            })()}
-                            {pool.winnerSet ? (
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                pool.winner 
-                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                                  : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                              }`}>
-                                Risultato: {pool.winner ? 'YES' : 'NO'}
-                              </span>
-                            ) : (() => {
-                              // Trova la prediction corrispondente per controllare se è risolta
-                              const correspondingPrediction = predictions.find(p => p.pool_address === pool.address);
-                              // Mostra "In Attesa Risoluzione" solo se non è risolta
-                              if (isPredictionEnded(pool.closingBid) && (!correspondingPrediction || correspondingPrediction.status !== 'risolta')) {
-                                return (
-                                  <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
-                                    In Attesa Risoluzione
-                                  </span>
-                                );
-                              }
-                              return null;
-                            })()}
-                          </div>
+                {/* Lista Pool On-Chain */}
+                <div className="px-6 pb-6">
+                  <div className="bg-transparent rounded-2xl border border-gray-200 dark:border-gray-700 shadow-md">
+                    <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            Pool di Predictions On-Chain
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            {filteredPools.length} Pools trovate
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {/* Filtro per status */}
+                          <select
+                            value={poolsStatusFilter}
+                            onChange={(e) => setPoolsStatusFilter(e.target.value)}
+                            className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="all">Tutti gli status</option>
+                            <option value="attiva">Attiva</option>
+                            <option value="in_pausa">In pausa</option>
+                            <option value="risolta">Risolta</option>
+                            <option value="cancellata">Cancellata</option>
+                          </select>
                           
-                          {/* Menu a tendina Funzioni CONTRACT */}
-                          <div className="relative dropdown-menu">
-                            <button
-                              onClick={() => togglePoolExpansion(pool.address)}
-                              className={`px-3 py-1.5 bg-transparent border border-gray-300 dark:border-gray-600 rounded-t-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm ${expandedPools.has(pool.address) ? 'rounded-b-none' : 'rounded-md'}`}
-                            >
-                              <span className="font-medium text-gray-900 dark:text-white">🔧 Funzioni CONTRACT</span>
-                            </button>
-                            
-                            {/* Menu a tendina */}
-                            {expandedPools.has(pool.address) && (
-                              <div className="absolute top-full right-0 bg-blue-800 dark:bg-blue-900 border border-gray-300 dark:border-gray-600 rounded-b-lg shadow-lg z-10 min-w-48">
-                                <div className="py-2">
-                                  {/* Close Pool */}
-                                  {!pool.winnerSet && (
-                                    <button
-                                      onClick={() => {
-                                        executeClosePool(pool.address);
-                                        togglePoolExpansion(pool.address);
-                                      }}
-                                      className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                    >
-                                      🔒 Close Pool
-                                    </button>
-                                  )}
-                                  
-                                  {/* Reopen Pool */}
-                                  {!pool.winnerSet && (
-                                    <button
-                                      onClick={() => {
-                                        executeReopenPool(pool.address);
-                                        togglePoolExpansion(pool.address);
-                                      }}
-                                      className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                    >
-                                      🔓 Open Pool
-                                    </button>
-                                  )}
-                                  
-                                  {/* Stop Betting */}
-                                  {!pool.winnerSet && (
-                                    <button
-                                      onClick={() => {
-                                        handleStopBetting(pool.address);
-                                        togglePoolExpansion(pool.address);
-                                      }}
-                                      className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                    >
-                                      🟡 Stop Betting
-                                    </button>
-                                  )}
-                                  
-                                  {/* Resume Betting */}
-                                  {!pool.winnerSet && (
-                                    <button
-                                      onClick={() => {
-                                        handleResumeBetting(pool.address);
-                                        togglePoolExpansion(pool.address);
-                                      }}
-                                      className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                    >
-                                      ▶️ Resume Betting
-                                    </button>
-                                  )}
-                                  
-                                  {/* Resolve YES */}
-                                  {!pool.winnerSet && (
-                                    <button
-                                      onClick={() => {
-                                        handleResolvePrediction(pool.address, true);
-                                        togglePoolExpansion(pool.address);
-                                      }}
-                                      className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                    >
-                                      ✅ Resolve YES
-                                    </button>
-                                  )}
-                                  
-                                  {/* Resolve NO */}
-                                  {!pool.winnerSet && (
-                                    <button
-                                      onClick={() => {
-                                        handleResolvePrediction(pool.address, false);
-                                        togglePoolExpansion(pool.address);
-                                      }}
-                                      className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                    >
-                                      🚩 Resolve NO
-                                    </button>
-                                  )}
-                                  
-                                  {/* Cancel Pool */}
-                                  {!pool.winnerSet && (
-                                    <button
-                                      onClick={() => {
-                                        handleCancelPool(pool.address);
-                                        togglePoolExpansion(pool.address);
-                                      }}
-                                      className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                    >
-                                      ❌ Cancel Pool
-                                    </button>
-                                  )}
-                                  
-                                  {/* Recover Funds */}
-                                  <button
-                                    onClick={() => {
-                                      handleRecoverFunds(pool.address);
-                                      togglePoolExpansion(pool.address);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                  >
-                                    💰 Recover Funds
-                                  </button>
-                                </div>
-                              </div>
+                          {/* Search bar */}
+                          <div className="relative w-64">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="Cerca prediction..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="block w-full pl-9 pr-8 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                            {searchQuery && (
+                              <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute inset-y-0 right-0 pr-2 flex items-center"
+                              >
+                                <svg className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
                             )}
                           </div>
                         </div>
-                        
-                        {/* Titolo */}
-                        <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
-                          {pool.title}
-                        </h4>
-                        
-                        {/* Dati su una riga */}
-                        <div className="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-500 mb-1">
-                          <span>Categoria: {pool.category}</span>
-                          <span>Chiusura: {formatItalianTime(pool.closingDate)}</span>
-                          <span>Scadenza: {formatItalianTime(pool.closingBid)}</span>
+                      </div>
+                    </div>
+
+                    <div className="p-6">
+                      {contractsLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                          <span className="ml-3 text-gray-600 dark:text-gray-400">Caricamento pool...</span>
                         </div>
-                        
-                        {/* Indirizzo Pool */}
-                        <div className="mb-1">
-                          <a
-                            href={`https://testnet.bscscan.com/address/${pool.address}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer inline-block"
-                            title="Clicca per aprire su BSCScan"
-                          >
-                            {pool.address}
-                          </a>
+                      ) : contractsError ? (
+                        <div className="text-center py-8">
+                          <div className="text-red-600 dark:text-red-400 mb-2">Errore caricamento pool</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-500">{contractsError}</div>
                         </div>
-                        
-                        {/* Dati rimanenti */}
-                        <div className="text-sm text-gray-500 dark:text-gray-500 mb-3">
-                          <div className="flex items-center space-x-2">
-                            <span>{pool.bettorCount} Predictions</span>
-                            <span className="text-xs">
-                              {(() => {
-                                // Usa le percentuali basate sul numero di scommesse se disponibili
-                                const betCountData = betCountPercentages[pool.address];
-                                
-                                if (betCountData) {
-                                  return (
-                                    <span>
-                                      <span className="text-green-600 dark:text-green-400">YES: {betCountData.yes.toFixed(1)}%</span>
-                                      <span className="text-gray-400 dark:text-gray-600"> | </span>
-                                      <span className="text-red-600 dark:text-red-400">NO: {betCountData.no.toFixed(1)}%</span>
-                                    </span>
-                                  );
-                                } else {
-                                  // Fallback ai dati del contratto
-                                  const totalYes = Number(pool.totalYes) / 1e18;
-                                  const totalNo = Number(pool.totalNo) / 1e18;
-                                  const total = totalYes + totalNo;
-                                  
-                                  if (total === 0) {
-                                    return (
-                                      <span>
-                                        <span className="text-green-600 dark:text-green-400">YES: 0%</span>
-                                        <span className="text-gray-400 dark:text-gray-600"> | </span>
-                                        <span className="text-red-600 dark:text-red-400">NO: 0%</span>
+                      ) : pools.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                          Nessuna pool on-chain trovata
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {visiblePools.map((pool) => (
+                            <div key={pool.address} className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                              {/* Layout mobile: badge, titolo, descrizione, dati, pulsanti uno per riga */}
+                              <div className="block sm:hidden p-4">
+                                {/* Header con badge status e pulsante Funzioni CONTRACT */}
+                                <div className="flex justify-between items-start mb-3">
+                                  <div className="flex gap-2">
+                                    {(() => {
+                                      const poolStatus = getPoolBadgeStatus(pool);
+                                      return (
+                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${poolStatus.bgColor}`}>
+                                          {poolStatus.emoji} {poolStatus.text}
+                                        </span>
+                                      );
+                                    })()}
+                                    {pool.winnerSet ? (
+                                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                        pool.winner 
+                                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                                          : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                                      }`}>
+                                        Risultato: {pool.winner ? 'YES' : 'NO'}
                                       </span>
-                                    );
-                                  }
-                                  const yesPercent = ((totalYes / total) * 100).toFixed(1);
-                                  const noPercent = ((totalNo / total) * 100).toFixed(1);
-                                  return (
-                                    <span>
-                                      <span className="text-green-600 dark:text-green-400">YES: {yesPercent}%</span>
-                                      <span className="text-gray-400 dark:text-gray-600"> | </span>
-                                      <span className="text-red-600 dark:text-red-400">NO: {noPercent}%</span>
+                                    ) : (() => {
+                                      // Trova la prediction corrispondente per controllare se è risolta
+                                      const correspondingPrediction = predictions.find(p => p.pool_address === pool.address);
+                                      // Mostra "In Attesa Risoluzione" solo se non è risolta
+                                      if (isPredictionEnded(pool.closingBid) && (!correspondingPrediction || correspondingPrediction.status !== 'risolta')) {
+                                        return (
+                                          <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
+                                            In Attesa Risoluzione
+                                          </span>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
+                                  </div>
+                                  
+                                  {/* Menu a tendina Funzioni CONTRACT */}
+                                  <div className="relative dropdown-menu">
+                                    <button
+                                      onClick={() => togglePoolExpansion(pool.address)}
+                                      className={`px-3 py-1.5 bg-transparent border border-gray-300 dark:border-gray-600 rounded-t-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm ${expandedPools.has(pool.address) ? 'rounded-b-none' : 'rounded-md'}`}
+                                    >
+                                      <span className="font-medium text-gray-900 dark:text-white">🔧 Funzioni CONTRACT</span>
+                                    </button>
+                                    
+                                    {/* Menu a tendina */}
+                                    {expandedPools.has(pool.address) && (
+                                      <div className="absolute top-full right-0 bg-blue-800 dark:bg-blue-900 border border-gray-300 dark:border-gray-600 rounded-b-lg shadow-lg z-10 min-w-48">
+                                        <div className="py-2">
+                                          {/* Close Pool */}
+                                          {!pool.winnerSet && (
+                                            <button
+                                              onClick={() => {
+                                                executeClosePool(pool.address);
+                                                togglePoolExpansion(pool.address);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                            >
+                                              🔒 Close Pool
+                                            </button>
+                                          )}
+                                          
+                                          {/* Reopen Pool */}
+                                          {!pool.winnerSet && (
+                                            <button
+                                              onClick={() => {
+                                                executeReopenPool(pool.address);
+                                                togglePoolExpansion(pool.address);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                            >
+                                              🔓 Open Pool
+                                            </button>
+                                          )}
+                                          
+                                          {/* Stop Betting */}
+                                          {!pool.winnerSet && (
+                                            <button
+                                              onClick={() => {
+                                                handleStopBetting(pool.address);
+                                                togglePoolExpansion(pool.address);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                            >
+                                              🟡 Stop Betting
+                                            </button>
+                                          )}
+                                          
+                                          {/* Resume Betting */}
+                                          {!pool.winnerSet && (
+                                            <button
+                                              onClick={() => {
+                                                handleResumeBetting(pool.address);
+                                                togglePoolExpansion(pool.address);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                            >
+                                              ▶️ Resume Betting
+                                            </button>
+                                          )}
+                                          
+                                          {/* Resolve YES */}
+                                          {!pool.winnerSet && (
+                                            <button
+                                              onClick={() => {
+                                                handleResolvePrediction(pool.address, true);
+                                                togglePoolExpansion(pool.address);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                            >
+                                              ✅ Resolve YES
+                                            </button>
+                                          )}
+                                          
+                                          {/* Resolve NO */}
+                                          {!pool.winnerSet && (
+                                            <button
+                                              onClick={() => {
+                                                handleResolvePrediction(pool.address, false);
+                                                togglePoolExpansion(pool.address);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                            >
+                                              🚩 Resolve NO
+                                            </button>
+                                          )}
+                                          
+                                          {/* Cancel Pool */}
+                                          {!pool.winnerSet && (
+                                            <button
+                                              onClick={() => {
+                                                handleCancelPool(pool.address);
+                                                togglePoolExpansion(pool.address);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                            >
+                                              ❌ Cancel Pool
+                                            </button>
+                                          )}
+                                          
+                                          {/* Recover Funds */}
+                                          <button
+                                            onClick={() => {
+                                              handleRecoverFunds(pool.address);
+                                              togglePoolExpansion(pool.address);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                          >
+                                            💰 Recover Funds
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {/* Titolo */}
+                                <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                                  {pool.title}
+                                </h4>
+                                
+                                {/* Dati su una riga */}
+                                <div className="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-500 mb-1">
+                                  <span>Categoria: {pool.category}</span>
+                                  <span>Chiusura: {formatItalianTime(pool.closingDate)}</span>
+                                  <span>Scadenza: {formatItalianTime(pool.closingBid)}</span>
+                                </div>
+                                
+                                {/* Indirizzo Pool */}
+                                <div className="mb-1">
+                                  <a
+                                    href={`https://testnet.bscscan.com/address/${pool.address}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer inline-block"
+                                    title="Clicca per aprire su BSCScan"
+                                  >
+                                    {pool.address}
+                                  </a>
+                                </div>
+                                
+                                {/* Dati rimanenti */}
+                                <div className="text-sm text-gray-500 dark:text-gray-500 mb-3">
+                                  <div className="flex items-center space-x-2">
+                                    <span>{pool.bettorCount} Predictions</span>
+                                    <span className="text-xs">
+                                      {(() => {
+                                        // Usa le percentuali basate sul numero di scommesse se disponibili
+                                        const betCountData = betCountPercentages[pool.address];
+                                        
+                                        if (betCountData) {
+                                          return (
+                                            <span>
+                                              <span className="text-green-600 dark:text-green-400">YES: {betCountData.yes.toFixed(1)}%</span>
+                                              <span className="text-gray-400 dark:text-gray-600"> | </span>
+                                              <span className="text-red-600 dark:text-red-400">NO: {betCountData.no.toFixed(1)}%</span>
+                                            </span>
+                                          );
+                                        } else {
+                                          // Fallback ai dati del contratto
+                                          const totalYes = Number(pool.totalYes) / 1e18;
+                                          const totalNo = Number(pool.totalNo) / 1e18;
+                                          const total = totalYes + totalNo;
+                                          
+                                          if (total === 0) {
+                                            return (
+                                              <span>
+                                                <span className="text-green-600 dark:text-green-400">YES: 0%</span>
+                                                <span className="text-gray-400 dark:text-gray-600"> | </span>
+                                                <span className="text-red-600 dark:text-red-400">NO: 0%</span>
+                                              </span>
+                                            );
+                                          }
+                                          const yesPercent = ((totalYes / total) * 100).toFixed(1);
+                                          const noPercent = ((totalNo / total) * 100).toFixed(1);
+                                          return (
+                                            <span>
+                                              <span className="text-green-600 dark:text-green-400">YES: {yesPercent}%</span>
+                                              <span className="text-gray-400 dark:text-gray-600"> | </span>
+                                              <span className="text-red-600 dark:text-red-400">NO: {noPercent}%</span>
+                                            </span>
+                                          );
+                                        }
+                                      })()}
                                     </span>
-                                  );
-                                }
-                              })()}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Menu a tendina Funzioni CONTRACT */}
-                        <div className="mb-3 relative dropdown-menu">
-                          {/* Pulsante principale */}
-                          <button
-                            onClick={() => togglePoolExpansion(pool.address)}
-                            className={`w-full flex items-center justify-center px-3 py-1.5 bg-transparent border border-gray-300 dark:border-gray-600 rounded-t-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm ${expandedPools.has(pool.address) ? 'rounded-b-none' : 'rounded-md'}`}
-                          >
-                            <span className="font-medium text-gray-900 dark:text-white">🔧 Funzioni CONTRACT</span>
-                          </button>
-                          
-                          {/* Menu a tendina */}
-                          {expandedPools.has(pool.address) && (
-                            <div className="absolute top-full left-0 right-0 bg-blue-800 dark:bg-blue-900 border border-gray-300 dark:border-gray-600 rounded-b-lg shadow-lg z-10">
-                              <div className="py-2">
-                                {/* Close Pool */}
-                                {!pool.winnerSet && (
-                                  <button
-                                    onClick={() => {
-                                      executeClosePool(pool.address);
-                                      togglePoolExpansion(pool.address); // Chiude il menu dopo l'azione
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                  >
-                                    🔒 Close Pool
-                                  </button>
-                                )}
+                                  </div>
+                                </div>
                                 
-                                {/* Reopen Pool */}
-                                {!pool.winnerSet && (
+                                {/* Menu a tendina Funzioni CONTRACT */}
+                                <div className="mb-3 relative dropdown-menu">
+                                  {/* Pulsante principale */}
                                   <button
-                                    onClick={() => {
-                                      executeReopenPool(pool.address);
-                                      togglePoolExpansion(pool.address);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    onClick={() => togglePoolExpansion(pool.address)}
+                                    className={`w-full flex items-center justify-center px-3 py-1.5 bg-transparent border border-gray-300 dark:border-gray-600 rounded-t-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm ${expandedPools.has(pool.address) ? 'rounded-b-none' : 'rounded-md'}`}
                                   >
-                                    🔓 Open Pool
+                                    <span className="font-medium text-gray-900 dark:text-white">🔧 Funzioni CONTRACT</span>
                                   </button>
-                                )}
-                                
-                                {/* Stop Betting */}
-                                {!pool.winnerSet && (
-                                  <button
-                                    onClick={() => {
-                                      handleStopBetting(pool.address);
-                                      togglePoolExpansion(pool.address);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                  >
-                                    🟡 Stop Betting
-                                  </button>
-                                )}
-                                
-                                {/* Resume Betting */}
-                                {!pool.winnerSet && (
-                                  <button
-                                    onClick={() => {
-                                      handleResumeBetting(pool.address);
-                                      togglePoolExpansion(pool.address);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                  >
-                                    ▶️ Resume Betting
-                                  </button>
-                                )}
-                                
-                                {/* Resolve YES */}
-                                {!pool.winnerSet && (
-                                  <button
-                                    onClick={() => {
-                                      handleResolvePrediction(pool.address, true);
-                                      togglePoolExpansion(pool.address);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                  >
-                                    ✅ Resolve YES
-                                  </button>
-                                )}
-                                
-                                {/* Resolve NO */}
-                                {!pool.winnerSet && (
-                                  <button
-                                    onClick={() => {
-                                      handleResolvePrediction(pool.address, false);
-                                      togglePoolExpansion(pool.address);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                  >
-                                    🚩 Resolve NO
-                                  </button>
-                                )}
-                                
-                                {/* Cancel Pool */}
-                                {!pool.winnerSet && (
-                                  <button
-                                    onClick={() => {
-                                      handleCancelPool(pool.address);
-                                      togglePoolExpansion(pool.address);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                  >
-                                    ❌ Cancel Pool
-                                  </button>
-                                )}
-                                
-                                {/* Recover Funds */}
-                                <button
-                                  onClick={() => {
-                                    handleRecoverFunds(pool.address);
-                                    togglePoolExpansion(pool.address);
-                                  }}
-                                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                >
-                                  💰 Recover Funds
-                                </button>
+                                  
+                                  {/* Menu a tendina */}
+                                  {expandedPools.has(pool.address) && (
+                                    <div className="absolute top-full left-0 right-0 bg-blue-800 dark:bg-blue-900 border border-gray-300 dark:border-gray-600 rounded-b-lg shadow-lg z-10">
+                                      <div className="py-2">
+                                        {/* Close Pool */}
+                                        {!pool.winnerSet && (
+                                          <button
+                                            onClick={() => {
+                                              executeClosePool(pool.address);
+                                              togglePoolExpansion(pool.address);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                          >
+                                            🔒 Close Pool
+                                          </button>
+                                        )}
+                                        
+                                        {/* Reopen Pool */}
+                                        {!pool.winnerSet && (
+                                          <button
+                                            onClick={() => {
+                                              executeReopenPool(pool.address);
+                                              togglePoolExpansion(pool.address);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                          >
+                                            🔓 Open Pool
+                                          </button>
+                                        )}
+                                        
+                                        {/* Stop Betting */}
+                                        {!pool.winnerSet && (
+                                          <button
+                                            onClick={() => {
+                                              handleStopBetting(pool.address);
+                                              togglePoolExpansion(pool.address);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                          >
+                                            🟡 Stop Betting
+                                          </button>
+                                        )}
+                                        
+                                        {/* Resume Betting */}
+                                        {!pool.winnerSet && (
+                                          <button
+                                            onClick={() => {
+                                              handleResumeBetting(pool.address);
+                                              togglePoolExpansion(pool.address);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                          >
+                                            ▶️ Resume Betting
+                                          </button>
+                                        )}
+                                        
+                                        {/* Resolve YES */}
+                                        {!pool.winnerSet && (
+                                          <button
+                                            onClick={() => {
+                                              handleResolvePrediction(pool.address, true);
+                                              togglePoolExpansion(pool.address);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                          >
+                                            ✅ Resolve YES
+                                          </button>
+                                        )}
+                                        
+                                        {/* Resolve NO */}
+                                        {!pool.winnerSet && (
+                                          <button
+                                            onClick={() => {
+                                              handleResolvePrediction(pool.address, false);
+                                              togglePoolExpansion(pool.address);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                          >
+                                            🚩 Resolve NO
+                                          </button>
+                                        )}
+                                        
+                                        {/* Cancel Pool */}
+                                        {!pool.winnerSet && (
+                                          <button
+                                            onClick={() => {
+                                              handleCancelPool(pool.address);
+                                              togglePoolExpansion(pool.address);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                          >
+                                            ❌ Cancel Pool
+                                          </button>
+                                        )}
+                                        
+                                        {/* Recover Funds */}
+                                        <button
+                                          onClick={() => {
+                                            handleRecoverFunds(pool.address);
+                                            togglePoolExpansion(pool.address);
+                                          }}
+                                          className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                        >
+                                          💰 Recover Funds
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
+                              
+                              {/* Layout desktop: originale */}
+                              <div className="hidden sm:block p-4">
+                                <div className="mb-3">
+                                  {/* Titolo con pulsante Funzioni CONTRACT */}
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center space-x-2">
+                                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                                        {pool.title}
+                                      </h4>
+                                      {(() => {
+                                        const poolStatus = getPoolBadgeStatus(pool);
+                                        return (
+                                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${poolStatus.bgColor}`}>
+                                            {poolStatus.emoji} {poolStatus.text}
+                                          </span>
+                                        );
+                                      })()}
+                                    </div>
+                                    
+                                    {/* Menu a tendina Funzioni CONTRACT */}
+                                    <div className="relative dropdown-menu">
+                                      <button
+                                        onClick={() => togglePoolExpansion(pool.address)}
+                                        className={`px-3 py-1.5 bg-transparent border border-gray-300 dark:border-gray-600 rounded-t-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm ${expandedPools.has(pool.address) ? 'rounded-b-none' : 'rounded-md'}`}
+                                      >
+                                        <span className="font-medium text-gray-900 dark:text-white">🔧 Funzioni CONTRACT</span>
+                                      </button>
+                                      
+                                      {/* Menu a tendina */}
+                                      {expandedPools.has(pool.address) && (
+                                        <div className="absolute top-full right-0 bg-blue-800 dark:bg-blue-900 border border-gray-300 dark:border-gray-600 rounded-b-lg shadow-lg z-10 min-w-48">
+                                          <div className="py-2">
+                                            {/* Close Pool */}
+                                            {!pool.winnerSet && (
+                                              <button
+                                                onClick={() => {
+                                                  executeClosePool(pool.address);
+                                                  togglePoolExpansion(pool.address);
+                                                }}
+                                                className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                              >
+                                                🔒 Close Pool
+                                              </button>
+                                            )}
+                                            
+                                            {/* Reopen Pool */}
+                                            {!pool.winnerSet && (
+                                              <button
+                                                onClick={() => {
+                                                  executeReopenPool(pool.address);
+                                                  togglePoolExpansion(pool.address);
+                                                }}
+                                                className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                              >
+                                                🔓 Open Pool
+                                              </button>
+                                            )}
+                                            
+                                            {/* Stop Betting */}
+                                            {!pool.winnerSet && (
+                                              <button
+                                                onClick={() => {
+                                                  handleStopBetting(pool.address);
+                                                  togglePoolExpansion(pool.address);
+                                                }}
+                                                className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                              >
+                                                🟡 Stop Betting
+                                              </button>
+                                            )}
+                                            
+                                            {/* Resume Betting */}
+                                            {!pool.winnerSet && (
+                                              <button
+                                                onClick={() => {
+                                                  handleResumeBetting(pool.address);
+                                                  togglePoolExpansion(pool.address);
+                                                }}
+                                                className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                              >
+                                                ▶️ Resume Betting
+                                              </button>
+                                            )}
+                                            
+                                            {/* Resolve YES */}
+                                            {!pool.winnerSet && (
+                                              <button
+                                                onClick={() => {
+                                                  handleResolvePrediction(pool.address, true);
+                                                  togglePoolExpansion(pool.address);
+                                                }}
+                                                className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                              >
+                                                ✅ Resolve YES
+                                              </button>
+                                            )}
+                                            
+                                            {/* Resolve NO */}
+                                            {!pool.winnerSet && (
+                                              <button
+                                                onClick={() => {
+                                                  handleResolvePrediction(pool.address, false);
+                                                  togglePoolExpansion(pool.address);
+                                                }}
+                                                className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                              >
+                                                🚩 Resolve NO
+                                              </button>
+                                            )}
+                                            
+                                            {/* Cancel Pool */}
+                                            {!pool.winnerSet && (
+                                              <button
+                                                onClick={() => {
+                                                  handleCancelPool(pool.address);
+                                                  togglePoolExpansion(pool.address);
+                                                }}
+                                                className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                              >
+                                                ❌ Cancel Pool
+                                              </button>
+                                            )}
+                                            
+                                            {/* Recover Funds */}
+                                            <button
+                                              onClick={() => {
+                                                handleRecoverFunds(pool.address);
+                                                togglePoolExpansion(pool.address);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+                                            >
+                                              💰 Recover Funds
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Dati su una riga */}
+                                  <div className="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-500 mb-1">
+                                    <span>Categoria: {pool.category}</span>
+                                    <span>Chiusura: {formatItalianTime(pool.closingDate)}</span>
+                                    <span>Scadenza: {formatItalianTime(pool.closingBid)}</span>
+                                  </div>
+                                  
+                                  {/* Indirizzo Pool */}
+                                  <div className="mb-1">
+                                    <a
+                                      href={`https://testnet.bscscan.com/address/${pool.address}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer inline-block"
+                                      title="Clicca per aprire su BSCScan"
+                                    >
+                                      {pool.address}
+                                    </a>
+                                  </div>
+                                  <div className="text-sm text-gray-500 dark:text-gray-500 mb-3">
+                                    <div className="flex items-center space-x-2">
+                                      <span>{pool.bettorCount} Predictions</span>
+                                      <span className="text-xs">
+                                        {(() => {
+                                          // Usa le percentuali basate sul numero di scommesse se disponibili
+                                          const betCountData = betCountPercentages[pool.address];
+                                          
+                                          if (betCountData) {
+                                            return (
+                                              <span>
+                                                <span className="text-green-600 dark:text-green-400">YES: {betCountData.yes.toFixed(1)}%</span>
+                                                <span className="text-gray-400 dark:text-gray-600"> | </span>
+                                                <span className="text-red-600 dark:text-red-400">NO: {betCountData.no.toFixed(1)}%</span>
+                                              </span>
+                                            );
+                                          } else {
+                                            // Fallback ai dati del contratto
+                                            const totalYes = Number(pool.totalYes) / 1e18;
+                                            const totalNo = Number(pool.totalNo) / 1e18;
+                                            const total = totalYes + totalNo;
+                                            
+                                            if (total === 0) {
+                                              return (
+                                                <span>
+                                                  <span className="text-green-600 dark:text-green-400">YES: 0%</span>
+                                                  <span className="text-gray-400 dark:text-gray-600"> | </span>
+                                                  <span className="text-red-600 dark:text-red-400">NO: 0%</span>
+                                                </span>
+                                              );
+                                            }
+                                            const yesPercent = ((totalYes / total) * 100).toFixed(1);
+                                            const noPercent = ((totalNo / total) * 100).toFixed(1);
+                                            return (
+                                              <span>
+                                                <span className="text-green-600 dark:text-green-400">YES: {yesPercent}%</span>
+                                                <span className="text-gray-400 dark:text-gray-600"> | </span>
+                                                <span className="text-red-600 dark:text-red-400">NO: {noPercent}%</span>
+                                              </span>
+                                            );
+                                          }
+                                        })()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  
+                                </div>
+
+                                {/* Stato e azioni */}
+                                <div className="flex justify-between items-center pt-3">
+                                  <div className="flex items-center space-x-4">
+                                    
+                                    {pool.winnerSet ? (
+                                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                        pool.winner 
+                                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                                          : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                                      }`}>
+                                        Risultato: {pool.winner ? 'YES' : 'NO'}
+                                      </span>
+                                    ) : (() => {
+                                      // Trova la prediction corrispondente per controllare se è risolta
+                                      const correspondingPrediction = predictions.find(p => p.pool_address === pool.address);
+                                      // Mostra "In Attesa Risoluzione" solo se non è risolta
+                                      if (isPredictionEnded(pool.closingBid) && (!correspondingPrediction || correspondingPrediction.status !== 'risolta')) {
+                                        return (
+                                          <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
+                                            In Attesa Risoluzione
+                                          </span>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
+                                  </div>
+
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {/* Scritta Carica altri */}
+                          {hasMorePools && (
+                            <div className="flex justify-center mt-6">
+                              <span
+                                onClick={loadMorePools}
+                                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer font-medium"
+                              >
+                                Carica altri... ({filteredPools.length - visiblePoolsCount} rimanenti)
+                              </span>
                             </div>
                           )}
                         </div>
-                      </div>
-                      
-                      {/* Layout desktop: originale */}
-                      <div className="hidden sm:block p-4">
-                        <div className="mb-3">
-                          {/* Indirizzo Pool */}
-                          {/* Titolo con pulsante Funzioni CONTRACT */}
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center space-x-2">
-                              <h4 className="font-semibold text-gray-900 dark:text-white">
-                                {pool.title}
-                              </h4>
-                              {(() => {
-                                const poolStatus = getPoolBadgeStatus(pool);
-                                return (
-                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${poolStatus.bgColor}`}>
-                                    {poolStatus.emoji} {poolStatus.text}
-                                  </span>
-                                );
-                              })()}
-                            </div>
-                            
-                            {/* Menu a tendina Funzioni CONTRACT */}
-                            <div className="relative dropdown-menu">
-                              <button
-                                onClick={() => togglePoolExpansion(pool.address)}
-                                className={`px-3 py-1.5 bg-transparent border border-gray-300 dark:border-gray-600 rounded-t-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm ${expandedPools.has(pool.address) ? 'rounded-b-none' : 'rounded-md'}`}
-                              >
-                                <span className="font-medium text-gray-900 dark:text-white">🔧 Funzioni CONTRACT</span>
-                              </button>
-                              
-                              {/* Menu a tendina */}
-                              {expandedPools.has(pool.address) && (
-                                <div className="absolute top-full right-0 bg-blue-800 dark:bg-blue-900 border border-gray-300 dark:border-gray-600 rounded-b-lg shadow-lg z-10 min-w-48">
-                                  <div className="py-2">
-                                    {/* Close Pool */}
-                                    {!pool.winnerSet && (
-                                      <button
-                                        onClick={() => {
-                                          executeClosePool(pool.address);
-                                          togglePoolExpansion(pool.address);
-                                        }}
-                                        className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                      >
-                                        🔒 Close Pool
-                                      </button>
-                                    )}
-                                    
-                                    {/* Reopen Pool */}
-                                    {!pool.winnerSet && (
-                                      <button
-                                        onClick={() => {
-                                          executeReopenPool(pool.address);
-                                          togglePoolExpansion(pool.address);
-                                        }}
-                                        className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                      >
-                                        🔓 Open Pool
-                                      </button>
-                                    )}
-                                    
-                                    {/* Stop Betting */}
-                                    {!pool.winnerSet && (
-                                      <button
-                                        onClick={() => {
-                                          handleStopBetting(pool.address);
-                                          togglePoolExpansion(pool.address);
-                                        }}
-                                        className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                      >
-                                        🟡 Stop Betting
-                                      </button>
-                                    )}
-                                    
-                                    {/* Resume Betting */}
-                                    {!pool.winnerSet && (
-                                      <button
-                                        onClick={() => {
-                                          handleResumeBetting(pool.address);
-                                          togglePoolExpansion(pool.address);
-                                        }}
-                                        className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                      >
-                                        ▶️ Resume Betting
-                                      </button>
-                                    )}
-                                    
-                                    {/* Resolve YES */}
-                                    {!pool.winnerSet && (
-                                      <button
-                                        onClick={() => {
-                                          handleResolvePrediction(pool.address, true);
-                                          togglePoolExpansion(pool.address);
-                                        }}
-                                        className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                      >
-                                        ✅ Resolve YES
-                                      </button>
-                                    )}
-                                    
-                                    {/* Resolve NO */}
-                                    {!pool.winnerSet && (
-                                      <button
-                                        onClick={() => {
-                                          handleResolvePrediction(pool.address, false);
-                                          togglePoolExpansion(pool.address);
-                                        }}
-                                        className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                      >
-                                        🚩 Resolve NO
-                                      </button>
-                                    )}
-                                    
-                                    {/* Cancel Pool */}
-                                    {!pool.winnerSet && (
-                                      <button
-                                        onClick={() => {
-                                          handleCancelPool(pool.address);
-                                          togglePoolExpansion(pool.address);
-                                        }}
-                                        className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                      >
-                                        ❌ Cancel Pool
-                                      </button>
-                                    )}
-                                    
-                                    {/* Recover Funds */}
-                                    <button
-                                      onClick={() => {
-                                        handleRecoverFunds(pool.address);
-                                        togglePoolExpansion(pool.address);
-                                      }}
-                                      className="w-full px-4 py-2 text-left text-sm text-white dark:text-white hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-                                    >
-                                      💰 Recover Funds
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Dati su una riga */}
-                          <div className="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-500 mb-1">
-                            <span>Categoria: {pool.category}</span>
-                            <span>Chiusura: {formatItalianTime(pool.closingDate)}</span>
-                            <span>Scadenza: {formatItalianTime(pool.closingBid)}</span>
-                          </div>
-                          
-                          {/* Indirizzo Pool */}
-                          <div className="mb-1">
-                            <a
-                              href={`https://testnet.bscscan.com/address/${pool.address}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer inline-block"
-                              title="Clicca per aprire su BSCScan"
-                            >
-                              {pool.address}
-                            </a>
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-500 mb-3">
-                            <div className="flex items-center space-x-2">
-                              <span>{pool.bettorCount} Predictions</span>
-                              <span className="text-xs">
-                                {(() => {
-                                  // Usa le percentuali basate sul numero di scommesse se disponibili
-                                  const betCountData = betCountPercentages[pool.address];
-                                  
-                                  if (betCountData) {
-                                    return (
-                                      <span>
-                                        <span className="text-green-600 dark:text-green-400">YES: {betCountData.yes.toFixed(1)}%</span>
-                                        <span className="text-gray-400 dark:text-gray-600"> | </span>
-                                        <span className="text-red-600 dark:text-red-400">NO: {betCountData.no.toFixed(1)}%</span>
-                                      </span>
-                                    );
-                                  } else {
-                                    // Fallback ai dati del contratto
-                                    const totalYes = Number(pool.totalYes) / 1e18;
-                                    const totalNo = Number(pool.totalNo) / 1e18;
-                                    const total = totalYes + totalNo;
-                                    
-                                    if (total === 0) {
-                                      return (
-                                        <span>
-                                          <span className="text-green-600 dark:text-green-400">YES: 0%</span>
-                                          <span className="text-gray-400 dark:text-gray-600"> | </span>
-                                          <span className="text-red-600 dark:text-red-400">NO: 0%</span>
-                                        </span>
-                                      );
-                                    }
-                                    const yesPercent = ((totalYes / total) * 100).toFixed(1);
-                                    const noPercent = ((totalNo / total) * 100).toFixed(1);
-                                    return (
-                                      <span>
-                                        <span className="text-green-600 dark:text-green-400">YES: {yesPercent}%</span>
-                                        <span className="text-gray-400 dark:text-gray-600"> | </span>
-                                        <span className="text-red-600 dark:text-red-400">NO: {noPercent}%</span>
-                                      </span>
-                                    );
-                                  }
-                                })()}
-                              </span>
-                            </div>
-                          </div>
-                          
-                      </div>
-
-                      {/* Stato e azioni */}
-                      <div className="flex justify-between items-center pt-3">
-                        <div className="flex items-center space-x-4">
-                          
-                          {pool.winnerSet ? (
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              pool.winner 
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                                : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                            }`}>
-                              Risultato: {pool.winner ? 'YES' : 'NO'}
-                            </span>
-                          ) : (() => {
-                            // Trova la prediction corrispondente per controllare se è risolta
-                            const correspondingPrediction = predictions.find(p => p.pool_address === pool.address);
-                            // Mostra "In Attesa Risoluzione" solo se non è risolta
-                            if (isPredictionEnded(pool.closingBid) && (!correspondingPrediction || correspondingPrediction.status !== 'risolta')) {
-                              return (
-                                <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
-                                  In Attesa Risoluzione
-                                </span>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-
-                        </div>
-                      </div>
+                      )}
                     </div>
-                  ))}
-                  
-                  {/* Scritta Carica altri */}
-                  {hasMorePools && (
-                    <div className="flex justify-center mt-6">
-                      <span
-                        onClick={loadMorePools}
-                        className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer font-medium"
-                      >
-                        Carica altri... ({filteredPools.length - visiblePoolsCount} rimanenti)
-                      </span>
-                    </div>
-                  )}
+                  </div>
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
+        )}
+      </div>
 
-          {/* Sezione Log Admin Functions */}
-          <div className="mt-8 bg-transparent rounded-2xl border border-gray-200 dark:border-gray-700 shadow-md">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Log delle funzioni del Contract
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {adminLogs.length} azioni registrate - Factory:{' '}
-                    <a
-                      href={`https://testnet.bscscan.com/address/${process.env.NEXT_PUBLIC_FACTORY_ADDRESS || ''}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-mono"
+      {/* Sezione LOG Contracts */}
+      <div>
+        <div 
+          className="p-6 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+          onClick={() => setIsLogContractsSectionExpanded(!isLogContractsSectionExpanded)}
+        >
+          <div className="flex items-center gap-3">
+            <svg
+              className={`w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform ${isLogContractsSectionExpanded ? 'transform rotate-90' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              LOG Contracts
+            </h2>
+          </div>
+        </div>
+
+        {/* Contenuto espandibile */}
+        {isLogContractsSectionExpanded && (
+          <div className="pt-4">
+            {/* Sezione Log Admin Functions */}
+            <div className="bg-transparent rounded-2xl border border-gray-200 dark:border-gray-700 shadow-md">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Log delle funzioni del Contract
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      {adminLogs.filter(log => adminLogsActionFilter === 'all' || log.action_type === adminLogsActionFilter).length} azioni registrate - Factory:{' '}
+                      <a
+                        href={`https://testnet.bscscan.com/address/${process.env.NEXT_PUBLIC_FACTORY_ADDRESS || ''}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-mono"
+                      >
+                        {process.env.NEXT_PUBLIC_FACTORY_ADDRESS || 'Not configured'}
+                      </a>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {/* Filtro per tipo di azione */}
+                    <select
+                      value={adminLogsActionFilter}
+                      onChange={(e) => setAdminLogsActionFilter(e.target.value)}
+                      className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      {process.env.NEXT_PUBLIC_FACTORY_ADDRESS || 'Not configured'}
-                    </a>
-                  </p>
+                      <option value="all">Tutte le azioni</option>
+                      <option value="stop_betting">Stop Betting</option>
+                      <option value="resume_betting">Resume Betting</option>
+                      <option value="close_pool">Close Pool</option>
+                      <option value="reopen_pool">Open Pool</option>
+                      <option value="cancel_pool">Cancel Pool</option>
+                      <option value="resolve_yes">Resolve YES</option>
+                      <option value="resolve_no">Resolve NO</option>
+                      <option value="set_winner">Set Winner</option>
+                      <option value="recover_funds">Recover Funds</option>
+                    </select>
+                    
+                    <button
+                      onClick={() => loadAdminLogs(true)}
+                      disabled={adminLogsLoading}
+                      className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {adminLogsLoading ? 'Ricarica...' : 'Ricarica'}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => loadAdminLogs(true)}
-                  disabled={adminLogsLoading}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {adminLogsLoading ? 'Ricarica...' : 'Ricarica'}
-                </button>
               </div>
-            </div>
 
-            <div className="p-6">
-              {adminLogsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  <span className="ml-3 text-gray-600 dark:text-gray-400">Caricamento log...</span>
-                </div>
-              ) : adminLogs.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  Nessun log disponibile
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <div className="max-h-[400px] overflow-y-auto">
-                    <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-800">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Data/Ora
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Azione
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Admin
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Pool Address
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          TX Hash
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-dark-bg divide-y divide-gray-200 dark:divide-gray-700">
-                      {adminLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                            {new Date(log.created_at).toLocaleString('it-IT')}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              log.action_type === 'stop_betting' 
-                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-                                : log.action_type === 'resume_betting'
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                                : log.action_type === 'close_pool'
-                                ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                            }`}>
-                              {log.action_type.replace('_', ' ').toUpperCase()}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-gray-900 dark:text-white">
+              <div className="p-6">
+                {adminLogsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <span className="ml-3 text-gray-600 dark:text-gray-400">Caricamento log...</span>
+                  </div>
+                ) : (() => {
+                  const filteredLogs = adminLogs.filter(log => adminLogsActionFilter === 'all' || log.action_type === adminLogsActionFilter);
+                  return filteredLogs.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      {adminLogs.length === 0 ? 'Nessun log disponibile' : 'Nessun log trovato per il filtro selezionato'}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <div className="max-h-[400px] overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 dark:bg-gray-800">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Data/Ora
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Azione
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Admin
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Pool Address
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                TX Hash
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white dark:bg-dark-bg divide-y divide-gray-200 dark:divide-gray-700">
+                            {filteredLogs.map((log) => (
+                            <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        <td className="px-4 py-3 text-gray-900 dark:text-white">
+                          {new Date(log.created_at).toLocaleString('it-IT')}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            log.action_type === 'stop_betting' 
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                              : log.action_type === 'resume_betting'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                              : log.action_type === 'close_pool'
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                          }`}>
+                            {log.action_type.replace('_', ' ').toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 dark:text-white">
+                          <button
+                            onClick={() => navigator.clipboard.writeText(log.admin_address)}
+                            className="text-xs font-mono text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                            title="Clicca per copiare"
+                          >
+                            {log.admin_address.slice(0, 10)}...
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          {log.pool_address ? (
                             <button
-                              onClick={() => navigator.clipboard.writeText(log.admin_address)}
+                              onClick={() => navigator.clipboard.writeText(log.pool_address)}
                               className="text-xs font-mono text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                               title="Clicca per copiare"
                             >
-                              {log.admin_address.slice(0, 10)}...
+                              {log.pool_address.slice(0, 10)}...
                             </button>
-                          </td>
-                          <td className="px-4 py-3">
-                            {log.pool_address ? (
-                              <button
-                                onClick={() => navigator.clipboard.writeText(log.pool_address)}
-                                className="text-xs font-mono text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                                title="Clicca per copiare"
-                              >
-                                {log.pool_address.slice(0, 10)}...
-                              </button>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <a
+                            href={`https://testnet.bscscan.com/tx/${log.tx_hash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-mono text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                          >
+                            {log.tx_hash.slice(0, 15)}...
+                          </a>
+                        </td>
+                            </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      {/* Load More Button */}
+                      {adminLogsHasMore && (
+                        <div className="mt-4 text-center">
+                          <span
+                            onClick={loadMoreAdminLogs}
+                            className={`text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer font-medium ${adminLogsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            {adminLogsLoading ? (
+                              <span className="flex items-center space-x-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 dark:border-gray-300"></div>
+                                <span>Caricamento...</span>
+                              </span>
                             ) : (
-                              <span className="text-gray-400">-</span>
+                              `Carica altri... (${Math.min(LOGS_PER_PAGE, adminLogsTotalCount - adminLogs.length)} rimanenti)`
                             )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <a
-                              href={`https://testnet.bscscan.com/tx/${log.tx_hash}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs font-mono text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                            >
-                              {log.tx_hash.slice(0, 15)}...
-                            </a>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  </div>
-                  
-                  {/* Load More Button */}
-                  {adminLogsHasMore && (
-                    <div className="mt-4 text-center">
-                      <span
-                        onClick={loadMoreAdminLogs}
-                        className={`text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer font-medium ${adminLogsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        {adminLogsLoading ? (
-                          <span className="flex items-center space-x-2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 dark:border-gray-300"></div>
-                            <span>Caricamento...</span>
                           </span>
-                        ) : (
-                          `Carica altri... (${Math.min(LOGS_PER_PAGE, adminLogsTotalCount - adminLogs.length)} rimanenti)`
-                        )}
-                      </span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
+                  );
+                })()}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Modal di Progresso Transazione */}
       <TransactionProgressModal

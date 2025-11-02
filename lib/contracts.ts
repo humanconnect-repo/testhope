@@ -50,6 +50,40 @@ export async function getFactory() {
   return new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
 }
 
+// Helper function per chiamate RPC con timeout e retry
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries: number = 2,
+  timeout: number = 10000
+): Promise<T> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      // Wrappa la chiamata in un timeout
+      const timeoutPromise = new Promise<T>((_, reject) => {
+        setTimeout(() => reject(new Error('RPC timeout')), timeout);
+      });
+
+      return await Promise.race([fn(), timeoutPromise]);
+    } catch (error: any) {
+      const isConnectionError = 
+        error?.message?.includes('CONNECTION_CLOSED') ||
+        error?.message?.includes('timeout') ||
+        error?.message?.includes('network') ||
+        error?.code === 'NETWORK_ERROR' ||
+        error?.code === 'TIMEOUT';
+
+      if (attempt === retries || !isConnectionError) {
+        throw error;
+      }
+
+      // Attendi prima del retry (backoff esponenziale)
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+    }
+  }
+  
+  throw new Error('Max retries exceeded');
+}
+
 export async function getPool(address: string, readOnly: boolean = false) {
   if (readOnly) {
     // Usa un provider read-only per letture senza transazioni
@@ -73,7 +107,6 @@ export async function isFactoryOwner(): Promise<boolean> {
     const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
     
     const owner: string = await factory.owner();
-    console.log('Owner della factory:', owner);
     
     // Verifica se l'utente è connesso
     if (typeof window === 'undefined') {
@@ -82,16 +115,12 @@ export async function isFactoryOwner(): Promise<boolean> {
     
     const anyWin = window as any;
     if (!anyWin.ethereum) {
-      console.log('Wallet non connesso');
       return false;
     }
     
     const browserProvider = new ethers.BrowserProvider(anyWin.ethereum);
     const signer = await browserProvider.getSigner();
     const me = await signer.getAddress();
-    
-    console.log('Wallet connesso:', me);
-    console.log('Owner match:', owner.toLowerCase() === me.toLowerCase());
     
     return owner.toLowerCase() === me.toLowerCase();
   } catch (error) {
@@ -155,12 +184,10 @@ export async function listPools(): Promise<string[]> {
   }
   
   try {
-    console.log('🔍 Caricamento pool dal factory:', FACTORY_ADDRESS);
     // Usa provider read-only per le operazioni di lettura (stesso RPC del deploy)
     const provider = new ethers.JsonRpcProvider("https://bsc-testnet.publicnode.com");
     const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
     const pools = await factory.getAllPools();
-    console.log('📋 Pool trovate:', pools.length, pools);
     return pools;
   } catch (error) {
     console.error('❌ Errore caricamento pools:', error);
@@ -171,8 +198,6 @@ export async function listPools(): Promise<string[]> {
 // Informazioni dettagliate di un pool (semplificato)
 export async function getPoolSummary(address: string) {
   try {
-    console.log('🔍 getPoolSummary per:', address);
-    
     // Restituisce solo l'indirizzo - i dettagli li prendiamo dal database
     const result = {
       address,
@@ -198,11 +223,10 @@ export async function getPoolSummary(address: string) {
       netLosingPot: "0",
       totalRedistribution: "0"
     };
-    
-    console.log('✅ Pool summary semplificato creato:', result);
-    return result;
-  } catch (error) {
-    console.error('❌ Errore caricamento pool summary:', address, error);
+      
+      return result;
+    } catch (error) {
+      console.error('❌ Errore caricamento pool summary:', address, error);
     throw error;
   }
 }
@@ -281,18 +305,45 @@ export async function emergencyResolve(poolAddress: string, winner: boolean, rea
 // Check if betting is currently open (including emergency stop)
 export async function isBettingCurrentlyOpen(poolAddress: string): Promise<boolean> {
   try {
-    const pool = await getPool(poolAddress, true);
-    return await pool.isBettingOpen(); // Corretto: isBettingOpen invece di isBettingCurrentlyOpen
-  } catch (error) {
-    console.warn('Errore nel controllo stato scommesse:', error);
+    return await withRetry(async () => {
+      const pool = await getPool(poolAddress, true);
+      return await pool.isBettingOpen(); // Corretto: isBettingOpen invece di isBettingCurrentlyOpen
+    });
+  } catch (error: any) {
+    // Silenzia gli errori di connessione temporanei
+    const isConnectionError = 
+      error?.message?.includes('CONNECTION_CLOSED') ||
+      error?.message?.includes('timeout') ||
+      error?.message?.includes('network') ||
+      error?.code === 'NETWORK_ERROR';
+    
+    if (!isConnectionError) {
+      console.warn('Errore nel controllo stato scommesse:', error);
+    }
     return true; // Default: scommesse aperte
   }
 }
 
 // Check emergency stop status
 export async function getEmergencyStopStatus(poolAddress: string): Promise<boolean> {
-  const pool = await getPool(poolAddress, true);
-  return await pool.emergencyStop();
+  try {
+    return await withRetry(async () => {
+      const pool = await getPool(poolAddress, true);
+      return await pool.emergencyStop();
+    });
+  } catch (error: any) {
+    // Silenzia gli errori di connessione temporanei
+    const isConnectionError = 
+      error?.message?.includes('CONNECTION_CLOSED') ||
+      error?.message?.includes('timeout') ||
+      error?.message?.includes('network') ||
+      error?.code === 'NETWORK_ERROR';
+    
+    if (!isConnectionError) {
+      console.warn('Errore nel controllo emergency stop:', error);
+    }
+    return false; // Default: emergency stop non attivo
+  }
 }
 
 // Cancel pool and allow refunds
@@ -548,10 +599,21 @@ export async function calculateUserWinnings(
 // Check if pool is cancelled
 export async function isPoolCancelled(poolAddress: string): Promise<boolean> {
   try {
-    const pool = await getPool(poolAddress, true);
-    return await pool.cancelled();
-  } catch (error) {
-    console.warn('Errore nel controllo cancellazione pool:', error);
+    return await withRetry(async () => {
+      const pool = await getPool(poolAddress, true);
+      return await pool.cancelled();
+    });
+  } catch (error: any) {
+    // Silenzia gli errori di connessione temporanei
+    const isConnectionError = 
+      error?.message?.includes('CONNECTION_CLOSED') ||
+      error?.message?.includes('timeout') ||
+      error?.message?.includes('network') ||
+      error?.code === 'NETWORK_ERROR';
+    
+    if (!isConnectionError) {
+      console.warn('Errore nel controllo cancellazione pool:', error);
+    }
     return false; // Default: pool non cancellato
   }
 }
@@ -559,10 +621,21 @@ export async function isPoolCancelled(poolAddress: string): Promise<boolean> {
 // Check if pool is closed
 export async function isPoolClosed(poolAddress: string): Promise<boolean> {
   try {
-    const pool = await getPool(poolAddress, true);
-    return await pool.isClosed();
-  } catch (error) {
-    console.warn('Errore nel controllo chiusura pool:', error);
+    return await withRetry(async () => {
+      const pool = await getPool(poolAddress, true);
+      return await pool.isClosed();
+    });
+  } catch (error: any) {
+    // Silenzia gli errori di connessione temporanei
+    const isConnectionError = 
+      error?.message?.includes('CONNECTION_CLOSED') ||
+      error?.message?.includes('timeout') ||
+      error?.message?.includes('network') ||
+      error?.code === 'NETWORK_ERROR';
+    
+    if (!isConnectionError) {
+      console.warn('Errore nel controllo chiusura pool:', error);
+    }
     return false; // Default: pool aperta
   }
 }
