@@ -243,8 +243,8 @@ export default function PredictionCard({
           </span>
         </div>
 
-        {/* Titolo */}
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+        {/* Titolo - sempre altezza 2 righe per allineamento */}
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 min-h-[2.5rem]">
           {title}
         </h3>
 
