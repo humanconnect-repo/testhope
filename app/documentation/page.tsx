@@ -10,6 +10,7 @@ type Section = 'introduzione' | 'inizia-da-qui' | 'avviso' | 'links' | 'bnb-chai
 export default function DocumentationPage() {
   const [activeSection, setActiveSection] = useState<Section>('inizia-da-qui');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['introduzione']));
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [stackTechPage, setStackTechPage] = useState(0);
   const [web3Page, setWeb3Page] = useState(0);
   const [smartContractsGeneralPage, setSmartContractsGeneralPage] = useState(0);
@@ -126,10 +127,35 @@ export default function DocumentationPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 bg-slate-900 text-white p-2 rounded-lg hover:bg-slate-800 transition-colors"
+        aria-label="Toggle menu"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {isMobileMenuOpen ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          )}
+        </svg>
+      </button>
+
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Main Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar Navigation */}
-        <aside className="w-64 flex-shrink-0 bg-slate-900 border-r border-slate-800 overflow-y-auto">
+        <aside className={`fixed md:static inset-y-0 left-0 z-40 w-64 flex-shrink-0 bg-slate-900 border-r border-slate-800 overflow-y-auto transform transition-transform duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}>
           <nav className="p-4">
             {/* Logo Image */}
             <div className="mb-6">
@@ -190,6 +216,8 @@ export default function DocumentationPage() {
                                     if (!expandedSections.has(section.id)) {
                                       setExpandedSections(new Set([...expandedSections, section.id]));
                                     }
+                                    // Chiudi il menu mobile quando si seleziona una sezione
+                                    setIsMobileMenuOpen(false);
                                   }}
                                   className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors text-left ${
                                     activeSection === subsection.id
@@ -210,7 +238,11 @@ export default function DocumentationPage() {
                   return (
                     <li key={section.id}>
                       <button
-                        onClick={() => handleSectionChange(section.id as Section)}
+                        onClick={() => {
+                          handleSectionChange(section.id as Section);
+                          // Chiudi il menu mobile quando si seleziona una sezione
+                          setIsMobileMenuOpen(false);
+                        }}
                         className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
                           activeSection === section.id
                             ? 'bg-slate-800 text-white border-l-2 border-cyan-400'
@@ -229,13 +261,13 @@ export default function DocumentationPage() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark-bg">
-          <div className="max-w-4xl mx-auto px-6 py-8">
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark-bg w-full md:w-auto">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
             {/* Content based on active section */}
             {activeSection === 'introduzione' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -257,7 +289,7 @@ export default function DocumentationPage() {
             {activeSection === 'inizia-da-qui' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -314,7 +346,7 @@ export default function DocumentationPage() {
             {activeSection === 'avviso' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -378,7 +410,7 @@ export default function DocumentationPage() {
             {activeSection === 'links' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -506,7 +538,7 @@ export default function DocumentationPage() {
             {activeSection === 'bnb-chain-testnet' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -713,7 +745,7 @@ export default function DocumentationPage() {
             {activeSection === 'faucet' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -944,7 +976,7 @@ export default function DocumentationPage() {
             {activeSection === 'specifiche' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -963,7 +995,7 @@ export default function DocumentationPage() {
             {activeSection === 'architettura-stack' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -1296,7 +1328,7 @@ public/                  # Asset statici
             {activeSection === 'web3' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -1509,7 +1541,7 @@ public/                  # Asset statici
             {activeSection === 'smart-contracts' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -1528,7 +1560,7 @@ public/                  # Asset statici
             {activeSection === 'smart-contracts-general' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -1768,7 +1800,7 @@ public/                  # Asset statici
             {activeSection === 'factory-contract' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -2209,7 +2241,7 @@ totalFees = totalPot * 0.015`}</code>
             {activeSection === 'factory-math' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -2510,7 +2542,7 @@ totalFees = totalPot * 0.015`}</code>
             {activeSection === 'prediction-pool-contract' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -2740,7 +2772,7 @@ totalFees = totalPot * 0.015`}</code>
             {activeSection === 'open-source-bsc' && (
               <div>
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
                   </span>
                 </div>
@@ -2965,7 +2997,8 @@ totalFees = totalPot * 0.015`}</code>
 
             {/* Footer Actions */}
             <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
+              {/* Desktop Layout */}
+              <div className="hidden md:flex items-center justify-between">
                 <div className="text-sm text-gray-500 dark:text-gray-400">
                   Ultimo aggiornamento: {new Date().toLocaleDateString('it-IT')}
                 </div>
@@ -2978,6 +3011,22 @@ totalFees = totalPot * 0.015`}</code>
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </Link>
+              </div>
+
+              {/* Mobile Layout */}
+              <div className="md:hidden flex flex-col items-start gap-3">
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg font-medium transition-colors"
+                >
+                  Vai alla dApp
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Ultimo aggiornamento: {new Date().toLocaleDateString('it-IT')}
+                </div>
               </div>
             </div>
           </div>
