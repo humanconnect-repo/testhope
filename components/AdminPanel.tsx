@@ -4039,8 +4039,9 @@ contract PredictionPool is Ownable, ReentrancyGuard {
         {isLogContractsSectionExpanded && (
           <div className="pt-4">
             {/* Sezione Log Admin Functions */}
-            <div className="bg-transparent rounded-2xl border border-gray-200 dark:border-gray-700 shadow-md">
-              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="px-6 pb-6">
+              <div className="bg-transparent rounded-2xl border border-gray-200 dark:border-gray-700 shadow-md">
+                <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -4201,6 +4202,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                     </div>
                   );
                 })()}
+                </div>
               </div>
             </div>
           </div>

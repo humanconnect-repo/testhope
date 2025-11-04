@@ -3047,8 +3047,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
             {/* Grafico andamento quote */}
             <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 shadow-md p-6">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                <span className="hidden sm:inline">📊 Grafico delle Predictions</span>
-                <span className="sm:hidden">📊 Dati sulle Predictions</span>
+                <span className="hidden sm:inline">📊 I dati della prediction</span>
+                <span className="sm:hidden">📊 I dati della prediction</span>
               </h3>
               {prediction ? (
                 <QuoteChart 
