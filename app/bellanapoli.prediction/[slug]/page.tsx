@@ -714,12 +714,12 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     }
   }, [user?.id, prediction]);
 
-  // useEffect per ricaricare le info del vincitore quando l'utente si connette/disconnette
+  // useEffect per ricaricare le info del vincitore quando cambia poolAddress o quando l'utente si connette/disconnette
   useEffect(() => {
-    if (prediction && prediction.status === 'risolta' && poolAddress && isAuthenticated && address) {
+    if (prediction && prediction.status === 'risolta' && poolAddress) {
       loadWinnerInfo();
     }
-  }, [isAuthenticated, address, poolAddress]);
+  }, [isAuthenticated, address, poolAddress, prediction?.status]);
 
   // useEffect per controllare se l'utente ha già fatto claim del refund
   useEffect(() => {
