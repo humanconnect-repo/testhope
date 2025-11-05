@@ -907,14 +907,43 @@ export default function AdminPanel() {
     }
   };
 
+  // Funzione per convertire UTC date in formato datetime-local (in orario italiano)
+  const formatDateTimeLocal = (utcDate: string): string => {
+    try {
+      const date = new Date(utcDate);
+      
+      // Usa Intl.DateTimeFormat per ottenere i componenti della data in timezone Europe/Rome
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Europe/Rome',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      
+      const parts = formatter.formatToParts(date);
+      const year = parts.find(p => p.type === 'year')?.value || '';
+      const month = parts.find(p => p.type === 'month')?.value || '';
+      const day = parts.find(p => p.type === 'day')?.value || '';
+      const hour = parts.find(p => p.type === 'hour')?.value || '';
+      const minute = parts.find(p => p.type === 'minute')?.value || '';
+      
+      return `${year}-${month}-${day}T${hour}:${minute}`;
+    } catch (err) {
+      return '';
+    }
+  };
+
   const handleEdit = (prediction: Prediction) => {
     setEditingPrediction(prediction);
     setFormData({
       title: prediction.title,
       description: prediction.description || '',
       category: prediction.category,
-      closing_date: new Date(prediction.closing_date).toISOString().slice(0, 16),
-      closing_bid: prediction.closing_bid ? new Date(prediction.closing_bid).toISOString().slice(0, 16) : '',
+      closing_date: formatDateTimeLocal(prediction.closing_date),
+      closing_bid: prediction.closing_bid ? formatDateTimeLocal(prediction.closing_bid) : '',
       status: prediction.status,
       rules: prediction.rules || '',
       image_url: prediction.image_url || '',
@@ -2803,6 +2832,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                   className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="all">Tutti gli status</option>
+                  <option value="in_attesa">In attesa</option>
                   <option value="attiva">Attiva</option>
                   <option value="in_pausa">In pausa</option>
                   <option value="risolta">Risolta</option>
@@ -3094,8 +3124,8 @@ contract PredictionPool is Ownable, ReentrancyGuard {
 
               {/* Form di modifica sotto la prediction */}
               {editingPrediction && editingPrediction.id === prediction.id && (
-                <div className="px-6 pb-6 bg-gray-50 dark:bg-gray-800/50">
-                  <div className="bg-white dark:bg-dark-card p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-md">
+                <div className="px-6 pb-6">
+                  <div className="bg-transparent p-6 rounded-2xl">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
                       Modifica Prediction
                     </h3>
@@ -3192,9 +3222,10 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                           </label>
                           <select
                             value={formData.status}
-                            onChange={(e) => setFormData({...formData, status: e.target.value as 'attiva' | 'in_pausa' | 'risolta' | 'cancellata' | 'nascosta'})}
+                            onChange={(e) => setFormData({...formData, status: e.target.value as 'in_attesa' | 'attiva' | 'in_pausa' | 'risolta' | 'cancellata' | 'nascosta'})}
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           >
+                            <option value="in_attesa">In Attesa</option>
                             <option value="attiva">Attiva</option>
                             <option value="in_pausa">In Pausa</option>
                             <option value="risolta">Risolta</option>

@@ -49,12 +49,10 @@ export async function GET() {
 
     console.log('🔍 Fetching matches from', dateFrom, 'to', dateTo);
 
-    // Filtri: Serie A (SA) e Champions League (CL)
+    // Filtri: Solo Serie A (SA)
     // Serie A competition ID: 2019 (secondo football-data.org)
-    // Champions League competition ID: 2001
     const competitions = [
-      { id: '2019', name: 'Serie A', code: 'SA' },
-      { id: '2001', name: 'Champions League', code: 'CL' }
+      { id: '2019', name: 'Serie A', code: 'SA' }
     ];
     
     let allMatches: Match[] = [];

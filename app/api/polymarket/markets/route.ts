@@ -44,12 +44,10 @@ interface PolymarketMarket {
 
 // Endpoint API ufficiale di Polymarket (Gamma API)
 const POLYMARKET_API_ENDPOINT = 'https://gamma-api.polymarket.com/markets';
+const POLYMARKET_SEARCH_API = 'https://gamma-api.polymarket.com/search';
 
 export async function GET() {
   try {
-    // Limita a 50 mercati totali
-    const limit = 50;
-    
     // Calcola date per filtrare mercati futuri o recenti (non più vecchi di 3 mesi)
     const now = new Date();
     const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
@@ -59,91 +57,202 @@ export async function GET() {
     const endDateMin = threeMonthsAgo.toISOString();
     const endDateMax = oneYearFromNow.toISOString();
     
-    // Costruisci URL con parametri di query
-    const url = new URL(POLYMARKET_API_ENDPOINT);
-    url.searchParams.set('limit', limit.toString());
-    url.searchParams.set('closed', 'false');
-    url.searchParams.set('active', 'true');
-    url.searchParams.set('end_date_min', endDateMin);
-    url.searchParams.set('end_date_max', endDateMax);
-    // Ordina per volume decrescente per avere i più popolari
-    url.searchParams.set('order', 'volumeNum');
-    url.searchParams.set('ascending', 'false');
+    let allMarkets: any[] = [];
     
-    console.log('📡 Fetching markets from Polymarket Gamma API:', url.toString());
-    
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'BellaNapoli/1.0',
-      },
-      // Timeout di 15 secondi
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Errore API Polymarket:', response.status, errorText);
-      return NextResponse.json(
-        { 
-          error: 'Errore nel recupero dei mercati da Polymarket',
-          details: errorText,
-          markets: [] 
-        },
-        { status: response.status }
-      );
-    }
-
-    const markets: PolymarketMarket[] = await response.json();
-    
-    if (!Array.isArray(markets)) {
-      console.error('❌ Formato dati inaspettato:', typeof markets);
-      return NextResponse.json(
-        { 
-          error: 'Formato dati inaspettato dall\'API Polymarket',
-          markets: [] 
-        },
-        { status: 500 }
-      );
-    }
-    
-    console.log(`✅ Polymarket: trovati ${markets.length} mercati totali`);
-    
-    // Filtra i mercati per categoria: solo economia e crypto (escludi sport)
-    // Usa i tag e la categoria dal formato Gamma API
-    const allowedKeywords = [
-      'economy', 'economics', 'economic', 'economia',
-      'crypto', 'cryptocurrency', 'bitcoin', 'btc', 'ethereum', 'eth', 'blockchain',
-      'finance', 'financial', 'finanza',
-      'stock', 'stocks', 's&p', 'sp500', 'spx', 'dow', 'nasdaq', 'djia',
-      'inflation', 'fed', 'federal reserve', 'interest rate', 'tasso', 'rates',
-      'gdp', 'unemployment', 'disoccupazione', 'employment',
-      'trading', 'investment', 'investimento', 'asset', 'assets',
-      'dollar', 'euro', 'currency', 'forex', 'exchange rate', 'usd',
-      'company', 'companies', 'corporate', 'earnings', 'revenue', 'profit',
-      'recession', 'growth', 'crescita', 'economico', 'monetary', 'fiscal',
-      'commodity', 'commodities', 'oil', 'gold', 'silver'
+    // Carica mercati Crypto e Finance usando la ricerca
+    const searchQueries = [
+      { query: 'crypto', limit: 150 },
+      { query: 'finance', limit: 150 },
+      { query: 'economy', limit: 150 },
+      { query: 'financial', limit: 150 },
+      { query: 'stocks', limit: 100 },
+      { query: 'stock market', limit: 100 },
+      { query: 'bitcoin', limit: 100 },
+      { query: 'ethereum', limit: 100 }
     ];
     
+    for (const searchQuery of searchQueries) {
+      try {
+        // Usa l'endpoint di search per cercare mercati
+        const searchUrl = new URL(POLYMARKET_SEARCH_API);
+        searchUrl.searchParams.set('query', searchQuery.query);
+        searchUrl.searchParams.set('type', 'market');
+        searchUrl.searchParams.set('limit', searchQuery.limit.toString());
+        
+        console.log(`📡 Searching "${searchQuery.query}" markets from Polymarket Search API:`, searchUrl.toString());
+        
+        const searchResponse = await fetch(searchUrl.toString(), {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'BellaNapoli/1.0',
+          },
+          signal: AbortSignal.timeout(20000),
+        });
+        
+        if (searchResponse.ok) {
+          const searchData = await searchResponse.json();
+          console.log(`📦 Raw search data for "${searchQuery.query}":`, JSON.stringify(searchData).substring(0, 500));
+          
+          // L'API di ricerca può restituire risultati in formato diverso
+          let markets: any[] = [];
+          
+          if (Array.isArray(searchData)) {
+            markets = searchData;
+          } else if (searchData.results && Array.isArray(searchData.results)) {
+            markets = searchData.results;
+          } else if (searchData.markets && Array.isArray(searchData.markets)) {
+            markets = searchData.markets;
+          } else if (searchData.data && Array.isArray(searchData.data)) {
+            markets = searchData.data;
+          }
+          
+          // Filtra mercati attivi e non chiusi
+          const filtered = markets.filter((market: any) => {
+            // Verifica che sia attivo e non chiuso
+            if (market.closed === true || market.active === false) {
+              return false;
+            }
+            
+            // Verifica data di scadenza
+            const endDate = market.endDate ? new Date(market.endDate) :
+                           market.endDateIso ? new Date(market.endDateIso) :
+                           market.condition?.endDate ? new Date(market.condition.endDate) : null;
+            
+            if (endDate && (endDate < threeMonthsAgo || endDate > oneYearFromNow)) {
+              return false;
+            }
+            
+            return true;
+          });
+          
+          allMarkets = [...allMarkets, ...filtered];
+          console.log(`✅ "${searchQuery.query}": trovati ${filtered.length} mercati (da ${markets.length} risultati)`);
+        } else {
+          const errorText = await searchResponse.text();
+          console.error(`❌ Errore API search per "${searchQuery.query}":`, searchResponse.status, errorText);
+        }
+      } catch (error) {
+        console.error(`❌ Errore fetching "${searchQuery.query}":`, error);
+        continue;
+      }
+    }
+    
+    // Fallback: usa anche l'endpoint markets standard se non abbiamo abbastanza risultati
+    if (allMarkets.length < 10) {
+      try {
+        console.log('📡 Fallback: usando endpoint markets standard...');
+        const marketsUrl = new URL(POLYMARKET_API_ENDPOINT);
+        marketsUrl.searchParams.set('limit', '200');
+        marketsUrl.searchParams.set('closed', 'false');
+        marketsUrl.searchParams.set('active', 'true');
+        marketsUrl.searchParams.set('end_date_min', endDateMin);
+        marketsUrl.searchParams.set('end_date_max', endDateMax);
+        marketsUrl.searchParams.set('order', 'volumeNum');
+        marketsUrl.searchParams.set('ascending', 'false');
+        
+        const response = await fetch(marketsUrl.toString(), {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'BellaNapoli/1.0',
+          },
+          signal: AbortSignal.timeout(15000),
+        });
+
+        if (response.ok) {
+          const marketsData = await response.json();
+          const markets = Array.isArray(marketsData) ? marketsData : [];
+          
+          // Filtra per crypto o finance nei tags o nel testo
+          const filtered = markets.filter((market: any) => {
+            const tags = market.tags || [];
+            const tagNames = tags.map((tag: any) => (tag.name || tag || '').toLowerCase()).join(' ');
+            const title = (market.question || '').toLowerCase();
+            const description = (market.description || '').toLowerCase();
+            const fullText = `${tagNames} ${title} ${description}`;
+            
+            const hasCryptoOrFinance = fullText.includes('crypto') || 
+                                      fullText.includes('finance') || 
+                                      fullText.includes('financial') ||
+                                      fullText.includes('bitcoin') || 
+                                      fullText.includes('btc') ||
+                                      fullText.includes('ethereum') ||
+                                      fullText.includes('eth') ||
+                                      fullText.includes('stock') ||
+                                      fullText.includes('stocks') ||
+                                      fullText.includes('economy') ||
+                                      fullText.includes('economic') ||
+                                      fullText.includes('s&p') ||
+                                      fullText.includes('sp500') ||
+                                      fullText.includes('nasdaq') ||
+                                      fullText.includes('dow') ||
+                                      fullText.includes('inflation') ||
+                                      fullText.includes('fed') ||
+                                      fullText.includes('federal reserve') ||
+                                      fullText.includes('interest rate') ||
+                                      fullText.includes('gdp') ||
+                                      fullText.includes('unemployment') ||
+                                      fullText.includes('trading') ||
+                                      fullText.includes('investment') ||
+                                      fullText.includes('earnings') ||
+                                      fullText.includes('revenue') ||
+                                      fullText.includes('profit') ||
+                                      fullText.includes('recession') ||
+                                      fullText.includes('growth') ||
+                                      fullText.includes('currency') ||
+                                      fullText.includes('forex') ||
+                                      fullText.includes('usd') ||
+                                      fullText.includes('dollar') ||
+                                      fullText.includes('euro') ||
+                                      fullText.includes('company') ||
+                                      fullText.includes('corporate');
+            
+            // Verifica data di scadenza
+            const endDate = market.endDate ? new Date(market.endDate) :
+                           market.endDateIso ? new Date(market.endDateIso) : null;
+            
+            if (endDate && (endDate < threeMonthsAgo || endDate > oneYearFromNow)) {
+              return false;
+            }
+            
+            return hasCryptoOrFinance;
+          });
+          
+          allMarkets = [...allMarkets, ...filtered];
+          console.log(`✅ Fallback markets endpoint: trovati ${filtered.length} mercati`);
+        }
+      } catch (error) {
+        console.error('❌ Errore fallback markets endpoint:', error);
+      }
+    }
+    
+    // Rimuovi duplicati basandosi sull'ID
+    const uniqueMarkets = allMarkets.filter((market: any, index: number, self: any[]) => 
+      index === self.findIndex((m: any) => m.id === market.id)
+    );
+    
+    console.log(`✅ Polymarket: trovati ${uniqueMarkets.length} mercati unici totali (Crypto + Finance)`);
+    
+    // Filtra i mercati per escludere sport e altri non desiderati
     const excludedKeywords = [
       'sport', 'sports', 'football', 'soccer', 'basketball', 'baseball', 
       'nfl', 'nba', 'nhl', 'mlb', 'sportivo', 'match', 'game', 'team', 'player',
-      'athlete', 'championship', 'tournament', 'olympics', 'world cup'
+      'athlete', 'championship', 'tournament', 'olympics', 'world cup', 'politics', 'election'
     ];
     
-    const filteredMarkets = markets.filter((market: any) => {
-      // Estrai categoria dai tags (array di oggetti nella Gamma API)
+    const filteredMarkets = uniqueMarkets.filter((market: any) => {
+      // Estrai categoria dai tags
       const tags = market.tags || [];
-      const tagNames = tags.map((tag: any) => tag.name || tag).join(' ').toLowerCase();
-      const category = (market.category || '').toLowerCase();
+      const tagNames = tags.map((tag: any) => (tag.name || tag || '').toLowerCase()).join(' ');
+      const category = (market.category || market.question || '').toLowerCase();
       
       const title = (market.question || '').toLowerCase();
       const description = (market.description || '').toLowerCase();
       
       const fullText = `${category} ${tagNames} ${title} ${description}`;
       
-      // Controlla se contiene categorie escluse (sport) - esclusione rigorosa
+      // Escludi mercati sportivi o politici
       const isExcluded = excludedKeywords.some(excluded => {
         const regex = new RegExp(`\\b${excluded}\\b`, 'i');
         return regex.test(fullText);
@@ -153,22 +262,11 @@ export async function GET() {
         return false;
       }
       
-      // Controlla se contiene categorie permesse (economia/crypto)
-      const isAllowed = allowedKeywords.some(allowed => {
-        const regex = new RegExp(`\\b${allowed}\\b`, 'i');
-        return regex.test(fullText);
-      });
-      
-      if (!isAllowed) {
-        return false;
-      }
-      
-      // Verifica data di scadenza (già filtrata dall'API, ma verifichiamo comunque)
+      // Verifica data di scadenza
       const endDate = market.endDate ? new Date(market.endDate) :
                      market.endDateIso ? new Date(market.endDateIso) : null;
       
       if (endDate) {
-        // Escludi mercati scaduti più di 3 mesi fa o troppo futuri
         if (endDate < threeMonthsAgo || endDate > oneYearFromNow) {
           return false;
         }
@@ -177,7 +275,14 @@ export async function GET() {
       return true;
     });
     
-    console.log(`📊 Dopo filtraggio: ${filteredMarkets.length} mercati (Economia/Crypto, non scaduti)`);
+    // Ordina per volume decrescente
+    filteredMarkets.sort((a: any, b: any) => {
+      const volumeA = a.volumeNum || a.volume || 0;
+      const volumeB = b.volumeNum || b.volume || 0;
+      return volumeB - volumeA;
+    });
+    
+    console.log(`📊 Dopo filtraggio: ${filteredMarkets.length} mercati (Crypto/Finance, non scaduti)`);
     
     // Formatta i dati per il frontend (formato Gamma API)
     const formattedMarkets = filteredMarkets.map((market: any) => {
