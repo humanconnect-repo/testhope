@@ -435,7 +435,7 @@ export default function DocumentationPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                    <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                       Avviso
                     </span>
                   </div>
@@ -466,7 +466,7 @@ export default function DocumentationPage() {
                   </p>
                   <div className="mt-6 p-4 bg-transparent border border-cyan-400/30 dark:border-cyan-400/30 rounded-lg inline-block">
                     <p className="text-sm text-gray-700 dark:text-gray-300">
-                      <strong className="text-cyan-400">Nota importante:</strong> I fondi utilizzati nella testnet sono token di test e non hanno valore reale.
+                      <strong className="text-cyan-400">Nota importante:</strong> i fondi utilizzati nella testnet sono token di test e non hanno valore reale.
                     </p>
                   </div>
 
@@ -476,26 +476,26 @@ export default function DocumentationPage() {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => handleSectionChange('inizia-da-qui')}
-                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 flex-shrink-0"
                         aria-label="Vai alla pagina precedente"
                       >
                         <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Bella Napoli
                       </span>
                     </div>
 
                     {/* Freccia destra - Pagina successiva (BNB Chain Testnet) */}
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         BNB Chain Testnet
                       </span>
                       <button
                         onClick={() => handleSectionChange('bnb-chain-testnet')}
-                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 flex-shrink-0"
                         aria-label="Vai alla pagina successiva"
                       >
                         <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -605,14 +605,14 @@ export default function DocumentationPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Faucet
                       </span>
                     </div>
 
                     {/* Freccia destra - Pagina successiva (Stack tecnologico) */}
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Stack tecnologico
                       </span>
                       <button
@@ -822,14 +822,14 @@ export default function DocumentationPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Avviso
                       </span>
                     </div>
 
                     {/* Freccia destra - Pagina successiva (Faucet) */}
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Faucet
                       </span>
                       <button
@@ -1057,14 +1057,14 @@ export default function DocumentationPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         BNB Chain Testnet
                       </span>
                     </div>
 
                     {/* Freccia destra - Pagina successiva (Links) */}
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Links
                       </span>
                       <button
@@ -1413,14 +1413,14 @@ public/                  # Asset statici
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Links
                       </span>
                     </div>
 
                     {/* Freccia destra - Pagina successiva (Web3) */}
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Web3
                       </span>
                       <button
@@ -1624,14 +1624,14 @@ public/                  # Asset statici
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Stack tecnologico
                       </span>
                     </div>
 
                     {/* Freccia destra - Pagina successiva (General) */}
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         General
                       </span>
                       <button
@@ -1887,14 +1887,14 @@ public/                  # Asset statici
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Web3
                       </span>
                     </div>
 
                     {/* Freccia destra - Pagina successiva (Factory Contract) */}
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Factory Contract
                       </span>
                       <button
@@ -2332,14 +2332,14 @@ totalFees = totalPot * 0.015`}</code>
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         General
                       </span>
                     </div>
 
                     {/* Freccia destra - Pagina successiva (Factory: MATH) */}
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Factory: MATH
                       </span>
                       <button
@@ -2637,14 +2637,14 @@ totalFees = totalPot * 0.015`}</code>
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Factory Contract
                       </span>
                     </div>
 
                     {/* Freccia destra - Pagina successiva (PredictionPool Contracts) */}
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         PredictionPool Contracts
                       </span>
                       <button
@@ -2871,14 +2871,14 @@ totalFees = totalPot * 0.015`}</code>
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Factory: MATH
                       </span>
                     </div>
 
                     {/* Freccia destra - Pagina successiva (Open Source su BSC) */}
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Open Source su BSC
                       </span>
                       <button
@@ -3123,7 +3123,7 @@ totalFees = totalPot * 0.015`}</code>
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         PredictionPool Contracts
                       </span>
                     </div>

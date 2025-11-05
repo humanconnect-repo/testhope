@@ -34,7 +34,7 @@ export default function Header() {
             {/* Documentation Button - Sempre visibile */}
             <Link 
               href="/documentation"
-              className="bg-white dark:bg-gray-800 text-primary dark:text-cyan-400 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 font-medium text-sm border border-gray-200 dark:border-gray-600 flex items-center space-x-2"
+              className="bg-white dark:bg-gray-800 text-primary dark:text-cyan-400 px-3 sm:px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 font-medium text-sm border border-gray-200 dark:border-gray-600 flex items-center justify-center"
             >
               <span className="hidden sm:inline">Documentation</span>
               <span className="sm:hidden">Docs</span>
