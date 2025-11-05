@@ -9,7 +9,7 @@ type Section = 'introduzione' | 'inizia-da-qui' | 'avviso' | 'links' | 'bnb-chai
 
 export default function DocumentationPage() {
   const [activeSection, setActiveSection] = useState<Section>('inizia-da-qui');
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['introduzione']));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['introduzione', 'specifiche', 'smart-contracts']));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [stackTechPage, setStackTechPage] = useState(0);
   const [web3Page, setWeb3Page] = useState(0);
