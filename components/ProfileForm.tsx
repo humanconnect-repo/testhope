@@ -103,20 +103,33 @@ export default function ProfileForm() {
   }, [address, isAuthenticated, user])
 
   // Funzione per validare URL immagine
-  const isValidImageUrl = (url: string): boolean => {
-    if (!url.trim()) return true // URL vuoto è valido (userà immagine stock)
+  const isValidImageUrl = (url: string): { valid: boolean; error?: string } => {
+    if (!url.trim()) return { valid: true } // URL vuoto è valido (userà immagine stock)
     
     try {
       const urlObj = new URL(url)
+      
+      // Blocca immagini delle predizioni
+      if (urlObj.pathname.includes('prediction-images') || urlObj.pathname.includes('/predictions/')) {
+        return { valid: false, error: 'Non è possibile utilizzare immagini delle predizioni come avatar' }
+      }
+      
       // Verifica che sia HTTP/HTTPS
       if (!['http:', 'https:'].includes(urlObj.protocol)) {
-        return false
+        return { valid: false, error: 'URL non valido. Inserisci un link a un\'immagine (jpg, png, gif, webp)' }
       }
+      
       // Verifica estensione immagine
       const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg)$/i
-      return imageExtensions.test(urlObj.pathname) || urlObj.hostname.includes('imgur') || urlObj.hostname.includes('cloudinary')
+      const hasValidExtension = imageExtensions.test(urlObj.pathname) || urlObj.hostname.includes('imgur') || urlObj.hostname.includes('cloudinary')
+      
+      if (!hasValidExtension) {
+        return { valid: false, error: 'URL non valido. Inserisci un link a un\'immagine (jpg, png, gif, webp)' }
+      }
+      
+      return { valid: true }
     } catch {
-      return false
+      return { valid: false, error: 'URL non valido. Inserisci un link a un\'immagine (jpg, png, gif, webp)' }
     }
   }
 
@@ -125,8 +138,11 @@ export default function ProfileForm() {
     setUrlError(null)
     setProfile(prev => ({ ...prev, avatar_url: url }))
     
-    if (url && !isValidImageUrl(url)) {
-      setUrlError('URL non valido. Inserisci un link a un\'immagine (jpg, png, gif, webp)')
+    if (url) {
+      const validation = isValidImageUrl(url)
+      if (!validation.valid) {
+        setUrlError(validation.error || 'URL non valido')
+      }
     }
   }
 
@@ -138,9 +154,12 @@ export default function ProfileForm() {
     }
 
     // Valida URL prima di salvare
-    if (profile.avatar_url && !isValidImageUrl(profile.avatar_url)) {
-      setUrlError('URL non valido. Inserisci un link a un\'immagine valida')
-      return
+    if (profile.avatar_url) {
+      const validation = isValidImageUrl(profile.avatar_url)
+      if (!validation.valid) {
+        setUrlError(validation.error || 'URL non valido. Inserisci un link a un\'immagine valida')
+        return
+      }
     }
 
     setPending(true)

@@ -5,13 +5,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 
-type Section = 'introduzione' | 'inizia-da-qui' | 'avviso' | 'links' | 'bnb-chain-testnet' | 'faucet' | 'specifiche' | 'architettura-stack' | 'web3' | 'smart-contracts' | 'smart-contracts-general' | 'factory-contract' | 'factory-math' | 'prediction-pool-contract' | 'open-source-bsc';
+type Section = 'introduzione' | 'inizia-da-qui' | 'avviso' | 'links' | 'bnb-chain-testnet' | 'faucet' | 'specifiche' | 'architettura-stack' | 'database' | 'web3' | 'smart-contracts' | 'smart-contracts-general' | 'factory-contract' | 'factory-math' | 'prediction-pool-contract' | 'open-source-bsc';
 
 export default function DocumentationPage() {
   const [activeSection, setActiveSection] = useState<Section>('inizia-da-qui');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['introduzione', 'specifiche', 'smart-contracts']));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [stackTechPage, setStackTechPage] = useState(0);
+  const [databasePage, setDatabasePage] = useState(0);
   const [web3Page, setWeb3Page] = useState(0);
   const [smartContractsGeneralPage, setSmartContractsGeneralPage] = useState(0);
   const [factoryContractPage, setFactoryContractPage] = useState(0);
@@ -30,6 +31,9 @@ export default function DocumentationPage() {
     setActiveSection(section);
     if (section !== 'architettura-stack') {
       setStackTechPage(0);
+    }
+    if (section !== 'database') {
+      setDatabasePage(0);
     }
     if (section !== 'web3') {
       setWeb3Page(0);
@@ -64,7 +68,7 @@ export default function DocumentationPage() {
   const minSwipeDistance = 50;
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'architettura-stack' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
+    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
     touchEndRef.current = null;
     touchStartRef.current = {
       x: e.targetTouches[0].clientX,
@@ -73,7 +77,7 @@ export default function DocumentationPage() {
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'architettura-stack' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
+    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
     touchEndRef.current = {
       x: e.targetTouches[0].clientX,
       y: e.targetTouches[0].clientY,
@@ -81,7 +85,7 @@ export default function DocumentationPage() {
   };
 
   const handleTouchEnd = () => {
-    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'architettura-stack' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
+    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
     if (!touchStartRef.current || !touchEndRef.current) return;
 
     const distanceX = touchStartRef.current.x - touchEndRef.current.x;
@@ -113,6 +117,13 @@ export default function DocumentationPage() {
       }
       if (isRightSwipe && stackTechPage > 0) {
         setStackTechPage(stackTechPage - 1);
+      }
+    } else if (activeSection === 'database') {
+      if (isLeftSwipe && databasePage < 2) {
+        setDatabasePage(databasePage + 1);
+      }
+      if (isRightSwipe && databasePage > 0) {
+        setDatabasePage(databasePage - 1);
       }
     } else if (activeSection === 'web3') {
       if (isLeftSwipe && web3Page < 4) {
@@ -209,6 +220,7 @@ export default function DocumentationPage() {
       icon: '📋',
       subsections: [
         { id: 'architettura-stack' as Section, label: 'Stack tecnologico', icon: '🏗️' },
+        { id: 'database' as Section, label: 'Database', icon: '🗄️' },
         { id: 'web3' as Section, label: 'Web3', icon: '⛓️' }
       ]
     },
@@ -1418,13 +1430,281 @@ public/                  # Asset statici
                       </span>
                     </div>
 
+                    {/* Freccia destra - Pagina successiva (Database) */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Database
+                      </span>
+                      <button
+                        onClick={() => handleSectionChange('database')}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina successiva"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'database' && (
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="mb-4">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
+                    DOCUMENTAZIONE
+                  </span>
+                </div>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+                  <span>🗄️</span>
+                  Database
+                </h1>
+                <div className="prose prose-lg dark:prose-invert max-w-none">
+                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
+                    Bella Napoli utilizza Supabase come database PostgreSQL per la gestione dei dati dell&apos;applicazione. 
+                    L&apos;integrazione combina la potenza di Supabase con un sistema di autenticazione personalizzato basato su wallet Web3.
+                  </p>
+
+                  {/* Indicatore pagina - Frecce e Pallini */}
+                  <div className="mb-6 flex items-center justify-center gap-3">
+                    {/* Freccia sinistra - Precedente */}
+                    <button
+                      onClick={() => setDatabasePage(Math.max(0, databasePage - 1))}
+                      disabled={databasePage === 0}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      aria-label="Pagina precedente"
+                    >
+                      <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Pallini */}
+                    <div className="flex items-center gap-2">
+                      {[0, 1, 2].map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setDatabasePage(page)}
+                          className={`w-2.5 h-2.5 rounded-full transition-all ${
+                            databasePage === page
+                              ? 'bg-primary w-8 dark:bg-primary'
+                              : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
+                          }`}
+                          aria-label={`Vai alla pagina ${page + 1}`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Freccia destra - Successivo */}
+                    <button
+                      onClick={() => setDatabasePage(Math.min(2, databasePage + 1))}
+                      disabled={databasePage === 2}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      aria-label="Pagina successiva"
+                    >
+                      <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Pagina 0 - Supabase come Database */}
+                  {databasePage === 0 && (
+                    <div className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                        🗄️ Supabase come Database
+                      </h2>
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                            PostgreSQL
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-300 text-sm mb-2">
+                            Supabase fornisce un database PostgreSQL completamente gestito che ospita tutti i dati dell&apos;applicazione. 
+                            Il database include tabelle per profili utenti, predizioni, scommesse e altre informazioni necessarie per il funzionamento della piattaforma.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">PostgreSQL 15</span>
+                            <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">Real-time</span>
+                            <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">Row Level Security</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                            Storage e File System
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-300 text-sm">
+                            Supabase Storage viene utilizzato per la gestione di file statici e asset dell&apos;applicazione, 
+                            come avatar utente e immagini delle predizioni. Il sistema di storage è integrato con le politiche di sicurezza 
+                            per garantire accesso controllato ai file.
+                          </p>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                            API e Client SDK
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-300 text-sm">
+                            Il client Supabase JavaScript/TypeScript fornisce un&apos;interfaccia semplice e type-safe per interagire 
+                            con il database. Le query vengono eseguite direttamente dal client utilizzando l&apos;API REST di Supabase, 
+                            con supporto per filtri, ordinamento e paginazione.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pagina 1 - Sistema Custom Auth */}
+                  {databasePage === 1 && (
+                    <div className="mb-8 p-6 bg-gradient-to-r from-secondary/10 to-secondary/5 dark:from-secondary/20 dark:to-secondary/10 rounded-lg border border-secondary/20 dark:border-secondary/30">
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                        🔐 Sistema Custom Auth
+                      </h2>
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                            Autenticazione basata su Wallet
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-300 text-sm mb-2">
+                            Invece di utilizzare il sistema di autenticazione nativo di Supabase, Bella Napoli implementa un sistema 
+                            personalizzato basato su wallet Web3. Gli utenti si autenticano firmando un messaggio (formato EIP-4361) 
+                            con il loro wallet crypto, dimostrando la proprietà dell&apos;indirizzo senza bisogno di password tradizionali.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="px-3 py-1 text-xs font-mono bg-secondary/10 text-secondary rounded">EIP-4361</span>
+                            <span className="px-3 py-1 text-xs font-mono bg-secondary/10 text-secondary rounded">Wallet Signature</span>
+                            <span className="px-3 py-1 text-xs font-mono bg-secondary/10 text-secondary rounded">Nonce</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                            Funzioni RPC personalizzate
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-300 text-sm mb-2">
+                            Per gestire l&apos;autenticazione custom, il database utilizza funzioni PostgreSQL eseguite con 
+                            SECURITY DEFINER che bypassano le Row Level Security policies. Queste funzioni permettono di creare 
+                            e aggiornare profili utente in modo sicuro senza utilizzare il sistema di autenticazione standard di Supabase.
+                          </p>
+                          <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-4 mt-3">
+                            <p className="text-xs text-gray-400 font-mono mb-2">Esempio: upsert_profile()</p>
+                            <p className="text-sm text-gray-300 font-mono">
+                              Funzione che crea o aggiorna un profilo utente basato sull&apos;indirizzo wallet, 
+                              gestendo la firma del messaggio e i dati del profilo in modo sicuro.
+                            </p>
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                            Sicurezza e validazione
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-300 text-sm">
+                            Il sistema verifica la firma del messaggio per garantire che l&apos;utente possieda effettivamente 
+                            il wallet utilizzato. Le funzioni RPC utilizzano SET search_path per prevenire attacchi di search_path hijacking, 
+                            garantendo un ambiente sicuro per l&apos;esecuzione delle operazioni.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pagina 2 - Integrazione e Pattern */}
+                  {databasePage === 2 && (
+                    <div className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                        🔗 Integrazione e pattern
+                      </h2>
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                            Client singleton
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-300 text-sm mb-2">
+                            Il client Supabase viene inizializzato come singleton per evitare multiple istanze. La configurazione 
+                            include gestione automatica della sessione, refresh token e disabilitazione del rilevamento della sessione nell&apos;URL.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">Singleton Pattern</span>
+                            <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">Auto Refresh</span>
+                            <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">Session Persistence</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                            Pattern di accesso ai dati
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-300 text-sm mb-2">
+                            Le query al database vengono eseguite attraverso il client Supabase utilizzando metodi type-safe. 
+                            Le funzioni RPC personalizzate vengono chiamate per operazioni complesse che richiedono logica server-side, 
+                            mentre le query standard vengono utilizzate per operazioni CRUD semplici.
+                          </p>
+                          <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-4 mt-3">
+                            <p className="text-xs text-gray-400 font-mono mb-2">Pattern di Query</p>
+                            <ul className="text-sm text-gray-300 font-mono space-y-1 list-disc list-inside">
+                              <li>Query standard per SELECT, INSERT, UPDATE semplici</li>
+                              <li>Funzioni RPC per operazioni complesse e sicurezza</li>
+                              <li>Row Level Security per protezione dati a livello di tabella</li>
+                            </ul>
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                            Note sull&apos;architettura
+                          </h3>
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400 p-4 rounded">
+                            <p className="text-sm text-blue-800 dark:text-blue-200">
+                              <strong>Nota:</strong> l&apos;integrazione Supabase + Custom Auth permette di combinare i vantaggi 
+                              di un database PostgreSQL moderno e scalabile con un sistema di autenticazione Web3 che si allinea 
+                              perfettamente con la natura della piattaforma. Questo approccio offre maggiore controllo 
+                              sul processo di autenticazione mantenendo la sicurezza e le performance del database.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Frecce di navigazione */}
+                  <div className="mt-6 flex items-center justify-between">
+                    {/* Freccia sinistra - Pagina precedente (Stack tecnologico) */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          // Espandi la sezione Specifiche nel menu
+                          if (!expandedSections.has('specifiche')) {
+                            setExpandedSections(new Set([...expandedSections, 'specifiche']));
+                          }
+                          handleSectionChange('architettura-stack');
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina precedente"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Stack tecnologico
+                      </span>
+                    </div>
+
                     {/* Freccia destra - Pagina successiva (Web3) */}
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
                         Web3
                       </span>
                       <button
-                        onClick={() => handleSectionChange('web3')}
+                        onClick={() => {
+                          // Espandi la sezione Specifiche nel menu
+                          if (!expandedSections.has('specifiche')) {
+                            setExpandedSections(new Set([...expandedSections, 'specifiche']));
+                          }
+                          handleSectionChange('web3');
+                        }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina successiva"
                       >
@@ -1613,10 +1893,16 @@ public/                  # Asset statici
 
                   {/* Frecce di navigazione */}
                   <div className="mt-6 flex items-center justify-between">
-                    {/* Freccia sinistra - Pagina precedente (Stack tecnologico) */}
+                    {/* Freccia sinistra - Pagina precedente (Database) */}
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => handleSectionChange('architettura-stack')}
+                        onClick={() => {
+                          // Espandi la sezione Specifiche nel menu
+                          if (!expandedSections.has('specifiche')) {
+                            setExpandedSections(new Set([...expandedSections, 'specifiche']));
+                          }
+                          handleSectionChange('database');
+                        }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina precedente"
                       >
@@ -1625,7 +1911,7 @@ public/                  # Asset statici
                         </svg>
                       </button>
                       <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
-                        Stack tecnologico
+                        Database
                       </span>
                     </div>
 
