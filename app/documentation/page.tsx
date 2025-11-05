@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
@@ -55,6 +55,107 @@ export default function DocumentationPage() {
     if (section !== 'open-source-bsc') {
       setOpenSourceBscPage(0);
       setPoolContractsPage(0);
+    }
+  };
+
+  // Gestione swipe per tutte le sezioni paginate
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchEndRef = useRef<{ x: number; y: number } | null>(null);
+  const minSwipeDistance = 50;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'architettura-stack' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
+    touchEndRef.current = null;
+    touchStartRef.current = {
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY,
+    };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'architettura-stack' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
+    touchEndRef.current = {
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY,
+    };
+  };
+
+  const handleTouchEnd = () => {
+    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'architettura-stack' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
+    if (!touchStartRef.current || !touchEndRef.current) return;
+
+    const distanceX = touchStartRef.current.x - touchEndRef.current.x;
+    const distanceY = touchStartRef.current.y - touchEndRef.current.y;
+    const isLeftSwipe = distanceX > minSwipeDistance;
+    const isRightSwipe = distanceX < -minSwipeDistance;
+    const isVerticalSwipe = Math.abs(distanceY) > Math.abs(distanceX);
+
+    // Ignora swipe verticali (per permettere scroll normale)
+    if (isVerticalSwipe) return;
+
+    if (activeSection === 'bnb-chain-testnet') {
+      if (isLeftSwipe && bnbChainTestnetPage < 3) {
+        setBnbChainTestnetPage(bnbChainTestnetPage + 1);
+      }
+      if (isRightSwipe && bnbChainTestnetPage > 0) {
+        setBnbChainTestnetPage(bnbChainTestnetPage - 1);
+      }
+    } else if (activeSection === 'faucet') {
+      if (isLeftSwipe && faucetPage < 3) {
+        setFaucetPage(faucetPage + 1);
+      }
+      if (isRightSwipe && faucetPage > 0) {
+        setFaucetPage(faucetPage - 1);
+      }
+    } else if (activeSection === 'architettura-stack') {
+      if (isLeftSwipe && stackTechPage < 6) {
+        setStackTechPage(stackTechPage + 1);
+      }
+      if (isRightSwipe && stackTechPage > 0) {
+        setStackTechPage(stackTechPage - 1);
+      }
+    } else if (activeSection === 'web3') {
+      if (isLeftSwipe && web3Page < 4) {
+        setWeb3Page(web3Page + 1);
+      }
+      if (isRightSwipe && web3Page > 0) {
+        setWeb3Page(web3Page - 1);
+      }
+    } else if (activeSection === 'smart-contracts-general') {
+      if (isLeftSwipe && smartContractsGeneralPage < 3) {
+        setSmartContractsGeneralPage(smartContractsGeneralPage + 1);
+      }
+      if (isRightSwipe && smartContractsGeneralPage > 0) {
+        setSmartContractsGeneralPage(smartContractsGeneralPage - 1);
+      }
+    } else if (activeSection === 'factory-contract') {
+      if (isLeftSwipe && factoryContractPage < 8) {
+        setFactoryContractPage(factoryContractPage + 1);
+      }
+      if (isRightSwipe && factoryContractPage > 0) {
+        setFactoryContractPage(factoryContractPage - 1);
+      }
+    } else if (activeSection === 'factory-math') {
+      if (isLeftSwipe && factoryMathPage < 2) {
+        setFactoryMathPage(factoryMathPage + 1);
+      }
+      if (isRightSwipe && factoryMathPage > 0) {
+        setFactoryMathPage(factoryMathPage - 1);
+      }
+    } else if (activeSection === 'prediction-pool-contract') {
+      if (isLeftSwipe && predictionPoolContractPage < 6) {
+        setPredictionPoolContractPage(predictionPoolContractPage + 1);
+      }
+      if (isRightSwipe && predictionPoolContractPage > 0) {
+        setPredictionPoolContractPage(predictionPoolContractPage - 1);
+      }
+    } else if (activeSection === 'open-source-bsc') {
+      if (isLeftSwipe && openSourceBscPage < 1) {
+        setOpenSourceBscPage(openSourceBscPage + 1);
+      }
+      if (isRightSwipe && openSourceBscPage > 0) {
+        setOpenSourceBscPage(openSourceBscPage - 1);
+      }
     }
   };
 
@@ -536,7 +637,11 @@ export default function DocumentationPage() {
             )}
 
             {activeSection === 'bnb-chain-testnet' && (
-              <div>
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 <div className="mb-4">
                   <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
@@ -743,7 +848,11 @@ export default function DocumentationPage() {
             )}
 
             {activeSection === 'faucet' && (
-              <div>
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 <div className="mb-4">
                   <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
@@ -993,7 +1102,11 @@ export default function DocumentationPage() {
             )}
 
             {activeSection === 'architettura-stack' && (
-              <div>
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 <div className="mb-4">
                   <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
@@ -1326,7 +1439,11 @@ public/                  # Asset statici
             )}
 
             {activeSection === 'web3' && (
-              <div>
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 <div className="mb-4">
                   <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
@@ -1558,7 +1675,11 @@ public/                  # Asset statici
             )}
 
             {activeSection === 'smart-contracts-general' && (
-              <div>
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 <div className="mb-4">
                   <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
@@ -1798,7 +1919,11 @@ public/                  # Asset statici
             )}
 
             {activeSection === 'factory-contract' && (
-              <div>
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 <div className="mb-4">
                   <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
@@ -2239,7 +2364,11 @@ totalFees = totalPot * 0.015`}</code>
             )}
 
             {activeSection === 'factory-math' && (
-              <div>
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 <div className="mb-4">
                   <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
@@ -2540,7 +2669,11 @@ totalFees = totalPot * 0.015`}</code>
             )}
 
             {activeSection === 'prediction-pool-contract' && (
-              <div>
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 <div className="mb-4">
                   <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
@@ -2770,7 +2903,11 @@ totalFees = totalPot * 0.015`}</code>
             )}
 
             {activeSection === 'open-source-bsc' && (
-              <div>
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 <div className="mb-4">
                   <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
                     DOCUMENTAZIONE
