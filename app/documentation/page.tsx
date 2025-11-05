@@ -814,7 +814,7 @@ export default function DocumentationPage() {
                       {/* Nota */}
                       <div className="p-4 bg-transparent border border-cyan-400/30 dark:border-cyan-400/30 rounded-lg inline-block">
                         <p className="text-sm text-gray-700 dark:text-gray-300">
-                          <strong className="text-cyan-400">💡 Nota:</strong> Assicurati di avere tBNB (BNB di test) nel tuo wallet per interagire con la piattaforma. 
+                          <strong className="text-cyan-400">💡 Nota:</strong> assicurati di avere tBNB (BNB di test) nel tuo wallet per interagire con la piattaforma. 
                           Puoi ottenere tBNB gratuitamente da un faucet.
                         </p>
                       </div>
@@ -2067,7 +2067,7 @@ public/                  # Asset statici
                       
                       <div className="mt-2 p-4 bg-transparent border border-cyan-400/30 dark:border-cyan-400/30 rounded-lg inline-block">
                         <p className="text-sm text-gray-700 dark:text-gray-300">
-                          <strong className="text-cyan-400">💡 In sintesi:</strong> Il Factory è il &quot;direttore&quot; che decide le regole e controlla tutto, 
+                          <strong className="text-cyan-400">💡 In sintesi:</strong> il Factory è il &quot;direttore&quot; che decide le regole e controlla tutto, 
                           mentre ogni PredictionPool è un &quot;contenitore&quot; specifico per i dati e le operazioni di una singola prediction.
                         </p>
                       </div>
@@ -2584,7 +2584,7 @@ totalFees = totalPot * 0.015`}</code>
                           </p>
                           <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                             <p className="text-sm text-blue-800 dark:text-blue-200">
-                              <strong>Esempio:</strong> Se il piatto totale è 1000 BNB, le fee sono 15 BNB (1.5%). 
+                              <strong>Esempio:</strong> se il piatto totale è 1000 BNB, le fee sono 15 BNB (1.5%). 
                               Il net pot disponibile per i vincitori è 985 BNB.
                             </p>
                           </div>
