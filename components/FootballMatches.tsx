@@ -30,8 +30,16 @@ export default function FootballMatches() {
 
   // Carica i match solo quando si apre il menu
   useEffect(() => {
-    // Se il menu è chiuso o i match sono già stati caricati, non fare nulla
-    if (!isExpanded || matches.length > 0) {
+    // Se il menu è chiuso, resetta i match
+    if (!isExpanded) {
+      setMatches([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // Se il menu è aperto e i match sono già stati caricati, non fare nulla
+    if (matches.length > 0) {
       return;
     }
 

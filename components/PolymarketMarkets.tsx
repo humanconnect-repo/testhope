@@ -218,22 +218,22 @@ export default function PolymarketMarkets() {
                       )}
                       
                       {/* Prezzi se disponibili */}
-                      {(market.yesPrice !== null || market.noPrice !== null) && (
+                      {(market.yesPrice !== null && market.yesPrice !== undefined || market.noPrice !== null && market.noPrice !== undefined) && (
                         <div className="mb-3 text-xs text-gray-500 dark:text-gray-400">
                           <div className="flex items-center justify-between">
-                            <span>Prezzo YES: {market.yesPrice !== null ? `$${market.yesPrice.toFixed(4)}` : 'N/A'}</span>
-                            <span>Prezzo NO: {market.noPrice !== null ? `$${market.noPrice.toFixed(4)}` : 'N/A'}</span>
+                            <span>Prezzo YES: {market.yesPrice !== null && market.yesPrice !== undefined ? `$${market.yesPrice.toFixed(4)}` : 'N/A'}</span>
+                            <span>Prezzo NO: {market.noPrice !== null && market.noPrice !== undefined ? `$${market.noPrice.toFixed(4)}` : 'N/A'}</span>
                           </div>
                         </div>
                       )}
                       
                       {/* Volume e Liquidity se disponibili */}
-                      {(market.volume !== null || market.liquidity !== null) && (
+                      {(market.volume !== null && market.volume !== undefined || market.liquidity !== null && market.liquidity !== undefined) && (
                         <div className="pt-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-                          {market.volume !== null && (
+                          {market.volume !== null && market.volume !== undefined && (
                             <div>Volume: ${market.volume.toLocaleString('it-IT', { maximumFractionDigits: 2 })}</div>
                           )}
-                          {market.liquidity !== null && (
+                          {market.liquidity !== null && market.liquidity !== undefined && (
                             <div>Liquidity: ${market.liquidity.toLocaleString('it-IT', { maximumFractionDigits: 2 })}</div>
                           )}
                         </div>
