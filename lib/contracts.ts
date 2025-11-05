@@ -31,6 +31,46 @@ const POOL_ABI = PredictionPoolABI.abi;
 // Indirizzo della factory (da configurare dopo il deploy)
 const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_FACTORY_ADDRESS || '';
 
+// Lista di RPC endpoints per fallback (BSC Testnet)
+const RPC_ENDPOINTS = [
+  'https://bsc-testnet.publicnode.com',
+  'https://data-seed-prebsc-1-s1.binance.org:8545',
+  'https://data-seed-prebsc-2-s1.binance.org:8545',
+];
+
+// Helper per creare provider read-only con fallback automatico
+async function createReadOnlyProvider(): Promise<ethers.JsonRpcProvider> {
+  // Prova ogni endpoint in ordine finché uno non funziona
+  for (const endpoint of RPC_ENDPOINTS) {
+    try {
+      const provider = new ethers.JsonRpcProvider(endpoint, {
+        name: 'bsc-testnet',
+        chainId: 97,
+      });
+      
+      // Test rapido della connessione con timeout breve
+      await Promise.race([
+        provider.getBlockNumber(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('RPC timeout')), 5000)
+        )
+      ]);
+      
+      return provider;
+    } catch (error) {
+      // Se questo endpoint fallisce, prova il prossimo
+      continue;
+    }
+  }
+  
+  // Se tutti gli endpoint falliscono, usa il primo come fallback
+  // (almeno tentiamo invece di fallire completamente)
+  return new ethers.JsonRpcProvider(RPC_ENDPOINTS[0], {
+    name: 'bsc-testnet',
+    chainId: 97,
+  });
+}
+
 export function getProvider() {
   if (typeof window === 'undefined') throw new Error('No window');
   const anyWin = window as any;
@@ -54,7 +94,7 @@ export async function getFactory() {
 async function withRetry<T>(
   fn: () => Promise<T>,
   retries: number = 2,
-  timeout: number = 10000
+  timeout: number = 15000 // Aumentato a 15 secondi
 ): Promise<T> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -69,6 +109,8 @@ async function withRetry<T>(
         error?.message?.includes('CONNECTION_CLOSED') ||
         error?.message?.includes('timeout') ||
         error?.message?.includes('network') ||
+        error?.message?.includes('JsonRpcProvider failed') ||
+        error?.message?.includes('the node is not started') ||
         error?.code === 'NETWORK_ERROR' ||
         error?.code === 'TIMEOUT';
 
@@ -86,8 +128,8 @@ async function withRetry<T>(
 
 export async function getPool(address: string, readOnly: boolean = false) {
   if (readOnly) {
-    // Usa un provider read-only per letture senza transazioni
-    const provider = new ethers.JsonRpcProvider("https://bsc-testnet.publicnode.com");
+    // Usa un provider read-only con fallback automatico
+    const provider = await createReadOnlyProvider();
     return new ethers.Contract(address, PredictionPoolABI.abi, provider);
   }
   const signer = await getSigner();
@@ -102,8 +144,8 @@ export async function isFactoryOwner(): Promise<boolean> {
       return false;
     }
     
-    // Usa un provider read-only per evitare problemi di connessione (stesso RPC del deploy)
-    const provider = new ethers.JsonRpcProvider("https://bsc-testnet.publicnode.com");
+    // Usa un provider read-only con fallback automatico
+    const provider = await createReadOnlyProvider();
     const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
     
     const owner: string = await factory.owner();
@@ -184,13 +226,24 @@ export async function listPools(): Promise<string[]> {
   }
   
   try {
-    // Usa provider read-only per le operazioni di lettura (stesso RPC del deploy)
-    const provider = new ethers.JsonRpcProvider("https://bsc-testnet.publicnode.com");
+    // Usa provider read-only con fallback automatico
+    const provider = await createReadOnlyProvider();
     const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
     const pools = await factory.getAllPools();
     return pools;
-  } catch (error) {
-    console.error('❌ Errore caricamento pools:', error);
+  } catch (error: any) {
+    // Silenzia gli errori di connessione temporanei
+    const isConnectionError = 
+      error?.message?.includes('CONNECTION_CLOSED') ||
+      error?.message?.includes('timeout') ||
+      error?.message?.includes('network') ||
+      error?.message?.includes('JsonRpcProvider failed') ||
+      error?.code === 'NETWORK_ERROR' ||
+      error?.code === 'TIMEOUT';
+    
+    if (!isConnectionError) {
+      console.error('❌ Errore caricamento pools:', error);
+    }
     return [];
   }
 }
@@ -315,6 +368,8 @@ export async function isBettingCurrentlyOpen(poolAddress: string): Promise<boole
       error?.message?.includes('CONNECTION_CLOSED') ||
       error?.message?.includes('timeout') ||
       error?.message?.includes('network') ||
+      error?.message?.includes('JsonRpcProvider failed') ||
+      error?.message?.includes('the node is not started') ||
       error?.code === 'NETWORK_ERROR';
     
     if (!isConnectionError) {
@@ -337,6 +392,8 @@ export async function getEmergencyStopStatus(poolAddress: string): Promise<boole
       error?.message?.includes('CONNECTION_CLOSED') ||
       error?.message?.includes('timeout') ||
       error?.message?.includes('network') ||
+      error?.message?.includes('JsonRpcProvider failed') ||
+      error?.message?.includes('the node is not started') ||
       error?.code === 'NETWORK_ERROR';
     
     if (!isConnectionError) {
@@ -609,6 +666,8 @@ export async function isPoolCancelled(poolAddress: string): Promise<boolean> {
       error?.message?.includes('CONNECTION_CLOSED') ||
       error?.message?.includes('timeout') ||
       error?.message?.includes('network') ||
+      error?.message?.includes('JsonRpcProvider failed') ||
+      error?.message?.includes('the node is not started') ||
       error?.code === 'NETWORK_ERROR';
     
     if (!isConnectionError) {
@@ -631,6 +690,8 @@ export async function isPoolClosed(poolAddress: string): Promise<boolean> {
       error?.message?.includes('CONNECTION_CLOSED') ||
       error?.message?.includes('timeout') ||
       error?.message?.includes('network') ||
+      error?.message?.includes('JsonRpcProvider failed') ||
+      error?.message?.includes('the node is not started') ||
       error?.code === 'NETWORK_ERROR';
     
     if (!isConnectionError) {

@@ -22,13 +22,19 @@ interface Match {
 
 export default function FootballMatches() {
   const [matches, setMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const matchesPerPage = 9;
 
+  // Carica i match solo quando si apre il menu
   useEffect(() => {
+    // Se il menu è chiuso o i match sono già stati caricati, non fare nulla
+    if (!isExpanded || matches.length > 0) {
+      return;
+    }
+
     const fetchMatches = async () => {
       try {
         setLoading(true);
@@ -53,7 +59,7 @@ export default function FootballMatches() {
     };
 
     fetchMatches();
-  }, []);
+  }, [isExpanded]);
 
   // Funzione per formattare la data e ora in orario italiano
   const formatDateTime = (utcDate: string): string => {
@@ -113,7 +119,7 @@ export default function FootballMatches() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            Crea una Prediction di Serie A/Champions ({loading ? '...' : matches.length} match)
+            Crea una Prediction di Serie A/Champions {matches.length > 0 && `(${matches.length} match)`}
           </h2>
         </div>
       </div>

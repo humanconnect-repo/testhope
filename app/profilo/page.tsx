@@ -16,6 +16,8 @@ export default function ProfiloPage() {
   const router = useRouter()
   const [isChecking, setIsChecking] = useState(true)
   const [hasBeenAuthenticated, setHasBeenAuthenticated] = useState(false)
+  const [resolvedStartIndex, setResolvedStartIndex] = useState(0)
+  const resolvedItemsPerPage = 3
   
   // Carica il totale BNB e le statistiche dell'utente
   const { totalBnb, totalBets, bnbGained, bnbLost, netBalance, loading: bnbLoading, error: bnbError } = useUserTotalBnb(user?.id || null)
@@ -112,6 +114,19 @@ export default function ProfiloPage() {
       router.push('/')
     }
   }, [address, isAuthenticated, isConnected, isChecking, hasBeenAuthenticated, router])
+
+  // Reset dell'indice quando cambiano le prediction risolte
+  useEffect(() => {
+    setResolvedStartIndex(0)
+  }, [resolvedPredictions.length])
+
+  // Calcola le prediction visibili e gli indici
+  const visibleResolvedPredictions = resolvedPredictions.slice(
+    resolvedStartIndex,
+    resolvedStartIndex + resolvedItemsPerPage
+  )
+  const canScrollUp = resolvedStartIndex > 0
+  const canScrollDown = resolvedStartIndex + resolvedItemsPerPage < resolvedPredictions.length
 
   // Reindirizza quando non autenticato (dopo il controllo iniziale e solo se ha già controllato)
   useEffect(() => {
@@ -393,7 +408,7 @@ export default function ProfiloPage() {
             </div>
 
             {/* Le tue Prediction risolte */}
-            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+            <div id="resolved-predictions-section" className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 🏆 Le tue Prediction risolte
               </h3>
@@ -419,51 +434,98 @@ export default function ProfiloPage() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-3">
-                  {resolvedPredictions.map((prediction) => (
-                    <div
-                      key={prediction.id}
-                      onClick={() => handlePredictionClick(prediction.slug, prediction.id)}
-                      className={`flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg transition-colors border border-gray-200 dark:border-gray-700 cursor-pointer ${
-                        navigatingTo === prediction.id
-                          ? 'bg-primary/10 dark:bg-primary/20 border-primary/30'
-                          : 'hover:bg-gray-50 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      {navigatingTo === prediction.id ? (
-                        <div className="flex items-center justify-center flex-1 py-2">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-4 h-4 bg-primary/20 rounded-full animate-pulse"></div>
-                            <span className="text-sm text-primary dark:text-primary-400 font-medium">
-                              Caricamento...
-                            </span>
+                <>
+                  <div className="grid grid-cols-1 gap-3">
+                    {visibleResolvedPredictions.map((prediction) => (
+                      <div
+                        key={prediction.id}
+                        onClick={() => handlePredictionClick(prediction.slug, prediction.id)}
+                        className={`flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg transition-colors border border-gray-200 dark:border-gray-700 cursor-pointer ${
+                          navigatingTo === prediction.id
+                            ? 'bg-primary/10 dark:bg-primary/20 border-primary/30'
+                            : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        {navigatingTo === prediction.id ? (
+                          <div className="flex items-center justify-center flex-1 py-2">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-4 h-4 bg-primary/20 rounded-full animate-pulse"></div>
+                              <span className="text-sm text-primary dark:text-primary-400 font-medium">
+                                Caricamento...
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <>
-                          {prediction.image_url && (
-                            <img
-                              src={prediction.image_url}
-                              alt={prediction.title}
-                              className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
-                              {prediction.title}
-                            </h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {prediction.category}
-                            </p>
-                          </div>
-                          <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        ) : (
+                          <>
+                            {prediction.image_url && (
+                              <img
+                                src={prediction.image_url}
+                                alt={prediction.title}
+                                className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
+                                {prediction.title}
+                              </h4>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {prediction.category}
+                              </p>
+                            </div>
+                            <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Frecce per scorrere le prediction */}
+                  {(canScrollUp || canScrollDown) && (
+                    <div className="mt-4 flex justify-center items-center gap-3">
+                      {/* Freccia su */}
+                      {canScrollUp && (
+                        <button
+                          onClick={() => {
+                            const newIndex = Math.max(0, resolvedStartIndex - resolvedItemsPerPage)
+                            setResolvedStartIndex(newIndex)
+                          }}
+                          className="p-2 text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                          aria-label="Mostra prediction precedenti"
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                           </svg>
-                        </>
+                        </button>
+                      )}
+                      
+                      {/* Indicatore pagine */}
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {Math.floor(resolvedStartIndex / resolvedItemsPerPage) + 1} / {Math.ceil(resolvedPredictions.length / resolvedItemsPerPage)}
+                      </span>
+                      
+                      {/* Freccia giù */}
+                      {canScrollDown && (
+                        <button
+                          onClick={() => {
+                            const newIndex = Math.min(
+                              resolvedPredictions.length - resolvedItemsPerPage,
+                              resolvedStartIndex + resolvedItemsPerPage
+                            )
+                            setResolvedStartIndex(newIndex)
+                          }}
+                          className="p-2 text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                          aria-label="Mostra prediction successive"
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
                       )}
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </div>
 

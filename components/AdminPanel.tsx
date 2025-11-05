@@ -9,6 +9,7 @@ import TransactionProgressModal, { TransactionStep } from './TransactionProgress
 import AdminProgressModal, { AdminStep } from './AdminProgressModal';
 import ImageUpload from './ImageUpload';
 import FootballMatches from './FootballMatches';
+import PolymarketMarkets from './PolymarketMarkets';
 
 interface Prediction {
   id: string;
@@ -3278,6 +3279,9 @@ contract PredictionPool is Ownable, ReentrancyGuard {
           </div>
         )}
       </div>
+
+      {/* Sezione Importa da Polymarket */}
+      <PolymarketMarkets />
 
       {/* Sezione Prediction Serie A */}
       <FootballMatches />
