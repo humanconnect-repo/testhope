@@ -1430,6 +1430,67 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     setShowBettingConfirmModal(true);
   };
 
+  // Funzione helper per retry con backoff esponenziale
+  const retryRpcCall = async <T>(
+    rpcCall: () => Promise<{ data: T | null; error: any }>,
+    maxRetries: number = 3,
+    baseDelay: number = 500
+  ): Promise<{ data: T | null; error: any }> => {
+    let lastError: any = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const result = await rpcCall();
+        
+        // Se la chiamata è riuscita, ritorna il risultato
+        if (!result.error) {
+          return result;
+        }
+        
+        // Se l'errore è di connessione, ritenta
+        const errorMessage = result.error?.message || '';
+        const isConnectionError = 
+          errorMessage.includes('ERR_CONNECTION_CLOSED') ||
+          errorMessage.includes('Failed to fetch') ||
+          errorMessage.includes('NetworkError') ||
+          errorMessage.includes('network') ||
+          result.error?.code === 'ECONNRESET' ||
+          result.error?.code === 'ETIMEDOUT';
+        
+        if (isConnectionError && attempt < maxRetries - 1) {
+          lastError = result.error;
+          const delay = baseDelay * Math.pow(2, attempt); // Backoff esponenziale
+          console.log(`⚠️ Errore connessione, ritento tra ${delay}ms (tentativo ${attempt + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        // Se non è un errore di connessione o abbiamo esaurito i tentativi, ritorna l'errore
+        return result;
+      } catch (error: any) {
+        lastError = error;
+        const errorMessage = error?.message || '';
+        const isConnectionError = 
+          errorMessage.includes('ERR_CONNECTION_CLOSED') ||
+          errorMessage.includes('Failed to fetch') ||
+          errorMessage.includes('NetworkError') ||
+          errorMessage.includes('network');
+        
+        if (isConnectionError && attempt < maxRetries - 1) {
+          const delay = baseDelay * Math.pow(2, attempt);
+          console.log(`⚠️ Errore connessione, ritento tra ${delay}ms (tentativo ${attempt + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        // Se non è un errore di connessione o abbiamo esaurito i tentativi, rilancia l'errore
+        return { data: null, error };
+      }
+    }
+    
+    return { data: null, error: lastError };
+  };
+
   // Funzione per confermare la scommessa
   const confirmBet = async () => {
     setShowBettingConfirmModal(false);
@@ -1501,14 +1562,15 @@ export default function PredictionPage({ params }: { params: { slug: string } })
       updateBettingStepStatus('database', 'loading');
       setCurrentBettingStep(4);
 
-      // Salva nel database usando la funzione RPC esistente
-      const { data: betId, error: dbError } = await supabase
-        .rpc('create_bet', {
+      // Salva nel database usando la funzione RPC esistente con retry
+      const { data: betId, error: dbError } = await retryRpcCall(async () => {
+        return await supabase.rpc('create_bet', {
           prediction_uuid: prediction!.id,
           bet_amount: amount,
           bet_position: selectedPosition,
           caller_wallet: address
         });
+      }, 3, 500); // 3 tentativi, partendo da 500ms di delay
       
       console.log('🔍 create_bet RPC risultato:', {
         betId,

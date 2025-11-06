@@ -283,6 +283,12 @@ export default function AdminPanel() {
     // Filtro per titolo
     if (!predictionsSearchQuery.trim()) return true;
     return prediction.title.toLowerCase().includes(predictionsSearchQuery.toLowerCase());
+  }).sort((a, b) => {
+    // Metti le risolte in fondo
+    if (a.status === 'risolta' && b.status !== 'risolta') return 1;
+    if (a.status !== 'risolta' && b.status === 'risolta') return -1;
+    // Per le altre, mantieni l'ordine originale (più recenti prima)
+    return 0;
   });
 
   // Mostra solo le prime N predictions
@@ -677,7 +683,26 @@ export default function AdminPanel() {
     
     return true;
   }).sort((a, b) => {
-    // Ordina per closing_date crescente (le più vicine alla scadenza prima)
+    // Trova le prediction corrispondenti
+    const predictionA = predictions.find(p => p.pool_address === a.address);
+    const predictionB = predictions.find(p => p.pool_address === b.address);
+    
+    const statusA = predictionA?.status;
+    const statusB = predictionB?.status;
+    
+    // Priorità 1: Metti le risolte sempre in fondo
+    if (statusA === 'risolta' && statusB !== 'risolta') return 1;
+    if (statusA !== 'risolta' && statusB === 'risolta') return -1;
+    
+    // Priorità 2: Attive e in pausa prima delle altre (cancellate, ecc.)
+    const priorityStatuses = ['attiva', 'in_pausa'];
+    const isAPriority = priorityStatuses.includes(statusA || '');
+    const isBPriority = priorityStatuses.includes(statusB || '');
+    
+    if (isAPriority && !isBPriority) return -1;
+    if (!isAPriority && isBPriority) return 1;
+    
+    // Per le altre (attive/in_pausa tra loro, o altre tra loro), ordina per closing_date crescente
     const dateA = new Date(a.closingDate);
     const dateB = new Date(b.closingDate);
     return dateA.getTime() - dateB.getTime();
@@ -2834,7 +2859,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                   <option value="all">Tutti gli status</option>
                   <option value="in_attesa">In attesa</option>
                   <option value="attiva">Attiva</option>
-                  <option value="in_pausa">In pausa</option>
+                  <option value="in_pausa">Pausa/Chiusa</option>
                   <option value="risolta">Risolta</option>
                   <option value="cancellata">Cancellata</option>
                 </select>
@@ -3215,6 +3240,18 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                         </div>
                       </div>
 
+                      {/* Upload immagine */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Immagine Prediction
+                        </label>
+                        <ImageUpload
+                          onImageUploaded={(imageUrl) => setFormData({...formData, image_url: imageUrl})}
+                          currentImageUrl={formData.image_url}
+                          className="w-full"
+                        />
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -3387,7 +3424,7 @@ contract PredictionPool is Ownable, ReentrancyGuard {
                           >
                             <option value="all">Tutti gli status</option>
                             <option value="attiva">Attiva</option>
-                            <option value="in_pausa">In pausa</option>
+                            <option value="in_pausa">Pausa/Chiusa</option>
                             <option value="risolta">Risolta</option>
                             <option value="cancellata">Cancellata</option>
                           </select>
