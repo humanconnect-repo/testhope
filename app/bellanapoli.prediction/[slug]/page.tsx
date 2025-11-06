@@ -1046,7 +1046,15 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         );
 
         // Rileva le nuove scommesse per l'animazione
-        const newRecentBets = betsWithUsernames.filter(bet => 
+        const newRecentBets = betsWithUsernames.filter((bet: {
+          id: string;
+          amount_bnb: number;
+          position: 'yes' | 'no';
+          created_at: string;
+          username: string;
+          prediction_title: string;
+          prediction_slug: string;
+        }) => 
           !previousRecentBets.some(prev => prev.id === bet.id)
         );
         
@@ -1431,11 +1439,11 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   };
 
   // Funzione helper per retry con backoff esponenziale
-  const retryRpcCall = async <T>(
+  async function retryRpcCall<T>(
     rpcCall: () => Promise<{ data: T | null; error: any }>,
     maxRetries: number = 3,
     baseDelay: number = 500
-  ): Promise<{ data: T | null; error: any }> => {
+  ): Promise<{ data: T | null; error: any }> {
     let lastError: any = null;
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
