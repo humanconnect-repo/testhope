@@ -10,7 +10,7 @@ export default function Footer() {
   };
 
   const copyKeetLink = () => {
-    const keetLink = "pear://keet/yfoscxz5ir9fqq6m6aanhkqdk767wb8jj1kn3a8tszu9fo1eesweai57kgp8p1s8971byrp6gpcpiq6d4dr839txn91qjiygb1ecisyxdcdsrpd8i98j1xopbkfegsssa3xgngqy65kmwue7ep4wmgn3mdy56ye";
+    const keetLink = "pear://keet/nfoscxz5ir9fqq6m6aanhkqdk767wb8jj1kn3a8tszu9fo1eesweaiamy1bcbma8y7k4x85c7guba494qb4dezt1rmm6dwtsqyhfo1hb3466m9iqtpmmo7wqed1mrk1uwqzx4awe5g7npu1618oz9oytf9t3hyedrewipc7saq6kc8ywpgiioaadkazhg";
     navigator.clipboard.writeText(keetLink);
     alert('Link Keet copiato negli appunti!');
   };
@@ -19,7 +19,7 @@ export default function Footer() {
     <>
       <footer className="bg-transparent border-t border-gray-200 dark:border-gray-700 py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
+          <div className="flex justify-between items-center">
             <p className="text-gray-600 dark:text-gray-400 text-sm">
               © Bella Napoli | Il Prediction Market all'italiana — Seguici su{' '}
               <button 
@@ -34,14 +34,14 @@ export default function Footer() {
                 target="_blank" rel="noopener noreferrer"
               >
                 X
-              </a> {' | '}
-              <a 
-                href="mailto:bellanapoli@tuta.com" 
-                className="text-primary hover:underline"
-              >
-                Report a bug
               </a>
             </p>
+            <a 
+              href="mailto:bellanapoli@tuta.com" 
+              className="text-primary hover:underline text-sm"
+            >
+              Report a bug
+            </a>
           </div>
         </div>
       </footer>
@@ -49,22 +49,22 @@ export default function Footer() {
       {/* Keet Modal */}
       {showKeetModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-dark-card rounded-lg p-6 max-w-md mx-4 shadow-xl">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-primary/20 dark:border-primary/30 p-6 max-w-md mx-4 shadow-xl">
             <div className="text-center">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                🚨 Avviso Importante
+                AVVISO
               </h3>
               
-              <div className="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg p-4 mb-4">
-                <p className="text-yellow-800 dark:text-yellow-200 text-sm font-medium">
-                  ⏰ Il link Keet scade il <strong>6 novembre 2025</strong>
+              <div className="bg-gray-200 dark:bg-gray-700 rounded-lg p-4 mb-4">
+                <p className="text-gray-800 dark:text-gray-200 text-sm font-medium">
+                  ⏰ Il link Keet scade il <strong>21.11.2025 ore 16:30</strong>
                 </p>
               </div>
 
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mb-4">
+              <div className="bg-gray-200 dark:bg-gray-700 rounded-lg p-3 mb-4">
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Link Keet:</p>
                 <code className="text-xs text-gray-800 dark:text-gray-200 break-all">
-                  pear://keet/yfoscxz5ir9fqq6m6aanhkqdk767wb8jj1kn3a8tszu9fo1eesweai57kgp8p1s8971byrp6gpcpiq6d4dr839txn91qjiygb1ecisyxdcdsrpd8i98j1xopbkfegsssa3xgngqy65kmwue7ep4wmgn3mdy56ye
+                  pear://keet/nfoscxz5ir9fqq6m6aanhkqdk767wb8jj1kn3a8tszu9fo1eesweaiamy1bcbma8y7k4x85c7guba494qb4dezt1rmm6dwtsqyhfo1hb3466m9iqtpmmo7wqed1mrk1uwqzx4awe5g7npu1618oz9oytf9t3hyedrewipc7saq6kc8ywpgiioaadkazhg
                 </code>
               </div>
 

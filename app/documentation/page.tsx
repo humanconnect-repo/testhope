@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 
-type Section = 'introduzione' | 'inizia-da-qui' | 'avviso' | 'links' | 'bnb-chain-testnet' | 'faucet' | 'connect-wallet' | 'profilo' | 'prediction-in-attesa' | 'prediction-attiva' | 'prediction-chiusa' | 'prediction-cancellata' | 'prediction-risolta' | 'specifiche' | 'architettura-stack' | 'database' | 'web3' | 'smart-contracts' | 'smart-contracts-general' | 'factory-contract' | 'factory-math' | 'prediction-pool-contract' | 'open-source-bsc';
+type Section = 'introduzione' | 'inizia-da-qui' | 'avviso' | 'links' | 'bnb-chain-testnet' | 'faucet' | 'connect-wallet' | 'profilo' | 'prediction-in-attesa' | 'prediction-attiva' | 'prediction-chiusa' | 'prediction-cancellata' | 'prediction-risolta' | 'specifiche' | 'architettura-stack' | 'database' | 'web3' | 'api' | 'smart-contracts' | 'smart-contracts-general' | 'factory-contract' | 'factory-math' | 'prediction-pool-contract' | 'open-source-bsc';
 
 export default function DocumentationPage() {
   const [activeSection, setActiveSection] = useState<Section>('inizia-da-qui');
@@ -14,6 +14,7 @@ export default function DocumentationPage() {
   const [stackTechPage, setStackTechPage] = useState(0);
   const [databasePage, setDatabasePage] = useState(0);
   const [web3Page, setWeb3Page] = useState(0);
+  const [apiPage, setApiPage] = useState(0);
   const [smartContractsGeneralPage, setSmartContractsGeneralPage] = useState(0);
   const [factoryContractPage, setFactoryContractPage] = useState(0);
   const [factoryMathPage, setFactoryMathPage] = useState(0);
@@ -44,6 +45,9 @@ export default function DocumentationPage() {
     }
     if (section !== 'web3') {
       setWeb3Page(0);
+    }
+    if (section !== 'api') {
+      setApiPage(0);
     }
     if (section !== 'smart-contracts-general') {
       setSmartContractsGeneralPage(0);
@@ -194,6 +198,13 @@ export default function DocumentationPage() {
       if (isRightSwipe && web3Page > 0) {
         setWeb3Page(web3Page - 1);
       }
+    } else if (activeSection === ('api' as Section)) {
+      if (isLeftSwipe && apiPage < 2) {
+        setApiPage(apiPage + 1);
+      }
+      if (isRightSwipe && apiPage > 0) {
+        setApiPage(apiPage - 1);
+      }
     } else if (activeSection === 'smart-contracts-general') {
       if (isLeftSwipe && smartContractsGeneralPage < 3) {
         setSmartContractsGeneralPage(smartContractsGeneralPage + 1);
@@ -297,7 +308,8 @@ export default function DocumentationPage() {
       subsections: [
         { id: 'architettura-stack' as Section, label: 'Stack tecnologico', icon: '🏗️' },
         { id: 'database' as Section, label: 'Database', icon: '🗄️' },
-        { id: 'web3' as Section, label: 'Web3', icon: '⛓️' }
+        { id: 'web3' as Section, label: 'Web3', icon: '⛓️' },
+        { id: 'api' as Section, label: 'API', icon: '🛰️' }
       ]
     },
     {
@@ -557,7 +569,7 @@ export default function DocumentationPage() {
                   </p>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
                     La versione testnet permette di testare tutte le funzionalità della piattaforma in un ambiente sicuro, utilizzando token di test. 
-                    Questo consente agli utenti di familiarizzare con il sistema di scommesse, la gestione del wallet e l&apos;interazione con gli smart contract 
+                    Questo consente agli utenti di familiarizzare con il sistema di predictions, la gestione del wallet e l&apos;interazione con gli smart contract 
                     senza rischi finanziari.
                   </p>
                   <div className="mt-6 p-4 bg-transparent border border-cyan-400/30 dark:border-cyan-400/30 rounded-lg inline-block">
@@ -626,22 +638,22 @@ export default function DocumentationPage() {
                     Link ufficiali di Bella Napoli:
                   </p>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     {/* Sito Web Ufficiale */}
-                    <div className="p-6 bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                    <div className="p-3 bg-transparent rounded-lg border-0 shadow-none">
+                      <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
                         🌐 Sito Web
                       </h2>
-                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-3 text-sm">
                         Accedi alla piattaforma Bella Napoli per iniziare a fare predizioni.
                       </p>
                       <a
                         href="https://bellanapoli.io"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg font-semibold transition-colors shadow-md"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
                         bellanapoli.io
@@ -649,11 +661,11 @@ export default function DocumentationPage() {
                     </div>
 
                     {/* X (Twitter) */}
-                    <div className="p-6 bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                    <div className="p-3 bg-transparent rounded-lg border-0 shadow-none">
+                      <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
                         📱 Seguici su X
                       </h2>
-                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-3 text-sm">
                         Resta aggiornato su tutte le novità, le nuove predizioni e le community crypto che si uniscono a Bella Napoli. 
                         Seguici su X per non perdere nessun aggiornamento!
                       </p>
@@ -661,34 +673,34 @@ export default function DocumentationPage() {
                         href="https://x.com/bellanapoli_io"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center w-12 h-12 bg-black dark:bg-white text-white dark:text-black rounded-lg font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors shadow-md"
+                        className="inline-flex items-center justify-center w-10 h-10 bg-black dark:bg-white text-white dark:text-black rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors shadow-sm"
                         aria-label="Seguici su X"
                       >
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                         </svg>
                       </a>
                     </div>
 
                     {/* Keet.io Pear */}
-                    <div className="p-6 bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                    <div className="p-3 bg-transparent rounded-lg border-0 shadow-none">
+                      <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                         <span>🍐</span>
                         Pear
                       </h2>
-                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-3 text-sm">
                         Unisciti alla community su Keet.io tramite Pear.
                       </p>
-                      <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                        <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                          <strong>⚠️ Avviso:</strong> Il link Pear scade il <strong>6 novembre 2025</strong>
+                      <div className="mb-3 p-4 bg-transparent border border-cyan-400/30 dark:border-cyan-400/30 rounded-lg w-fit">
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          <strong className="text-cyan-400">⚠️ Avviso:</strong> il link per Keet scade il <strong>21.11.2025 ore 16:30</strong>
                         </p>
                       </div>
                       <a
-                        href="pear://keet/yfoscxz5ir9fqq6m6aanhkqdk767wb8jj1kn3a8tszu9fo1eesweai57kgp8p1s8971byrp6gpcpiq6d4dr839txn91qjiygb1ecisyxdcdsrpd8i98j1xopbkfegsssa3xgngqy65kmwue7ep4wmgn3mdy56ye"
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors shadow-md"
+                        href="pear://keet/nfoscxz5ir9fqq6m6aanhkqdk767wb8jj1kn3a8tszu9fo1eesweaiamy1bcbma8y7k4x85c7guba494qb4dezt1rmm6dwtsqyhfo1hb3466m9iqtpmmo7wqed1mrk1uwqzx4awe5g7npu1618oz9oytf9t3hyedrewipc7saq6kc8ywpgiioaadkazhg"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
                       >
-                        <span className="text-xl">🍐</span>
+                        <span className="text-base">🍐</span>
                         Apri Pear
                       </a>
                     </div>
@@ -2976,6 +2988,193 @@ public/                  # Asset statici
                       </span>
                     </div>
 
+                    {/* Freccia destra - Pagina successiva (API) */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        API
+                      </span>
+                      <button
+                        onClick={() => {
+                          // Espandi la sezione Specifiche nel menu
+                          if (!expandedSections.has('specifiche')) {
+                            setExpandedSections(new Set([...expandedSections, 'specifiche']));
+                          }
+                          handleSectionChange('api');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina successiva"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'api' && (
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="mb-4">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
+                    DOCUMENTAZIONE
+                  </span>
+                </div>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+                  <span>🛰️</span>
+                  API
+                </h1>
+                <div className="prose prose-lg dark:prose-invert max-w-none">
+                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
+                    Bella Napoli utilizza diverse API per leggere dati dai contratti, estrapolare eventi sportivi e analizzare trend del mercato delle predizioni.
+                  </p>
+
+                  {/* Indicatore pagina - Frecce e Pallini */}
+                  <div className="mb-6 flex items-center justify-center gap-3">
+                    {/* Freccia sinistra - Precedente */}
+                    <button
+                      onClick={() => {
+                        setApiPage(Math.max(0, apiPage - 1));
+                        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                      }}
+                      disabled={apiPage === 0}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      aria-label="Pagina precedente"
+                    >
+                      <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Pallini */}
+                    <div className="flex items-center gap-2">
+                      {[0, 1, 2].map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => {
+                            setApiPage(page);
+                            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                          }}
+                          className={`w-2.5 h-2.5 rounded-full transition-all ${
+                            apiPage === page
+                              ? 'bg-primary w-8 dark:bg-primary'
+                              : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
+                          }`}
+                          aria-label={`Vai alla pagina ${page + 1}`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Freccia destra - Successivo */}
+                    <button
+                      onClick={() => {
+                        setApiPage(Math.min(2, apiPage + 1));
+                        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                      }}
+                      disabled={apiPage === 2}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      aria-label="Pagina successiva"
+                    >
+                      <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Pagina 0 - API per Smart Contracts */}
+                  {apiPage === 0 && (
+                    <div className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                        📡 API per Smart Contracts
+                      </h2>
+                      <div className="space-y-4">
+                        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                          Utilizziamo Viem e Wagmi per leggere dati dai contratti sulla BNB Chain, monitorare eventi emessi 
+                          e interagire con le funzioni dei contratti. Le chiamate RPC vengono effettuate tramite provider 
+                          pubblici e privati per garantire alta disponibilità e affidabilità.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">Viem</span>
+                          <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">Wagmi</span>
+                          <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">RPC Calls</span>
+                          <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">Event Listening</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pagina 1 - Polymarket API */}
+                  {apiPage === 1 && (
+                    <div className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                        📊 Polymarket API
+                      </h2>
+                      <div className="space-y-4">
+                        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                          Utilizziamo le API di Polymarket per analizzare i trend più discussi nel mercato delle predizioni, 
+                          identificando argomenti popolari e tendenze che possono ispirare nuove predictions su Bella Napoli.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">Polymarket API</span>
+                          <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">Trend Analysis</span>
+                          <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">Market Data</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pagina 2 - UEFA API */}
+                  {apiPage === 2 && (
+                    <div className="mb-8 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                        ⚽ UEFA API
+                      </h2>
+                      <div className="space-y-4">
+                        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                          Utilizziamo le API ufficiali della UEFA per estrapolare eventi sportivi e dati relativi a competizioni calcistiche. 
+                          Recuperiamo calendari delle partite, risultati in tempo reale, statistiche e classifiche per creare predictions 
+                          accurate basate su eventi reali e fornire dati aggiornati agli utenti.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">UEFA API</span>
+                          <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">Sports Data</span>
+                          <span className="px-3 py-1 text-xs font-mono bg-primary/10 text-primary rounded">Real-time Events</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Frecce di navigazione */}
+                  <div className="mt-6 flex items-center justify-between">
+                    {/* Freccia sinistra - Pagina precedente (Web3) */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          // Espandi la sezione Specifiche nel menu
+                          if (!expandedSections.has('specifiche')) {
+                            setExpandedSections(new Set([...expandedSections, 'specifiche']));
+                          }
+                          handleSectionChange('web3');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina precedente"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Web3
+                      </span>
+                    </div>
+
                     {/* Freccia destra - Pagina successiva (General) */}
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
@@ -3218,7 +3417,7 @@ public/                  # Asset statici
 
                   {/* Frecce di navigazione */}
                   <div className="mt-6 flex items-center justify-between">
-                    {/* Freccia sinistra - Pagina precedente (Web3) */}
+                    {/* Freccia sinistra - Pagina precedente (API) */}
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => {
@@ -3226,7 +3425,7 @@ public/                  # Asset statici
                           if (!expandedSections.has('specifiche')) {
                             setExpandedSections(new Set([...expandedSections, 'specifiche']));
                           }
-                          handleSectionChange('web3');
+                          handleSectionChange('api');
                           setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
@@ -3237,7 +3436,7 @@ public/                  # Asset statici
                         </svg>
                       </button>
                       <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
-                        Web3
+                        API
                       </span>
                     </div>
 
