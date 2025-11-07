@@ -4525,7 +4525,7 @@ totalFees = totalPot * 0.015`}</code>
                     <div className="space-y-4">
                       <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
                         Tutti gli smart contract di Bella Napoli sono stati <strong>verificati su BSC (Binance Smart Chain)</strong>. 
-                        Il codice sorgente è completamente <strong>open source</strong> e leggibile pubblicamente su BSCScan.
+                        Il codice sorgente è completamente <strong>open source</strong> e leggibile su BSCScan.
                       </p>
                       <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
                         La verifica dei contratti garantisce che il codice eseguito on-chain corrisponda esattamente al codice sorgente pubblicato, 
