@@ -354,7 +354,7 @@ export default function DocumentationPage() {
       {/* Main Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar Navigation */}
-        <aside className={`fixed md:static inset-y-0 left-0 z-40 w-64 flex-shrink-0 bg-slate-900 border-r border-slate-800 overflow-y-auto transform transition-transform duration-300 ease-in-out ${
+        <aside className={`fixed md:static inset-y-0 left-0 z-40 w-64 flex-shrink-0 bg-slate-900 border-r border-slate-800 overflow-y-auto h-screen max-h-screen transform transition-transform duration-300 ease-in-out ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}>
           <nav className="p-4">
