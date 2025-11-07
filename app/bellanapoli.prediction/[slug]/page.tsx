@@ -52,6 +52,7 @@ interface CommentData {
   content?: string;
   created_at: string;
   username: string;
+  user_id?: string; // ID dell'utente che ha creato il commento
 }
 
 
@@ -624,6 +625,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   const [commentLoading, setCommentLoading] = useState<boolean>(false);
   const [commentError, setCommentError] = useState<string | null>(null);
   const [commentSuccess, setCommentSuccess] = useState<boolean>(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState<string>('');
   const [commentValidation, setCommentValidation] = useState<{
     isValid: boolean;
     message?: string;
@@ -1316,24 +1319,92 @@ export default function PredictionPage({ params }: { params: { slug: string } })
 
   // Funzione per eliminare un commento (solo admin)
   const handleDeleteComment = async (commentId: string) => {
-    if (!isAdmin || !commentId) return;
+    if (!isAdmin || !commentId || !address) return;
 
     try {
-      const { error } = await supabase
-        .from('comments')
-        .delete()
-        .eq('id', commentId);
+      const { data: deletedCommentId, error } = await supabase
+        .rpc('delete_comment_admin', {
+          comment_uuid: commentId,
+          caller_wallet: address
+        });
 
       if (error) {
         console.error('Error deleting comment:', error);
-        alert('Errore nell\'eliminazione del commento');
+        alert(`Errore nell'eliminazione del commento: ${error.message || 'Errore sconosciuto'}`);
       } else {
         // Ricarica i commenti per aggiornare la lista
         await loadComments();
       }
     } catch (error) {
       console.error('Error deleting comment:', error);
-      alert('Errore nell\'eliminazione del commento');
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      alert(`Errore nell'eliminazione del commento: ${errorMessage}`);
+    }
+  };
+
+  // Funzione per iniziare la modifica di un commento
+  const handleStartEditComment = (comment: CommentData) => {
+    setEditingCommentId(comment.comment_id || comment.id || '');
+    setEditingCommentText(comment.text || comment.content || '');
+    setCommentError(null);
+  };
+
+  // Funzione per annullare la modifica
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+    setCommentError(null);
+  };
+
+  // Funzione per salvare la modifica di un commento
+  const handleSaveEditComment = async (commentId: string) => {
+    if (!editingCommentText.trim() || !commentId || !address) {
+      setCommentError('Commento non valido');
+      return;
+    }
+
+    // Validazione delle parole inappropriate
+    const validation = validateComment(editingCommentText);
+    if (!validation.isValid) {
+      setCommentError(validation.message || 'Commento non valido');
+      return;
+    }
+
+    try {
+      setCommentLoading(true);
+      setCommentError(null);
+
+      // Usa la funzione RPC con SECURITY DEFINER per aggiornare il commento
+      const { data: updatedCommentId, error: updateError } = await supabase
+        .rpc('update_comment', {
+          comment_uuid: commentId,
+          comment_content: editingCommentText.trim(),
+          caller_wallet: address
+        });
+
+      if (updateError) {
+        throw new Error(`Errore aggiornamento commento: ${updateError.message}`);
+      }
+
+      // Reset dello stato di modifica
+      setEditingCommentId(null);
+      setEditingCommentText('');
+      setCommentSuccess(true);
+
+      // Ricarica i commenti per mostrare il commento aggiornato
+      await loadComments();
+
+      // Nascondi il messaggio di successo dopo 3 secondi
+      setTimeout(() => {
+        setCommentSuccess(false);
+      }, 3000);
+
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setCommentError(errorMessage);
+    } finally {
+      setCommentLoading(false);
     }
   };
 
@@ -3244,42 +3315,96 @@ export default function PredictionPage({ params }: { params: { slug: string } })
                   style={{ scrollBehavior: 'smooth' }}
                 >
                   {comments.length > 0 ? (
-                    comments.map((comment, index) => (
-                      <div key={comment.comment_id || comment.id || `comment-${index}`} className="flex flex-col space-y-1 group">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium text-gray-900 dark:text-white text-sm">
-                              {comment.username}
-                            </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {new Date(comment.created_at).toLocaleString('it-IT', {
-                                day: 'numeric',
-                                month: 'short',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
+                    comments.map((comment, index) => {
+                      const commentId = comment.comment_id || comment.id || '';
+                      const isEditing = editingCommentId === commentId;
+                      const isOwner = user?.id && comment.user_id && user.id === comment.user_id;
+                      
+                      return (
+                        <div key={commentId || `comment-${index}`} className="flex flex-col space-y-1 group">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium text-gray-900 dark:text-white text-sm">
+                                {comment.username}
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {new Date(comment.created_at).toLocaleString('it-IT', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
                           </div>
-                          {/* Pulsante elimina per admin */}
-                          {isAdmin && (
-                            <button
-                              onClick={() => handleDeleteComment(comment.comment_id || comment.id || '')}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20"
-                              title="Elimina commento"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          )}
+                          <div className="bg-white dark:bg-gray-700 rounded-lg p-3 shadow-sm flex items-start space-x-2">
+                            {/* Icone a sinistra: matita per proprietario, X per admin */}
+                            <div className="flex items-center space-x-2 mt-0.5">
+                              {/* Icona matita a sinistra per il proprietario */}
+                              {isOwner && !isEditing && (
+                                <button
+                                  onClick={() => handleStartEditComment(comment)}
+                                  className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200"
+                                  title="Modifica commento"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                              )}
+                              {/* Pulsante elimina per admin */}
+                              {isAdmin && (
+                                <button
+                                  onClick={() => handleDeleteComment(commentId)}
+                                  className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200"
+                                  title="Elimina commento"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              {isEditing ? (
+                                <div className="space-y-2">
+                                  <textarea
+                                    value={editingCommentText}
+                                    onChange={(e) => setEditingCommentText(e.target.value)}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 resize-none"
+                                    rows={3}
+                                    placeholder="Modifica il tuo commento..."
+                                  />
+                                  <div className="flex items-center space-x-2">
+                                    <button
+                                      onClick={() => handleSaveEditComment(commentId)}
+                                      disabled={commentLoading || !editingCommentText.trim()}
+                                      className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      {commentLoading ? 'Salvataggio...' : 'Salva'}
+                                    </button>
+                                    <button
+                                      onClick={handleCancelEditComment}
+                                      disabled={commentLoading}
+                                      className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      Annulla
+                                    </button>
+                                  </div>
+                                  {commentError && (
+                                    <p className="text-xs text-red-600 dark:text-red-400">{commentError}</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-gray-800 dark:text-gray-200 text-sm">
+                                  {comment.text || comment.content || 'Commento non disponibile'}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="bg-white dark:bg-gray-700 rounded-lg p-3 shadow-sm">
-                          <p className="text-gray-800 dark:text-gray-200 text-sm">
-                            {comment.text || comment.content || 'Commento non disponibile'}
-                          </p>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center text-gray-500 dark:text-gray-400">
