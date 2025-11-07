@@ -100,7 +100,7 @@ export default function DocumentationPage() {
   const minSwipeDistance = 50;
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'connect-wallet' && activeSection !== 'profilo' && activeSection !== 'prediction-in-attesa' && activeSection !== 'prediction-attiva' && activeSection !== 'prediction-chiusa' && activeSection !== 'prediction-cancellata' && activeSection !== 'prediction-risolta' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
+    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'connect-wallet' && activeSection !== 'profilo' && activeSection !== 'prediction-in-attesa' && activeSection !== 'prediction-attiva' && activeSection !== 'prediction-chiusa' && activeSection !== 'prediction-cancellata' && activeSection !== 'prediction-risolta' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== ('api' as Section) && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
     touchEndRef.current = null;
     touchStartRef.current = {
       x: e.targetTouches[0].clientX,
@@ -109,7 +109,7 @@ export default function DocumentationPage() {
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'connect-wallet' && activeSection !== 'profilo' && activeSection !== 'prediction-in-attesa' && activeSection !== 'prediction-attiva' && activeSection !== 'prediction-chiusa' && activeSection !== 'prediction-cancellata' && activeSection !== 'prediction-risolta' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
+    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'connect-wallet' && activeSection !== 'profilo' && activeSection !== 'prediction-in-attesa' && activeSection !== 'prediction-attiva' && activeSection !== 'prediction-chiusa' && activeSection !== 'prediction-cancellata' && activeSection !== 'prediction-risolta' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== ('api' as Section) && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
     touchEndRef.current = {
       x: e.targetTouches[0].clientX,
       y: e.targetTouches[0].clientY,
@@ -117,7 +117,7 @@ export default function DocumentationPage() {
   };
 
   const handleTouchEnd = () => {
-    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'connect-wallet' && activeSection !== 'profilo' && activeSection !== 'prediction-in-attesa' && activeSection !== 'prediction-attiva' && activeSection !== 'prediction-chiusa' && activeSection !== 'prediction-cancellata' && activeSection !== 'prediction-risolta' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
+    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'connect-wallet' && activeSection !== 'profilo' && activeSection !== 'prediction-in-attesa' && activeSection !== 'prediction-attiva' && activeSection !== 'prediction-chiusa' && activeSection !== 'prediction-cancellata' && activeSection !== 'prediction-risolta' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== ('api' as Section) && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
     if (!touchStartRef.current || !touchEndRef.current) return;
 
     const distanceX = touchStartRef.current.x - touchEndRef.current.x;
