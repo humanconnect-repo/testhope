@@ -5,11 +5,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 
-type Section = 'introduzione' | 'inizia-da-qui' | 'avviso' | 'links' | 'bnb-chain-testnet' | 'faucet' | 'specifiche' | 'architettura-stack' | 'database' | 'web3' | 'smart-contracts' | 'smart-contracts-general' | 'factory-contract' | 'factory-math' | 'prediction-pool-contract' | 'open-source-bsc';
+type Section = 'introduzione' | 'inizia-da-qui' | 'avviso' | 'links' | 'bnb-chain-testnet' | 'faucet' | 'connect-wallet' | 'profilo' | 'prediction-in-attesa' | 'prediction-attiva' | 'prediction-chiusa' | 'prediction-cancellata' | 'prediction-risolta' | 'specifiche' | 'architettura-stack' | 'database' | 'web3' | 'smart-contracts' | 'smart-contracts-general' | 'factory-contract' | 'factory-math' | 'prediction-pool-contract' | 'open-source-bsc';
 
 export default function DocumentationPage() {
   const [activeSection, setActiveSection] = useState<Section>('inizia-da-qui');
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['introduzione', 'specifiche', 'smart-contracts']));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['introduzione', 'tutorial', 'specifiche', 'smart-contracts']));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [stackTechPage, setStackTechPage] = useState(0);
   const [databasePage, setDatabasePage] = useState(0);
@@ -20,6 +20,13 @@ export default function DocumentationPage() {
   const [predictionPoolContractPage, setPredictionPoolContractPage] = useState(0);
   const [bnbChainTestnetPage, setBnbChainTestnetPage] = useState(0);
   const [faucetPage, setFaucetPage] = useState(0);
+  const [connectWalletPage, setConnectWalletPage] = useState(0);
+  const [profiloPage, setProfiloPage] = useState(0);
+  const [predictionInAttesaPage, setPredictionInAttesaPage] = useState(0);
+  const [predictionAttivaPage, setPredictionAttivaPage] = useState(0);
+  const [predictionChiusaPage, setPredictionChiusaPage] = useState(0);
+  const [predictionCancellataPage, setPredictionCancellataPage] = useState(0);
+  const [predictionRisoltaPage, setPredictionRisoltaPage] = useState(0);
   const [openSourceBscPage, setOpenSourceBscPage] = useState(0);
   const [poolContracts, setPoolContracts] = useState<Array<{ id: string; title: string; pool_address: string }>>([]);
   const [loadingPools, setLoadingPools] = useState(false);
@@ -56,6 +63,27 @@ export default function DocumentationPage() {
     if (section !== 'faucet') {
       setFaucetPage(0);
     }
+    if (section !== 'connect-wallet') {
+      setConnectWalletPage(0);
+    }
+    if (section !== 'profilo') {
+      setProfiloPage(0);
+    }
+    if (section !== 'prediction-in-attesa') {
+      setPredictionInAttesaPage(0);
+    }
+    if (section !== 'prediction-attiva') {
+      setPredictionAttivaPage(0);
+    }
+    if (section !== 'prediction-chiusa') {
+      setPredictionChiusaPage(0);
+    }
+    if (section !== 'prediction-cancellata') {
+      setPredictionCancellataPage(0);
+    }
+    if (section !== 'prediction-risolta') {
+      setPredictionRisoltaPage(0);
+    }
     if (section !== 'open-source-bsc') {
       setOpenSourceBscPage(0);
       setPoolContractsPage(0);
@@ -68,7 +96,7 @@ export default function DocumentationPage() {
   const minSwipeDistance = 50;
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
+    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'connect-wallet' && activeSection !== 'profilo' && activeSection !== 'prediction-in-attesa' && activeSection !== 'prediction-attiva' && activeSection !== 'prediction-chiusa' && activeSection !== 'prediction-cancellata' && activeSection !== 'prediction-risolta' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
     touchEndRef.current = null;
     touchStartRef.current = {
       x: e.targetTouches[0].clientX,
@@ -77,7 +105,7 @@ export default function DocumentationPage() {
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
+    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'connect-wallet' && activeSection !== 'profilo' && activeSection !== 'prediction-in-attesa' && activeSection !== 'prediction-attiva' && activeSection !== 'prediction-chiusa' && activeSection !== 'prediction-cancellata' && activeSection !== 'prediction-risolta' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
     touchEndRef.current = {
       x: e.targetTouches[0].clientX,
       y: e.targetTouches[0].clientY,
@@ -85,7 +113,7 @@ export default function DocumentationPage() {
   };
 
   const handleTouchEnd = () => {
-    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
+    if (activeSection !== 'bnb-chain-testnet' && activeSection !== 'faucet' && activeSection !== 'connect-wallet' && activeSection !== 'profilo' && activeSection !== 'prediction-in-attesa' && activeSection !== 'prediction-attiva' && activeSection !== 'prediction-chiusa' && activeSection !== 'prediction-cancellata' && activeSection !== 'prediction-risolta' && activeSection !== 'architettura-stack' && activeSection !== 'database' && activeSection !== 'web3' && activeSection !== 'smart-contracts-general' && activeSection !== 'factory-contract' && activeSection !== 'factory-math' && activeSection !== 'prediction-pool-contract' && activeSection !== 'open-source-bsc') return;
     if (!touchStartRef.current || !touchEndRef.current) return;
 
     const distanceX = touchStartRef.current.x - touchEndRef.current.x;
@@ -111,6 +139,40 @@ export default function DocumentationPage() {
       if (isRightSwipe && faucetPage > 0) {
         setFaucetPage(faucetPage - 1);
       }
+    } else if (activeSection === 'connect-wallet') {
+      if (isLeftSwipe && connectWalletPage < 1) {
+        setConnectWalletPage(connectWalletPage + 1);
+      }
+      if (isRightSwipe && connectWalletPage > 0) {
+        setConnectWalletPage(connectWalletPage - 1);
+      }
+    } else if (activeSection === 'profilo') {
+      if (isLeftSwipe && profiloPage < 2) {
+        setProfiloPage(profiloPage + 1);
+      }
+      if (isRightSwipe && profiloPage > 0) {
+        setProfiloPage(profiloPage - 1);
+      }
+    } else if (activeSection === 'prediction-in-attesa') {
+      // Solo una tab, quindi non serve swipe
+    } else if (activeSection === 'prediction-attiva') {
+      if (isLeftSwipe && predictionAttivaPage < 1) {
+        setPredictionAttivaPage(predictionAttivaPage + 1);
+      }
+      if (isRightSwipe && predictionAttivaPage > 0) {
+        setPredictionAttivaPage(predictionAttivaPage - 1);
+      }
+    } else if (activeSection === 'prediction-chiusa') {
+      // Solo una tab, quindi non serve swipe
+    } else if (activeSection === 'prediction-cancellata') {
+      if (isLeftSwipe && predictionCancellataPage < 1) {
+        setPredictionCancellataPage(predictionCancellataPage + 1);
+      }
+      if (isRightSwipe && predictionCancellataPage > 0) {
+        setPredictionCancellataPage(predictionCancellataPage - 1);
+      }
+    } else if (activeSection === 'prediction-risolta') {
+      // Solo una tab, quindi non serve swipe
     } else if (activeSection === 'architettura-stack') {
       if (isLeftSwipe && stackTechPage < 6) {
         setStackTechPage(stackTechPage + 1);
@@ -209,9 +271,23 @@ export default function DocumentationPage() {
       subsections: [
         { id: 'inizia-da-qui' as Section, label: 'Bella Napoli', icon: '🎭' },
         { id: 'avviso' as Section, label: 'Avviso', icon: '⚠️' },
+        { id: 'links' as Section, label: 'Links', icon: '🔗' }
+      ]
+    },
+    {
+      id: 'tutorial',
+      label: 'Tutorial',
+      icon: '📚',
+      subsections: [
         { id: 'bnb-chain-testnet' as Section, label: 'BNB Chain Testnet', icon: '🔗' },
         { id: 'faucet' as Section, label: 'Faucet', icon: '🚰' },
-        { id: 'links' as Section, label: 'Links', icon: '🔗' }
+        { id: 'connect-wallet' as Section, label: 'Connetti il Wallet', icon: '🔌' },
+        { id: 'profilo' as Section, label: 'Profilo', icon: '👤' },
+        { id: 'prediction-in-attesa' as Section, label: 'Prediction', icon: '🟡', sublabel: 'IN ATTESA' },
+        { id: 'prediction-attiva' as Section, label: 'Prediction', icon: '🟢', sublabel: 'ATTIVA' },
+        { id: 'prediction-chiusa' as Section, label: 'Prediction', icon: '🟡', sublabel: 'CHIUSA' },
+        { id: 'prediction-cancellata' as Section, label: 'Prediction', icon: '🔴', sublabel: 'CANCELLATA' },
+        { id: 'prediction-risolta' as Section, label: 'Prediction', icon: '🔵', sublabel: 'RISOLTA' }
       ]
     },
     {
@@ -339,7 +415,12 @@ export default function DocumentationPage() {
                                   }`}
                                 >
                                   <span className="text-base">{subsection.icon}</span>
-                                  <span className="font-medium text-left">{subsection.label}</span>
+                                  <span className="font-medium text-left flex-1">
+                                    {subsection.label}
+                                    {'sublabel' in subsection && subsection.sublabel && (
+                                      <span className="ml-2 text-xs text-cyan-400 font-normal">({subsection.sublabel})</span>
+                                    )}
+                                  </span>
                                 </button>
                               </li>
                             ))}
@@ -431,15 +512,18 @@ export default function DocumentationPage() {
                       combinando la tradizione con l&apos;innovazione blockchain.
                     </p>
                     <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                      Inoltre, Bella Napoli è pensata per le community crypto che vogliono creare predizioni a tema crypto in live, permettendo ai membri 
-                      della community di scommettere su eventi che riguardano il mondo delle criptovalute, DeFi, NFT e tutto ciò che riguarda l&apos;ecosistema blockchain.
+                      Inoltre, Bella Napoli è pensata per le community crypto che vogliono creare predizioni in live, permettendo ai membri 
+                      di scommettere su eventi che riguardano crypto, NFT, DeFi o la community stessa.
                     </p>
                   </div>
 
                   {/* Freccia per andare alla pagina successiva (Avviso) */}
                   <div className="mt-6 flex items-center justify-center gap-3">
                     <button
-                      onClick={() => handleSectionChange('avviso')}
+                      onClick={() => {
+                        handleSectionChange('avviso');
+                        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                      }}
                       className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                       aria-label="Vai alla pagina successiva"
                     >
@@ -487,7 +571,10 @@ export default function DocumentationPage() {
                     {/* Freccia sinistra - Pagina precedente (Bella Napoli) */}
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => handleSectionChange('inizia-da-qui')}
+                        onClick={() => {
+                          handleSectionChange('inizia-da-qui');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 flex-shrink-0"
                         aria-label="Vai alla pagina precedente"
                       >
@@ -500,13 +587,16 @@ export default function DocumentationPage() {
                       </span>
                     </div>
 
-                    {/* Freccia destra - Pagina successiva (BNB Chain Testnet) */}
+                    {/* Freccia destra - Pagina successiva (Links) */}
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
-                        BNB Chain Testnet
+                        Links
                       </span>
                       <button
-                        onClick={() => handleSectionChange('bnb-chain-testnet')}
+                        onClick={() => {
+                          handleSectionChange('links');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 flex-shrink-0"
                         aria-label="Vai alla pagina successiva"
                       >
@@ -606,10 +696,13 @@ export default function DocumentationPage() {
 
                   {/* Frecce di navigazione */}
                   <div className="mt-6 flex items-center justify-between">
-                    {/* Freccia sinistra - Pagina precedente (Faucet) */}
+                    {/* Freccia sinistra - Pagina precedente (Avviso) */}
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => handleSectionChange('faucet')}
+                        onClick={() => {
+                          handleSectionChange('avviso');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina precedente"
                       >
@@ -618,22 +711,23 @@ export default function DocumentationPage() {
                         </svg>
                       </button>
                       <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
-                        Faucet
+                        Avviso
                       </span>
                     </div>
 
-                    {/* Freccia destra - Pagina successiva (Stack tecnologico) */}
+                    {/* Freccia destra - Pagina successiva (BNB Chain Testnet) */}
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
-                        Stack tecnologico
+                        BNB Chain Testnet
                       </span>
                       <button
                         onClick={() => {
-                          // Espandi la sezione Specifiche nel menu
-                          if (!expandedSections.has('specifiche')) {
-                            setExpandedSections(new Set([...expandedSections, 'specifiche']));
+                          // Espandi la sezione Tutorial nel menu
+                          if (!expandedSections.has('tutorial')) {
+                            setExpandedSections(new Set([...expandedSections, 'tutorial']));
                           }
-                          handleSectionChange('architettura-stack');
+                          handleSectionChange('bnb-chain-testnet');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina successiva"
@@ -823,10 +917,13 @@ export default function DocumentationPage() {
 
                   {/* Frecce di navigazione */}
                   <div className="mt-6 flex items-center justify-between">
-                    {/* Freccia sinistra - Pagina precedente (Avviso) */}
+                    {/* Freccia sinistra - Pagina precedente (Links) */}
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => handleSectionChange('avviso')}
+                        onClick={() => {
+                          handleSectionChange('links');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina precedente"
                       >
@@ -835,7 +932,7 @@ export default function DocumentationPage() {
                         </svg>
                       </button>
                       <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
-                        Avviso
+                        Links
                       </span>
                     </div>
 
@@ -845,7 +942,10 @@ export default function DocumentationPage() {
                         Faucet
                       </span>
                       <button
-                        onClick={() => handleSectionChange('faucet')}
+                        onClick={() => {
+                          handleSectionChange('faucet');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina successiva"
                       >
@@ -1061,7 +1161,10 @@ export default function DocumentationPage() {
                     {/* Freccia sinistra - Pagina precedente (BNB Chain Testnet) */}
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => handleSectionChange('bnb-chain-testnet')}
+                        onClick={() => {
+                          handleSectionChange('bnb-chain-testnet');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina precedente"
                       >
@@ -1074,13 +1177,964 @@ export default function DocumentationPage() {
                       </span>
                     </div>
 
-                    {/* Freccia destra - Pagina successiva (Links) */}
+                    {/* Freccia destra - Pagina successiva (Connetti il Wallet) */}
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
-                        Links
+                        Connetti il Wallet
                       </span>
                       <button
-                        onClick={() => handleSectionChange('links')}
+                        onClick={() => {
+                          handleSectionChange('connect-wallet');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina successiva"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'connect-wallet' && (
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="mb-4">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
+                    DOCUMENTAZIONE
+                  </span>
+                </div>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+                  <span>🔌</span>
+                  Connetti il Wallet
+                </h1>
+                <div className="prose prose-lg dark:prose-invert max-w-none">
+                  {/* Indicatore pagina - Frecce e Pallini */}
+                  <div className="mb-6 flex items-center justify-center gap-3">
+                    {/* Freccia sinistra - Precedente */}
+                    <button
+                      onClick={() => setConnectWalletPage(Math.max(0, connectWalletPage - 1))}
+                      disabled={connectWalletPage === 0}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      aria-label="Pagina precedente"
+                    >
+                      <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Pallini */}
+                    <div className="flex items-center gap-2">
+                      {[0, 1].map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setConnectWalletPage(page)}
+                          className={`w-2.5 h-2.5 rounded-full transition-all ${
+                            connectWalletPage === page
+                              ? 'bg-primary w-8 dark:bg-primary'
+                              : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
+                          }`}
+                          aria-label={`Vai alla pagina ${page + 1}`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Freccia destra - Successivo */}
+                    <button
+                      onClick={() => setConnectWalletPage(Math.min(1, connectWalletPage + 1))}
+                      disabled={connectWalletPage === 1}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      aria-label="Pagina successiva"
+                    >
+                      <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Tab 0 - Connetti il Wallet */}
+                  {connectWalletPage === 0 && (
+                    <div className="mb-8">
+                      <div className="mb-6">
+                        <div className="flex justify-center mb-4">
+                          <Image
+                            src="/media/tutorial/connectwallet.png"
+                            alt="Connetti il Wallet"
+                            width={400}
+                            height={200}
+                            className="max-w-md w-auto h-auto rounded-lg shadow-lg"
+                          />
+                        </div>
+                        <div className="p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                            Come connettersi al wallet
+                          </h2>
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                            Per utilizzare Bella Napoli, devi prima connettere il tuo wallet cliccando su "Connect Wallet" come nell'immagine sopra. La piattaforma supporta diversi wallet come MetaMask, Rabby, Trust Wallet e altri wallet compatibili con EVM.
+                          </p>
+                          <ol className="list-decimal list-inside space-y-3 text-gray-700 dark:text-gray-300">
+                            <li>Assicurati di avere un wallet installato sul tuo browser o dispositivo mobile</li>
+                            <li>Clicca sul pulsante &quot;Connetti Wallet&quot; nella parte superiore della pagina</li>
+                            <li>Seleziona il tuo wallet preferito dalla lista</li>
+                            <li>Autorizza la connessione quando richiesto dal wallet</li>
+                            <li>Verifica che il wallet sia connesso alla rete corretta (BNB Chain Testnet per i test)</li>
+                            <li><strong>Per mobile:</strong> ti consigliamo di usare il browser integrato del wallet come il browser dentro Rabby Wallet o MetaMask. La connessione diretta da Brave o altri browsers in alcuni casi, a seconda delle configurazioni dell&apos;utente, può incontrare blocchi di sicurezza.</li>
+                          </ol>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 1 - Firma e Login */}
+                  {connectWalletPage === 1 && (
+                    <div className="mb-8">
+                      <div className="flex flex-col md:flex-row gap-6 items-start">
+                        <div className="flex-shrink-0 w-full md:w-1/2">
+                          <Image
+                            src="/media/tutorial/firmaxlogin.png"
+                            alt="Firma e Login"
+                            width={600}
+                            height={800}
+                            className="w-full h-auto rounded-lg shadow-lg"
+                          />
+                        </div>
+                        <div className="flex-1 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                            Firma e Login
+                          </h2>
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                            Dopo aver connesso il wallet, devi firmare un messaggio per autenticarti sulla piattaforma. Questa operazione è necessaria per associare il tuo wallet al tuo account.
+                          </p>
+                          <ol className="list-decimal list-inside space-y-3 text-gray-700 dark:text-gray-300">
+                            <li>Dopo aver connesso il wallet, apparirà una richiesta di firma</li>
+                            <li>Il wallet ti chiederà di firmare un messaggio di autenticazione</li>
+                            <li>Verifica il messaggio nel tuo wallet e conferma la firma</li>
+                            <li>La firma non costa nulla e non è una transazione sulla blockchain</li>
+                            <li>Una volta firmato, sarai automaticamente loggato sulla piattaforma</li>
+                          </ol>
+                          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                              <strong>⚠️ Nota importante:</strong> la firma del messaggio è necessaria solo una volta per sessione. Non devi firmare ad ogni operazione.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Frecce di navigazione */}
+                  <div className="mt-6 flex items-center justify-between">
+                    {/* Freccia sinistra - Pagina precedente (Faucet) */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          handleSectionChange('faucet');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina precedente"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Faucet
+                      </span>
+                    </div>
+
+                    {/* Freccia destra - Pagina successiva (Profilo) */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Profilo
+                      </span>
+                      <button
+                        onClick={() => {
+                          handleSectionChange('profilo');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina successiva"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'profilo' && (
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="mb-4">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
+                    DOCUMENTAZIONE
+                  </span>
+                </div>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+                  <span>👤</span>
+                  Profilo
+                </h1>
+                <div className="prose prose-lg dark:prose-invert max-w-none">
+                  {/* Indicatore pagina - Frecce e Pallini */}
+                  <div className="mb-6 flex items-center justify-center gap-3">
+                    {/* Freccia sinistra - Precedente */}
+                    <button
+                      onClick={() => setProfiloPage(Math.max(0, profiloPage - 1))}
+                      disabled={profiloPage === 0}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      aria-label="Pagina precedente"
+                    >
+                      <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Pallini */}
+                    <div className="flex items-center gap-2">
+                      {[0, 1, 2].map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setProfiloPage(page)}
+                          className={`w-2.5 h-2.5 rounded-full transition-all ${
+                            profiloPage === page
+                              ? 'bg-primary w-8 dark:bg-primary'
+                              : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
+                          }`}
+                          aria-label={`Vai alla pagina ${page + 1}`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Freccia destra - Successivo */}
+                    <button
+                      onClick={() => setProfiloPage(Math.min(2, profiloPage + 1))}
+                      disabled={profiloPage === 2}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      aria-label="Pagina successiva"
+                    >
+                      <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Tab 0 - Accesso al Profilo */}
+                  {profiloPage === 0 && (
+                    <div className="mb-8">
+                      <div className="flex flex-col md:flex-row gap-6 items-start">
+                        <div className="flex-shrink-0 w-full md:w-1/2">
+                          <Image
+                            src="/media/tutorial/profilo1.png"
+                            alt="Accesso al Profilo"
+                            width={600}
+                            height={800}
+                            className="w-full h-auto rounded-lg shadow-lg"
+                          />
+                        </div>
+                        <div className="flex-1 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                            Accesso al Profilo
+                          </h2>
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                            Dopo che hai firmato la transazione per la creazione dell&apos;account apparirà la voce &quot;Profilo&quot; in alto a destra dal menu a tendina che vedi in navbar cliccando sull&apos;icona dell&apos;immagine stock (Pizza) del tuo profilo.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 1 - Personalizza il Profilo */}
+                  {profiloPage === 1 && (
+                    <div className="mb-8">
+                      <div className="flex flex-col md:flex-row gap-6 items-start">
+                        <div className="flex-shrink-0 w-full md:w-1/3">
+                          <Image
+                            src="/media/tutorial/profilo2.png"
+                            alt="Personalizza il Profilo"
+                            width={400}
+                            height={600}
+                            className="w-full h-auto rounded-lg shadow-lg"
+                          />
+                        </div>
+                        <div className="flex-1 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                            Personalizza il Profilo
+                          </h2>
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                            Nella pagina del profilo puoi personalizzare le tue informazioni:
+                          </p>
+                          <ul className="list-disc list-inside space-y-3 text-gray-700 dark:text-gray-300">
+                            <li><strong>Immagine profilo:</strong> puoi inserire un link ad un&apos;immagine per cambiare l&apos;immagine del tuo profilo. L&apos;immagine deve essere accessibile pubblicamente tramite URL.</li>
+                            <li><strong>Nickname:</strong> scegli un nickname univoco che ti identifichi sulla piattaforma. Il nickname sarà visibile agli altri utenti.</li>
+                            <li><strong>Bio:</strong> la biografia è opzionale. Puoi aggiungere un breve testo/frase o lasciare il campo vuoto.</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 2 - Dati del Profilo */}
+                  {profiloPage === 2 && (
+                    <div className="mb-8">
+                      <div className="mb-6">
+                        <div className="p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30 mb-4">
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg">
+                            Dal tuo profilo vedi dati relativi ai tuoi volumi e le Predictions in cui hai partecipato.
+                          </p>
+                        </div>
+                        <div className="flex justify-center">
+                          <Image
+                            src="/media/tutorial/profilo3.png"
+                            alt="Dati del Profilo"
+                            width={800}
+                            height={600}
+                            className="w-full max-w-4xl h-auto rounded-lg shadow-lg"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Frecce di navigazione */}
+                  <div className="mt-6 flex items-center justify-between">
+                    {/* Freccia sinistra - Pagina precedente (Connetti il Wallet) */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          handleSectionChange('connect-wallet');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina precedente"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Connetti il Wallet
+                      </span>
+                    </div>
+
+                    {/* Freccia destra - Pagina successiva (Prediction IN ATTESA) */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Prediction IN ATTESA
+                      </span>
+                      <button
+                        onClick={() => {
+                          handleSectionChange('prediction-in-attesa');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina successiva"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'prediction-in-attesa' && (
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="mb-4">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
+                    DOCUMENTAZIONE
+                  </span>
+                </div>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+                  <span>🟡</span>
+                  Prediction IN ATTESA
+                </h1>
+                <div className="prose prose-lg dark:prose-invert max-w-none">
+                  {/* Tab 0 - Prediction In Attesa */}
+                  {predictionInAttesaPage === 0 && (
+                    <div className="mb-8">
+                      <div className="flex flex-col md:flex-row gap-6 items-start">
+                        <div className="flex-shrink-0 w-full md:w-1/3">
+                          <Image
+                            src="/media/tutorial/inattesa.png"
+                            alt="Prediction In Attesa"
+                            width={400}
+                            height={600}
+                            className="w-full h-auto rounded-lg shadow-lg"
+                          />
+                        </div>
+                        <div className="flex-1 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                            Nella pagina dei dettagli di ogni prediction puoi vedere vari dati a seconda dello stato della prediction.
+                          </p>
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                            Quando una prediction è in attesa
+                          </h2>
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                            La prediction è in attesa del deploy del suo contratto per diventare attiva.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Frecce di navigazione */}
+                  <div className="mt-6 flex items-center justify-between">
+                    {/* Freccia sinistra - Pagina precedente (Profilo) */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          handleSectionChange('profilo');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina precedente"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Profilo
+                      </span>
+                    </div>
+
+                    {/* Freccia destra - Pagina successiva (Prediction ATTIVA) */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Prediction ATTIVA
+                      </span>
+                      <button
+                        onClick={() => {
+                          handleSectionChange('prediction-attiva');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina successiva"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'prediction-attiva' && (
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="mb-4">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
+                    DOCUMENTAZIONE
+                  </span>
+                </div>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+                  <span>🟢</span>
+                  Prediction ATTIVA
+                </h1>
+                <div className="prose prose-lg dark:prose-invert max-w-none">
+                  {/* Indicatore pagina - Frecce e Pallini */}
+                  <div className="mb-6 flex items-center justify-center gap-3">
+                    {/* Freccia sinistra - Precedente */}
+                    <button
+                      onClick={() => setPredictionAttivaPage(Math.max(0, predictionAttivaPage - 1))}
+                      disabled={predictionAttivaPage === 0}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      aria-label="Pagina precedente"
+                    >
+                      <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Pallini */}
+                    <div className="flex items-center gap-2">
+                      {[0, 1].map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setPredictionAttivaPage(page)}
+                          className={`w-2.5 h-2.5 rounded-full transition-all ${
+                            predictionAttivaPage === page
+                              ? 'bg-primary w-8 dark:bg-primary'
+                              : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
+                          }`}
+                          aria-label={`Vai alla pagina ${page + 1}`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Freccia destra - Successivo */}
+                    <button
+                      onClick={() => setPredictionAttivaPage(Math.min(1, predictionAttivaPage + 1))}
+                      disabled={predictionAttivaPage === 1}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      aria-label="Pagina successiva"
+                    >
+                      <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Tab 0 - Prediction Attiva */}
+                  {predictionAttivaPage === 0 && (
+                    <div className="mb-8">
+                      <div className="flex flex-col md:flex-row gap-6 items-start">
+                        <div className="flex-shrink-0 w-full md:w-1/3">
+                          <Image
+                            src="/media/tutorial/attiva.png"
+                            alt="Prediction Attiva"
+                            width={400}
+                            height={600}
+                            className="w-full h-auto rounded-lg shadow-lg"
+                          />
+                        </div>
+                        <div className="flex-1 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                            Come partecipare ad una prediction attiva.
+                          </h2>
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                            Quando una prediction è attiva, l&apos;utente può partecipare seguendo questi passaggi:
+                          </p>
+                          <ol className="list-decimal list-inside space-y-3 text-gray-700 dark:text-gray-300">
+                            <li>Premere sul pulsante <strong>&quot;Sì&quot;</strong> o <strong>&quot;No&quot;</strong> per scegliere la tua posizione</li>
+                            <li>Scegliere l&apos;importo in BNB che vuoi scommettere</li>
+                            <li>Procedere per la prediction cliccando sul pulsante di conferma</li>
+                            <li>Firmare la transazione nel tuo wallet quando richiesto</li>
+                          </ol>
+                          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                              <strong>⚠️ Nota importante:</strong> se dal tuo wallet non procedi alla firma della transazione e annulli, ricorda di controllare che la transazione non rimanga in coda nel tuo wallet e quindi di non firmarla in un secondo momento.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 1 - Dettagli Transazione */}
+                  {predictionAttivaPage === 1 && (
+                    <div className="mb-8">
+                      <div className="flex flex-col md:flex-row gap-6 items-start">
+                        <div className="flex-shrink-0 w-full md:w-1/3">
+                          <Image
+                            src="/media/tutorial/attiva2.png"
+                            alt="Dettagli Transazione"
+                            width={400}
+                            height={600}
+                            className="w-full h-auto rounded-lg shadow-lg"
+                          />
+                        </div>
+                        <div className="flex-1 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                            Dettagli e Avvisi dopo la Prediction
+                          </h2>
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                            Quando si esegue una prediction, successivamente vedrai:
+                          </p>
+                          <ul className="list-disc list-inside space-y-3 text-gray-700 dark:text-gray-300">
+                            <li><strong>Avvisi:</strong> se hai già scommesso su questa prediction, vedrai un avviso che ti informa che hai già partecipato</li>
+                            <li><strong>Dettagli sulla transazione:</strong> potrai visualizzare tutti i dettagli relativi alla tua transazione, inclusi l&apos;importo scommesso e la tua posizione (Sì o No)</li>
+                            <li><strong>Hash della transazione:</strong> l&apos;hash della transazione viene salvato e associato alla tua scommessa</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Frecce di navigazione */}
+                  <div className="mt-6 flex items-center justify-between">
+                    {/* Freccia sinistra - Pagina precedente (Prediction IN ATTESA) */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          handleSectionChange('prediction-in-attesa');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina precedente"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Prediction IN ATTESA
+                      </span>
+                    </div>
+
+                    {/* Freccia destra - Pagina successiva (Prediction CHIUSA) */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Prediction CHIUSA
+                      </span>
+                      <button
+                        onClick={() => {
+                          handleSectionChange('prediction-chiusa');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina successiva"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'prediction-chiusa' && (
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="mb-4">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
+                    DOCUMENTAZIONE
+                  </span>
+                </div>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+                  <span>🟡</span>
+                  Prediction CHIUSA
+                </h1>
+                <div className="prose prose-lg dark:prose-invert max-w-none">
+                  {/* Tab 0 - Prediction Chiusa */}
+                  {predictionChiusaPage === 0 && (
+                    <div className="mb-8">
+                      <div className="flex flex-col md:flex-row gap-6 items-start">
+                        <div className="flex-shrink-0 w-full md:w-1/3">
+                          <Image
+                            src="/media/tutorial/chiusa1.png"
+                            alt="Prediction Chiusa"
+                            width={400}
+                            height={600}
+                            className="w-full h-auto rounded-lg shadow-lg"
+                          />
+                        </div>
+                        <div className="flex-1 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                            Quando una prediction è chiusa
+                          </h2>
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                            Una prediction quando è chiusa vuol dire che non è più possibile scommettere. Questo può avvenire per due motivi principali:
+                          </p>
+                          <ul className="list-disc list-inside space-y-3 text-gray-700 dark:text-gray-300">
+                            <li><strong>Prediction in pausa:</strong> la prediction può essere messa in pausa a causa di condizioni esterne che riguardano la prediction stessa. In questo caso, le scommesse sono temporaneamente sospese fino a quando la situazione non viene risolta.</li>
+                            <li><strong>Scadenza del periodo di scommesse:</strong> è scaduto il periodo in cui puoi scommettere. A questo punto bisogna attendere i risultati della prediction per vedere l&apos;esito finale.</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Frecce di navigazione */}
+                  <div className="mt-6 flex items-center justify-between">
+                    {/* Freccia sinistra - Pagina precedente (Prediction ATTIVA) */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          handleSectionChange('prediction-attiva');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina precedente"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Prediction ATTIVA
+                      </span>
+                    </div>
+
+                    {/* Freccia destra - Pagina successiva (Prediction CANCELLATA) */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Prediction CANCELLATA
+                      </span>
+                      <button
+                        onClick={() => {
+                          handleSectionChange('prediction-cancellata');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina successiva"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'prediction-cancellata' && (
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="mb-4">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
+                    DOCUMENTAZIONE
+                  </span>
+                </div>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+                  <span>🔴</span>
+                  Prediction CANCELLATA
+                </h1>
+                <div className="prose prose-lg dark:prose-invert max-w-none">
+                  {/* Indicatore pagina - Frecce e Pallini */}
+                  <div className="mb-6 flex items-center justify-center gap-3">
+                    {/* Freccia sinistra - Precedente */}
+                    <button
+                      onClick={() => setPredictionCancellataPage(Math.max(0, predictionCancellataPage - 1))}
+                      disabled={predictionCancellataPage === 0}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      aria-label="Pagina precedente"
+                    >
+                      <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Pallini */}
+                    <div className="flex items-center gap-2">
+                      {[0, 1].map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setPredictionCancellataPage(page)}
+                          className={`w-2.5 h-2.5 rounded-full transition-all ${
+                            predictionCancellataPage === page
+                              ? 'bg-primary w-8 dark:bg-primary'
+                              : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
+                          }`}
+                          aria-label={`Vai alla pagina ${page + 1}`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Freccia destra - Successivo */}
+                    <button
+                      onClick={() => setPredictionCancellataPage(Math.min(1, predictionCancellataPage + 1))}
+                      disabled={predictionCancellataPage === 1}
+                      className="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      aria-label="Pagina successiva"
+                    >
+                      <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Tab 0 - Prediction Cancellata */}
+                  {predictionCancellataPage === 0 && (
+                    <div className="mb-8">
+                      <div className="flex flex-col md:flex-row gap-6 items-start">
+                        <div className="flex-shrink-0 w-full md:w-1/3">
+                          <Image
+                            src="/media/tutorial/cancellata1.png"
+                            alt="Prediction Cancellata"
+                            width={400}
+                            height={600}
+                            className="w-full h-auto rounded-lg shadow-lg"
+                          />
+                        </div>
+                        <div className="flex-1 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                            Quando una prediction viene cancellata
+                          </h2>
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                            Se una prediction viene cancellata a causa di condizioni esterne o per l&apos;impossibilità dell&apos;esecuzione, gli utenti potranno recuperare tutto quello che è stato allocato per quella prediction.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 1 - Modal e Step Automatici */}
+                  {predictionCancellataPage === 1 && (
+                    <div className="mb-8">
+                      <div className="flex flex-col md:flex-row gap-6 items-start">
+                        <div className="flex-shrink-0 w-full md:w-1/3">
+                          <Image
+                            src="/media/tutorial/cancellata2.png"
+                            alt="Modal Riscatto BNB"
+                            width={400}
+                            height={600}
+                            className="w-full h-auto rounded-lg shadow-lg"
+                          />
+                        </div>
+                        <div className="flex-1 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                            Riscatto automatico dei BNB allocati
+                          </h2>
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                            Quando una prediction viene cancellata, apparirà automaticamente un modal che mostra gli step per il riscatto dei BNB allocati:
+                          </p>
+                          <ol className="list-decimal list-inside space-y-3 text-gray-700 dark:text-gray-300">
+                            <li>Il sistema mostra automaticamente il modal con i dettagli della prediction cancellata</li>
+                            <li>Viene visualizzata una preview dei BNB allocati che puoi riscattare</li>
+                            <li>Puoi procedere con il riscatto seguendo gli step guidati mostrati nel modal</li>
+                            <li>I BNB vengono restituiti automaticamente al tuo wallet</li>
+                          </ol>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Frecce di navigazione */}
+                  <div className="mt-6 flex items-center justify-between">
+                    {/* Freccia sinistra - Pagina precedente (Prediction CHIUSA) */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          handleSectionChange('prediction-chiusa');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina precedente"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Prediction CHIUSA
+                      </span>
+                    </div>
+
+                    {/* Freccia destra - Pagina successiva (Prediction RISOLTA) */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Prediction RISOLTA
+                      </span>
+                      <button
+                        onClick={() => {
+                          handleSectionChange('prediction-risolta');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina successiva"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === 'prediction-risolta' && (
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="mb-4">
+                  <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider block text-center md:text-left">
+                    DOCUMENTAZIONE
+                  </span>
+                </div>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+                  <span>🔵</span>
+                  Prediction RISOLTA
+                </h1>
+                <div className="prose prose-lg dark:prose-invert max-w-none">
+                  {/* Tab 1 - Claim delle vincite */}
+                  <div className="mb-8">
+                    <div className="flex flex-col md:flex-row gap-6 items-start">
+                      <div className="flex-shrink-0 w-full md:w-1/3">
+                        <Image
+                          src="/media/tutorial/risolta.png"
+                          alt="Claim delle vincite"
+                          width={400}
+                          height={600}
+                          className="w-full h-auto rounded-lg shadow-lg"
+                        />
+                      </div>
+                      <div className="flex-1 p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                          Riscatto delle vincite
+                        </h2>
+                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                          Se hai vinto la prediction, apparirà il tasto <strong>&quot;Claim&quot;</strong> delle vincite con i dettagli della vincita.
+                        </p>
+                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                          Una volta ritirata la vincita, si vedono i dati come mostrato nell&apos;immagine con dettagli e dati della transazione.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Frecce di navigazione */}
+                  <div className="mt-6 flex items-center justify-between">
+                    {/* Freccia sinistra - Pagina precedente (Prediction CANCELLATA) */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          handleSectionChange('prediction-cancellata');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
+                        aria-label="Vai alla pagina precedente"
+                      >
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Prediction CANCELLATA
+                      </span>
+                    </div>
+
+                    {/* Freccia destra - Pagina successiva (Stack tecnologico) */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
+                        Stack tecnologico
+                      </span>
+                      <button
+                        onClick={() => {
+                          // Espandi la sezione Specifiche nel menu
+                          if (!expandedSections.has('specifiche')) {
+                            setExpandedSections(new Set([...expandedSections, 'specifiche']));
+                          }
+                          handleSectionChange('architettura-stack');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina successiva"
                       >
@@ -1408,15 +2462,16 @@ public/                  # Asset statici
 
                   {/* Frecce di navigazione */}
                   <div className="mt-6 flex items-center justify-between">
-                    {/* Freccia sinistra - Pagina precedente (Links) */}
+                    {/* Freccia sinistra - Pagina precedente (Prediction RISOLTA) */}
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => {
-                          // Espandi la sezione Introduzione nel menu
-                          if (!expandedSections.has('introduzione')) {
-                            setExpandedSections(new Set([...expandedSections, 'introduzione']));
+                          // Espandi la sezione Tutorial nel menu
+                          if (!expandedSections.has('tutorial')) {
+                            setExpandedSections(new Set([...expandedSections, 'tutorial']));
                           }
-                          handleSectionChange('links');
+                          handleSectionChange('prediction-risolta');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina precedente"
@@ -1426,7 +2481,7 @@ public/                  # Asset statici
                         </svg>
                       </button>
                       <span className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center break-words max-w-[120px]">
-                        Links
+                        Prediction RISOLTA
                       </span>
                     </div>
 
@@ -1436,7 +2491,10 @@ public/                  # Asset statici
                         Database
                       </span>
                       <button
-                        onClick={() => handleSectionChange('database')}
+                        onClick={() => {
+                          handleSectionChange('database');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                        }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina successiva"
                       >
@@ -1679,6 +2737,7 @@ public/                  # Asset statici
                             setExpandedSections(new Set([...expandedSections, 'specifiche']));
                           }
                           handleSectionChange('architettura-stack');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina precedente"
@@ -1704,6 +2763,7 @@ public/                  # Asset statici
                             setExpandedSections(new Set([...expandedSections, 'specifiche']));
                           }
                           handleSectionChange('web3');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina successiva"
@@ -1902,6 +2962,7 @@ public/                  # Asset statici
                             setExpandedSections(new Set([...expandedSections, 'specifiche']));
                           }
                           handleSectionChange('database');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina precedente"
@@ -1927,6 +2988,7 @@ public/                  # Asset statici
                             setExpandedSections(new Set([...expandedSections, 'smart-contracts']));
                           }
                           handleSectionChange('smart-contracts-general');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina successiva"
@@ -2165,6 +3227,7 @@ public/                  # Asset statici
                             setExpandedSections(new Set([...expandedSections, 'specifiche']));
                           }
                           handleSectionChange('web3');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina precedente"
@@ -2190,6 +3253,7 @@ public/                  # Asset statici
                             setExpandedSections(new Set([...expandedSections, 'smart-contracts']));
                           }
                           handleSectionChange('factory-contract');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina successiva"
@@ -2610,6 +3674,7 @@ totalFees = totalPot * 0.015`}</code>
                             setExpandedSections(new Set([...expandedSections, 'smart-contracts']));
                           }
                           handleSectionChange('smart-contracts-general');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina precedente"
@@ -2635,6 +3700,7 @@ totalFees = totalPot * 0.015`}</code>
                             setExpandedSections(new Set([...expandedSections, 'smart-contracts']));
                           }
                           handleSectionChange('factory-math');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina successiva"
@@ -2915,6 +3981,7 @@ totalFees = totalPot * 0.015`}</code>
                             setExpandedSections(new Set([...expandedSections, 'smart-contracts']));
                           }
                           handleSectionChange('factory-contract');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina precedente"
@@ -2940,6 +4007,7 @@ totalFees = totalPot * 0.015`}</code>
                             setExpandedSections(new Set([...expandedSections, 'smart-contracts']));
                           }
                           handleSectionChange('prediction-pool-contract');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina successiva"
@@ -3149,6 +4217,7 @@ totalFees = totalPot * 0.015`}</code>
                             setExpandedSections(new Set([...expandedSections, 'smart-contracts']));
                           }
                           handleSectionChange('factory-math');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina precedente"
@@ -3174,6 +4243,7 @@ totalFees = totalPot * 0.015`}</code>
                             setExpandedSections(new Set([...expandedSections, 'smart-contracts']));
                           }
                           handleSectionChange('open-source-bsc');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina successiva"
@@ -3401,6 +4471,7 @@ totalFees = totalPot * 0.015`}</code>
                             setExpandedSections(new Set([...expandedSections, 'smart-contracts']));
                           }
                           handleSectionChange('prediction-pool-contract');
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                         }}
                         className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110"
                         aria-label="Vai alla pagina precedente"
