@@ -1134,16 +1134,21 @@ export default function AdminPanel() {
         }
         
         // Aggiorna lo status della prediction a "In Pausa"
-        const { data: rpcData, error: updateError } = await supabase
-          .rpc('update_prediction_status', {
-            prediction_id_param: predictionData.id,
-            new_status: 'in_pausa'
-          });
-        
-        if (updateError) {
-          console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+        if (!userAddress) {
+          console.error('Wallet address non disponibile per aggiornare lo status');
         } else {
-          console.log('Status della prediction aggiornato a "In Pausa"', rpcData);
+          const { data: rpcData, error: updateError } = await supabase
+            .rpc('update_prediction_status', {
+              prediction_id_param: predictionData.id,
+              new_status: 'in_pausa',
+              admin_wallet_address: userAddress
+            });
+          
+          if (updateError) {
+            console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+          } else {
+            console.log('Status della prediction aggiornato a "In Pausa"', rpcData);
+          }
         }
       } else {
         console.warn('Nessuna prediction trovata per pool_address:', poolAddress);
@@ -1261,16 +1266,21 @@ export default function AdminPanel() {
         }
         
         // Aggiorna lo status della prediction a "Cancellata"
-        const { data: rpcData, error: updateError } = await supabase
-          .rpc('update_prediction_status', {
-            prediction_id_param: predictionData.id,
-            new_status: 'cancellata'
-          });
-        
-        if (updateError) {
-          console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+        if (!userAddress) {
+          console.error('Wallet address non disponibile per aggiornare lo status');
         } else {
-          console.log('Status della prediction aggiornato a "Cancellata"', rpcData);
+          const { data: rpcData, error: updateError } = await supabase
+            .rpc('update_prediction_status', {
+              prediction_id_param: predictionData.id,
+              new_status: 'cancellata',
+              admin_wallet_address: userAddress
+            });
+          
+          if (updateError) {
+            console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+          } else {
+            console.log('Status della prediction aggiornato a "Cancellata"', rpcData);
+          }
         }
       } else {
         console.warn('Nessuna prediction trovata per pool_address:', poolAddress);
@@ -1498,16 +1508,21 @@ export default function AdminPanel() {
         }
         
         // Aggiorna lo status della prediction a "Attiva"
-        const { data: rpcData, error: updateError } = await supabase
-          .rpc('update_prediction_status', {
-            prediction_id_param: predictionData.id,
-            new_status: 'attiva'
-          });
-        
-        if (updateError) {
-          console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+        if (!userAddress) {
+          console.error('Wallet address non disponibile per aggiornare lo status');
         } else {
-          console.log('Status della prediction aggiornato a "Attiva"', rpcData);
+          const { data: rpcData, error: updateError } = await supabase
+            .rpc('update_prediction_status', {
+              prediction_id_param: predictionData.id,
+              new_status: 'attiva',
+              admin_wallet_address: userAddress
+            });
+          
+          if (updateError) {
+            console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+          } else {
+            console.log('Status della prediction aggiornato a "Attiva"', rpcData);
+          }
         }
       } else {
         console.warn('Nessuna prediction trovata per pool_address:', poolAddress);
@@ -1767,15 +1782,20 @@ export default function AdminPanel() {
         }
         
         // Aggiorna lo status della prediction a "Attiva"
-        const { data: rpcData, error: updateError } = await supabase.rpc('update_prediction_status', {
-          prediction_id_param: predictionData.id,
-          new_status: 'attiva'
-        });
-        
-        if (updateError) {
-          console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+        if (!userAddress) {
+          console.error('Wallet address non disponibile per aggiornare lo status');
         } else {
-          console.log('Status della prediction aggiornato a "Attiva"', rpcData);
+          const { data: rpcData, error: updateError } = await supabase.rpc('update_prediction_status', {
+            prediction_id_param: predictionData.id,
+            new_status: 'attiva',
+            admin_wallet_address: userAddress
+          });
+          
+          if (updateError) {
+            console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+          } else {
+            console.log('Status della prediction aggiornato a "Attiva"', rpcData);
+          }
         }
       }
       
@@ -1894,16 +1914,21 @@ export default function AdminPanel() {
         }
         
         // Aggiorna lo status della prediction a "In Pausa"
-        const { data: rpcData, error: updateError } = await supabase
-          .rpc('update_prediction_status', {
-            prediction_id_param: predictionData.id,
-            new_status: 'in_pausa'
-          });
-        
-        if (updateError) {
-          console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+        if (!userAddress) {
+          console.error('Wallet address non disponibile per aggiornare lo status');
         } else {
-          console.log('Status della prediction aggiornato a "In Pausa"', rpcData);
+          const { data: rpcData, error: updateError } = await supabase
+            .rpc('update_prediction_status', {
+              prediction_id_param: predictionData.id,
+              new_status: 'in_pausa',
+              admin_wallet_address: userAddress
+            });
+          
+          if (updateError) {
+            console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+          } else {
+            console.log('Status della prediction aggiornato a "In Pausa"', rpcData);
+          }
         }
       } else {
         console.warn('Nessuna prediction trovata per pool_address:', poolAddress);

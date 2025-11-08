@@ -278,16 +278,21 @@ export const useContracts = () => {
         }
         
         // Aggiorna lo status della prediction a "Risolta"
-        const { data: rpcData, error: updateError } = await supabase
-          .rpc('update_prediction_status', {
-            prediction_id_param: predictionData.id,
-            new_status: 'risolta'
-          });
-        
-        if (updateError) {
-          console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+        if (!address) {
+          console.error('Wallet address non disponibile per aggiornare lo status');
         } else {
-          console.log('Status della prediction aggiornato a "Risolta"', rpcData);
+          const { data: rpcData, error: updateError } = await supabase
+            .rpc('update_prediction_status', {
+              prediction_id_param: predictionData.id,
+              new_status: 'risolta',
+              admin_wallet_address: address
+            });
+          
+          if (updateError) {
+            console.error('Errore nell\'aggiornamento dello status della prediction:', updateError);
+          } else {
+            console.log('Status della prediction aggiornato a "Risolta"', rpcData);
+          }
         }
       }
       

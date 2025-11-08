@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
 export default function ProfiloPage() {
-  const { isAuthenticated, address, isConnected, user } = useWeb3Auth()
+  const { isAuthenticated, address, isConnected, user, isLoading } = useWeb3Auth()
   const router = useRouter()
   const [isChecking, setIsChecking] = useState(true)
   const [hasBeenAuthenticated, setHasBeenAuthenticated] = useState(false)
@@ -50,12 +50,13 @@ export default function ProfiloPage() {
   // Controllo iniziale di autenticazione
   useEffect(() => {
     let timeoutId: NodeJS.Timeout
+    let maxWaitTime: NodeJS.Timeout
     
     const checkAuth = async () => {
-      console.log('🔍 Stato attuale:', { isAuthenticated, isConnected, address })
+      console.log('🔍 Stato attuale:', { isAuthenticated, isConnected, address, isLoading, user: !!user })
       
-      // Se è già autenticato, non mostrare il loading
-      if (isAuthenticated) {
+      // Se è già autenticato (user disponibile), non mostrare il loading
+      if (isAuthenticated && user) {
         console.log('✅ Già autenticato, accesso diretto')
         setIsChecking(false)
         setHasBeenAuthenticated(true)
@@ -69,45 +70,45 @@ export default function ProfiloPage() {
         return
       }
       
-      // Se è connesso ma non autenticato, aspetta un po' per il controllo
-      // (potrebbe essere in fase di autenticazione)
-      console.log('🔍 Wallet connesso, controllo autenticazione...')
-      timeoutId = setTimeout(() => {
-        // Usa una funzione che accede ai valori più recenti
-        const checkAfterDelay = () => {
-          console.log('🔍 Stato dopo delay:', { isAuthenticated, isConnected, address, hasBeenAuthenticated })
-          if (!isAuthenticated && !hasBeenAuthenticated) {
-            console.log('❌ Connesso ma non autenticato, reindirizzamento...')
+      // Se è connesso ma user non è ancora disponibile, aspetta
+      // (la query potrebbe essere ancora in corso anche se isLoading è false)
+      if (isConnected && !user) {
+        console.log('⏳ Wallet connesso ma user non ancora disponibile, aspetto...')
+        setIsChecking(true)
+        
+        // Timeout massimo: se dopo 8 secondi user non è disponibile, reindirizza
+        maxWaitTime = setTimeout(() => {
+          if (!user && !isAuthenticated) {
+            console.log('❌ Timeout: user non disponibile dopo 8 secondi, reindirizzamento...')
             router.push('/')
-          } else {
-            console.log('✅ Autenticazione verificata:', { isAuthenticated, isConnected, address })
-            setIsChecking(false)
-            setHasBeenAuthenticated(true)
           }
-        }
-        checkAfterDelay()
-      }, 2000) // Ridotto a 2 secondi per essere più reattivi
+        }, 8000)
+        
+        return
+      }
     }
     
     checkAuth()
     
-    // Cleanup del timeout
+    // Cleanup dei timeout
     return () => {
       if (timeoutId) {
         clearTimeout(timeoutId)
       }
+      if (maxWaitTime) {
+        clearTimeout(maxWaitTime)
+      }
     }
-  }, [isAuthenticated, isConnected, address, hasBeenAuthenticated, router])
+  }, [isAuthenticated, isConnected, address, user, router])
 
-  // Monitora i cambiamenti di stato senza reindirizzare
+  // Monitora direttamente quando user diventa disponibile (reazione immediata)
   useEffect(() => {
-    if (isAuthenticated) {
-      console.log('✅ Autenticazione rilevata, fermando il loading e prevenendo reindirizzamento')
+    if (user && isConnected && address) {
+      console.log('✅ User disponibile, autenticazione confermata')
       setIsChecking(false)
       setHasBeenAuthenticated(true)
-      // Se era in checking, ora ferma qualsiasi timeout o reindirizzamento
     }
-  }, [isAuthenticated])
+  }, [user, isConnected, address])
 
   // Reindirizza immediatamente se cambia wallet e non è autenticato
   useEffect(() => {
@@ -131,15 +132,20 @@ export default function ProfiloPage() {
   const canScrollDown = resolvedStartIndex + resolvedItemsPerPage < resolvedPredictions.length
 
   // Reindirizza quando non autenticato (dopo il controllo iniziale e solo se ha già controllato)
+  // NON reindirizzare se user potrebbe ancora arrivare (isConnected ma user null)
   useEffect(() => {
-    if (!isAuthenticated && !isChecking && hasBeenAuthenticated) {
+    // Non reindirizzare se user potrebbe ancora arrivare
+    if (isConnected && !user && !hasBeenAuthenticated) {
+      return
+    }
+    if (!isAuthenticated && !user && !isChecking && hasBeenAuthenticated) {
       console.log('❌ Non autenticato dopo controllo, reindirizzamento...')
       const timeoutId = setTimeout(() => {
         router.push('/')
-      }, 500) // Aumentato a 500ms per dare tempo all'autenticazione di propagarsi
+      }, 500)
       return () => clearTimeout(timeoutId)
     }
-  }, [isAuthenticated, isChecking, hasBeenAuthenticated, router])
+  }, [isAuthenticated, isChecking, hasBeenAuthenticated, isConnected, user, router])
 
   if (isChecking) {
     return (
