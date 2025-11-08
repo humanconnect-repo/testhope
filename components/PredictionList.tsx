@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import PredictionCard from './PredictionCard';
+import LazyPredictionCard from './LazyPredictionCard';
 import { supabase } from '../lib/supabase';
 import { getPoolWinner } from '../lib/contracts';
 import { formatItalianDateShort, getClosingDateText } from '../lib/dateUtils';
@@ -20,6 +20,86 @@ function useIsMobile() {
   }, []);
 
   return isMobile;
+}
+
+// Cache per conteggi bets e volumi (TTL 5 minuti)
+interface CachedBetsData {
+  total: number;
+  yesCount: number;
+  noCount: number;
+  totalBnbAmount: number;
+  timestamp: number;
+}
+
+const betsDataCache = new Map<string, CachedBetsData>();
+const BETS_CACHE_DURATION = 5 * 60 * 1000; // 5 minuti in millisecondi
+
+// Helper function per ottenere totalBets e volumi dal database (primario) con cache
+// Il contratto viene usato solo per lo status della pool, non per i conteggi
+async function getTotalBetsFromContractOrDb(prediction: any): Promise<{ total: number; yesCount: number; noCount: number; totalBnbAmount: number }> {
+  // Controlla cache
+  const cached = betsDataCache.get(prediction.id);
+  const now = Date.now();
+  
+  if (cached && (now - cached.timestamp) < BETS_CACHE_DURATION) {
+    // Restituisci dati dalla cache
+    return {
+      total: cached.total,
+      yesCount: cached.yesCount,
+      noCount: cached.noCount,
+      totalBnbAmount: cached.totalBnbAmount
+    };
+  }
+
+  // Usa sempre il database come fonte primaria per i conteggi
+  const { count: totalBets } = await supabase
+    .from('bets')
+    .select('*', { count: 'exact', head: true })
+    .eq('prediction_id', prediction.id);
+  
+  const { count: yesBets } = await supabase
+    .from('bets')
+    .select('*', { count: 'exact', head: true })
+    .eq('prediction_id', prediction.id)
+    .eq('position', 'yes');
+  
+  const { count: noBets } = await supabase
+    .from('bets')
+    .select('*', { count: 'exact', head: true })
+    .eq('prediction_id', prediction.id)
+    .eq('position', 'no');
+
+  // Calcola anche i volumi (amount_bnb)
+  const { data: betAmounts } = await supabase
+    .from('bets')
+    .select('amount_bnb')
+    .eq('prediction_id', prediction.id);
+  
+  const totalBnbAmount = betAmounts?.reduce((sum: number, bet: any) => sum + (bet.amount_bnb || 0), 0) || 0;
+
+  const total = totalBets || 0;
+  const yesCount = yesBets || 0;
+  const noCount = noBets || 0;
+
+  // Salva in cache
+  betsDataCache.set(prediction.id, {
+    total,
+    yesCount,
+    noCount,
+    totalBnbAmount,
+    timestamp: now
+  });
+
+  // Pulisci cache vecchia (ogni 100 chiamate per performance)
+  if (betsDataCache.size > 100) {
+    for (const [key, value] of betsDataCache.entries()) {
+      if (now - value.timestamp > BETS_CACHE_DURATION) {
+        betsDataCache.delete(key);
+      }
+    }
+  }
+
+  return { total, yesCount, noCount, totalBnbAmount };
 }
 
 interface Prediction {
@@ -96,39 +176,12 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
         // Calcola le percentuali basate solo sul numero di Sì/No
         const predictionsWithPercentages = await Promise.all(
           (data || []).map(async (prediction: any) => {
-            // Conta le bets per Sì e No
-            const { count: totalBets } = await supabase
-              .from('bets')
-              .select('*', { count: 'exact', head: true })
-              .eq('prediction_id', prediction.id);
+            // Ottieni totalBets e volumi dal database (con cache)
+            const { total, yesCount, noCount, totalBnbAmount } = await getTotalBetsFromContractOrDb(prediction);
             
-            const { count: yesBets } = await supabase
-              .from('bets')
-              .select('*', { count: 'exact', head: true })
-              .eq('prediction_id', prediction.id)
-              .eq('position', 'yes');
-            
-            const { count: noBets } = await supabase
-              .from('bets')
-              .select('*', { count: 'exact', head: true })
-              .eq('prediction_id', prediction.id)
-              .eq('position', 'no');
-
             // Calcola le percentuali con un solo decimale
-            const total = totalBets || 0;
-            const yesCount = yesBets || 0;
-            const noCount = noBets || 0;
-            
             const yesPercentage = total > 0 ? Math.round((yesCount / total) * 100 * 10) / 10 : 0;
             const noPercentage = total > 0 ? Math.round((noCount / total) * 100 * 10) / 10 : 0;
-
-            // Calcola il totale degli importi BNB per i volumi
-            const { data: betAmounts } = await supabase
-              .from('bets')
-              .select('amount_bnb')
-              .eq('prediction_id', prediction.id);
-            
-            const totalBnbAmount = betAmounts?.reduce((sum: number, bet: any) => sum + (bet.amount_bnb || 0), 0) || 0;
 
             return {
               ...prediction,
@@ -210,39 +263,12 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
         // Calcola le percentuali basate solo sul numero di Sì/No
         const predictionsWithPercentages = await Promise.all(
           (data || []).map(async (prediction: any) => {
-            // Conta le bets per Sì e No
-            const { count: totalBets } = await supabase
-              .from('bets')
-              .select('*', { count: 'exact', head: true })
-              .eq('prediction_id', prediction.id);
+            // Ottieni totalBets e volumi dal database (con cache)
+            const { total, yesCount, noCount, totalBnbAmount } = await getTotalBetsFromContractOrDb(prediction);
             
-            const { count: yesBets } = await supabase
-              .from('bets')
-              .select('*', { count: 'exact', head: true })
-              .eq('prediction_id', prediction.id)
-              .eq('position', 'yes');
-            
-            const { count: noBets } = await supabase
-              .from('bets')
-              .select('*', { count: 'exact', head: true })
-              .eq('prediction_id', prediction.id)
-              .eq('position', 'no');
-
             // Calcola le percentuali con un solo decimale
-            const total = totalBets || 0;
-            const yesCount = yesBets || 0;
-            const noCount = noBets || 0;
-            
             const yesPercentage = total > 0 ? Math.round((yesCount / total) * 100 * 10) / 10 : 0;
             const noPercentage = total > 0 ? Math.round((noCount / total) * 100 * 10) / 10 : 0;
-
-            // Calcola il totale degli importi BNB per i volumi
-            const { data: betAmounts } = await supabase
-              .from('bets')
-              .select('amount_bnb')
-              .eq('prediction_id', prediction.id);
-            
-            const totalBnbAmount = betAmounts?.reduce((sum: number, bet: any) => sum + (bet.amount_bnb || 0), 0) || 0;
 
             return {
               ...prediction,
@@ -313,39 +339,12 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
         // Calcola le percentuali basate solo sul numero di Sì/No
         const predictionsWithPercentages = await Promise.all(
           (data || []).map(async (prediction: any) => {
-            // Conta le bets per Sì e No
-            const { count: totalBets } = await supabase
-              .from('bets')
-              .select('*', { count: 'exact', head: true })
-              .eq('prediction_id', prediction.id);
+            // Ottieni totalBets e volumi dal database (con cache)
+            const { total, yesCount, noCount, totalBnbAmount } = await getTotalBetsFromContractOrDb(prediction);
             
-            const { count: yesBets } = await supabase
-              .from('bets')
-              .select('*', { count: 'exact', head: true })
-              .eq('prediction_id', prediction.id)
-              .eq('position', 'yes');
-            
-            const { count: noBets } = await supabase
-              .from('bets')
-              .select('*', { count: 'exact', head: true })
-              .eq('prediction_id', prediction.id)
-              .eq('position', 'no');
-
             // Calcola le percentuali con un solo decimale
-            const total = totalBets || 0;
-            const yesCount = yesBets || 0;
-            const noCount = noBets || 0;
-            
             const yesPercentage = total > 0 ? Math.round((yesCount / total) * 100 * 10) / 10 : 0;
             const noPercentage = total > 0 ? Math.round((noCount / total) * 100 * 10) / 10 : 0;
-
-            // Calcola il totale degli importi BNB per i volumi
-            const { data: betAmounts } = await supabase
-              .from('bets')
-              .select('amount_bnb')
-              .eq('prediction_id', prediction.id);
-            
-            const totalBnbAmount = betAmounts?.reduce((sum: number, bet: any) => sum + (bet.amount_bnb || 0), 0) || 0;
 
             return {
               ...prediction,
@@ -417,39 +416,12 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
         // Calcola le percentuali basate solo sul numero di Sì/No
         const predictionsWithPercentages = await Promise.all(
           (data || []).map(async (prediction: any) => {
-            // Conta le bets per Sì e No
-            const { count: totalBets } = await supabase
-              .from('bets')
-              .select('*', { count: 'exact', head: true })
-              .eq('prediction_id', prediction.id);
+            // Ottieni totalBets e volumi dal database (con cache)
+            const { total, yesCount, noCount, totalBnbAmount } = await getTotalBetsFromContractOrDb(prediction);
             
-            const { count: yesBets } = await supabase
-              .from('bets')
-              .select('*', { count: 'exact', head: true })
-              .eq('prediction_id', prediction.id)
-              .eq('position', 'yes');
-            
-            const { count: noBets } = await supabase
-              .from('bets')
-              .select('*', { count: 'exact', head: true })
-              .eq('prediction_id', prediction.id)
-              .eq('position', 'no');
-
             // Calcola le percentuali con un solo decimale
-            const total = totalBets || 0;
-            const yesCount = yesBets || 0;
-            const noCount = noBets || 0;
-            
             const yesPercentage = total > 0 ? Math.round((yesCount / total) * 100 * 10) / 10 : 0;
             const noPercentage = total > 0 ? Math.round((noCount / total) * 100 * 10) / 10 : 0;
-
-            // Calcola il totale degli importi BNB per i volumi
-            const { data: betAmounts } = await supabase
-              .from('bets')
-              .select('amount_bnb')
-              .eq('prediction_id', prediction.id);
-            
-            const totalBnbAmount = betAmounts?.reduce((sum: number, bet: any) => sum + (bet.amount_bnb || 0), 0) || 0;
 
             return {
               ...prediction,
@@ -513,11 +485,8 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
     return (
       <div className="space-y-6">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Predictions in corso...
-          </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Caricamento delle prediction...
+            Caricamento...
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -541,9 +510,6 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
     return (
       <div className="space-y-6">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Predictions in corso...
-          </h2>
           <p className="text-red-600 dark:text-red-400">
             {error}
           </p>
@@ -673,7 +639,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
               : (allPredictions.length > 0 ? allPredictions : predictions);
             
             return predictionsToShow.map((prediction) => (
-              <PredictionCard
+              <LazyPredictionCard
                 key={prediction.id}
                 id={prediction.slug}
                 title={prediction.title}

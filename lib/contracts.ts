@@ -556,8 +556,35 @@ export async function getRecentBetsFromContract(poolAddress: string, limit: numb
   }
 }
 
-// Get pool statistics from contract
+// Cache per pool stats (TTL 5 minuti)
+interface CachedPoolStats {
+  data: {
+    totalYes: string;
+    totalNo: string;
+    totalBets: string;
+    bettorCount: number;
+    isClosed: boolean;
+    winnerSet: boolean;
+    winner: boolean;
+    cancelled: boolean;
+  };
+  timestamp: number;
+}
+
+const poolStatsCache = new Map<string, CachedPoolStats>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minuti in millisecondi
+
+// Get pool statistics from contract (con caching)
 export async function getPoolStatsFromContract(poolAddress: string) {
+  // Controlla cache
+  const cached = poolStatsCache.get(poolAddress);
+  const now = Date.now();
+  
+  if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+    // Restituisci dati dalla cache
+    return cached.data;
+  }
+
   try {
     const pool = await getPool(poolAddress, true);
     const [totalYes, totalNo, totalBets, bettorCount, isClosed, winnerSet, cancelled] = await pool.getPoolStats();
@@ -565,7 +592,7 @@ export async function getPoolStatsFromContract(poolAddress: string) {
     // Read winner separately
     const winner = await pool.winner();
     
-    return {
+    const stats = {
       totalYes: totalYes.toString(),
       totalNo: totalNo.toString(),
       totalBets: totalBets.toString(),
@@ -575,8 +602,29 @@ export async function getPoolStatsFromContract(poolAddress: string) {
       winner,
       cancelled
     };
+
+    // Salva in cache
+    poolStatsCache.set(poolAddress, {
+      data: stats,
+      timestamp: now
+    });
+
+    // Pulisci cache vecchia (ogni 100 chiamate per performance)
+    if (poolStatsCache.size > 100) {
+      for (const [key, value] of poolStatsCache.entries()) {
+        if (now - value.timestamp > CACHE_DURATION) {
+          poolStatsCache.delete(key);
+        }
+      }
+    }
+
+    return stats;
   } catch (error) {
     console.error('Error getting pool stats from contract:', error);
+    // Se c'è un errore ma abbiamo dati in cache, restituisci quelli (anche se scaduti)
+    if (cached) {
+      return cached.data;
+    }
     return null;
   }
 }

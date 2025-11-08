@@ -234,7 +234,7 @@ export default function PredictionCard({
     <>
       <div 
         onClick={handleCardClick}
-        className="relative rounded-xl border border-primary/20 dark:border-primary/30 bg-primary/5 dark:bg-primary/10 shadow-sm hover:shadow-md hover:bg-primary/10 dark:hover:bg-primary/20 transition-all duration-200 p-4 hover:-translate-y-0.5 cursor-pointer h-full flex flex-col"
+        className="relative rounded-xl border border-primary/20 dark:border-primary/30 bg-primary/5 dark:bg-primary/10 shadow-sm hover:shadow-md hover:bg-primary/10 dark:hover:bg-primary/20 transition-all duration-200 p-4 hover:-translate-y-0.5 cursor-pointer aspect-square flex flex-col"
       >
         {/* Header con categoria */}
         <div className="flex items-center justify-start mb-3">
@@ -243,8 +243,8 @@ export default function PredictionCard({
           </span>
         </div>
 
-        {/* Titolo - sempre altezza 2 righe per allineamento */}
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 min-h-[2.5rem]">
+        {/* Titolo - sempre altezza fissa 2 righe per allineamento uniforme */}
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2 h-[2.75rem] overflow-hidden line-clamp-2 leading-snug">
           {title}
         </h3>
 
@@ -289,23 +289,12 @@ export default function PredictionCard({
               Volumi: <span className="font-bold text-primary">{totalBets.toFixed(4)} BNB</span>
             </span>
             
-            {/* Predictions totali - solo se ci sono bet */}
-            {totalPredictions > 0 && (
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Predictions totali: <span className="font-bold text-primary">{totalPredictions}</span>
-              </span>
-            )}
+            {/* Predictions totali - sempre spazio riservato per allineamento uniforme */}
+            <span className={`text-xs font-medium text-gray-600 dark:text-gray-400 ${totalPredictions > 0 ? '' : 'invisible'}`}>
+              Predictions totali: <span className="font-bold text-primary">{totalPredictions || 0}</span>
+            </span>
           </div>
         </div>
-
-        {/* Data di chiusura (non mostrare quando cancellata) */}
-        {status !== 'attiva' && status !== 'in_attesa' && status !== 'cancellata' && (
-          <div className="mb-3">
-            <div className="flex items-center">
-              <span className="text-xs text-gray-700 dark:text-gray-300">{closingDate}</span>
-            </div>
-          </div>
-        )}
 
         {/* Percentuali */}
         <div className="space-y-2 flex-grow">
