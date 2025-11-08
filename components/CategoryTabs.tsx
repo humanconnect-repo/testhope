@@ -18,7 +18,7 @@ const categories = [
 export default function CategoryTabs({ selectedCategory, onCategoryChange }: CategoryTabsProps) {
   return (
     <div className="flex justify-center">
-      <div className="grid grid-cols-4 sm:flex sm:space-x-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg gap-1">
+      <div className="grid grid-cols-4 sm:flex sm:space-x-1 sm:bg-gray-100 sm:dark:bg-gray-800 sm:p-1 sm:rounded-lg gap-1">
         {/* Prima riga: Novità, Trending, In scadenza, Crypto */}
         <div className="col-span-4 sm:hidden grid grid-cols-4 gap-1">
           {categories.slice(0, 4).map((category) => (

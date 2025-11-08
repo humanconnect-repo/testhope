@@ -5,6 +5,23 @@ import { supabase } from '../lib/supabase';
 import { getPoolWinner } from '../lib/contracts';
 import { formatItalianDateShort, getClosingDateText } from '../lib/dateUtils';
 
+// Hook per rilevare se siamo su mobile
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint di Tailwind
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  return isMobile;
+}
+
 interface Prediction {
   id: string;
   title: string;
@@ -32,6 +49,7 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const itemsPerPage = 8;
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     loadPredictions();
@@ -624,56 +642,76 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
 
       <div className="relative">
         {/* Freccia sinistra (per tutte le sezioni con paginazione) */}
-        {allPredictions.length > itemsPerPage && currentPage > 0 && (
-          <button
-            onClick={() => {
-              setCurrentPage(prev => prev - 1);
-            }}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Pagina precedente"
-          >
-            <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-        )}
+        {(() => {
+          // Su mobile, mostra le frecce se ci sono più di 2 prediction per tutte le categorie
+          const itemsPerPageForCategory = isMobile ? 2 : itemsPerPage;
+          const shouldShowPagination = allPredictions.length > itemsPerPageForCategory;
+          
+          return shouldShowPagination && currentPage > 0 && (
+            <button
+              onClick={() => {
+                setCurrentPage(prev => prev - 1);
+              }}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Pagina precedente"
+            >
+              <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          );
+        })()}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {((allPredictions.length > 0 && allPredictions.length > itemsPerPage) 
-            ? allPredictions.slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
-            : (allPredictions.length > 0 ? allPredictions : predictions)
-          ).map((prediction) => (
-            <PredictionCard
-              key={prediction.id}
-              id={prediction.slug}
-              title={prediction.title}
-              closingDate={formatClosingDate(prediction.closing_date, prediction.status)}
-              yesPercentage={prediction.yes_percentage}
-              noPercentage={prediction.no_percentage}
-              category={prediction.category}
-              status={prediction.status}
-              totalBets={prediction.total_bets || 0}
-              imageUrl={prediction.image_url}
-              poolAddress={prediction.pool_address}
-              totalPredictions={prediction.total_predictions || 0}
-            />
-          ))}
+          {(() => {
+            // Determina il limite per pagina: 2 su mobile per tutte le categorie, altrimenti itemsPerPage
+            const itemsPerPageForCategory = isMobile ? 2 : itemsPerPage;
+            
+            // Prepara l'array delle prediction da mostrare
+            let predictionsToShow = (allPredictions.length > 0 && allPredictions.length > itemsPerPageForCategory) 
+              ? allPredictions.slice(currentPage * itemsPerPageForCategory, (currentPage + 1) * itemsPerPageForCategory)
+              : (allPredictions.length > 0 ? allPredictions : predictions);
+            
+            return predictionsToShow.map((prediction) => (
+              <PredictionCard
+                key={prediction.id}
+                id={prediction.slug}
+                title={prediction.title}
+                closingDate={formatClosingDate(prediction.closing_date, prediction.status)}
+                yesPercentage={prediction.yes_percentage}
+                noPercentage={prediction.no_percentage}
+                category={prediction.category}
+                status={prediction.status}
+                totalBets={prediction.total_bets || 0}
+                imageUrl={prediction.image_url}
+                poolAddress={prediction.pool_address}
+                totalPredictions={prediction.total_predictions || 0}
+              />
+            ));
+          })()}
         </div>
 
         {/* Freccia destra (per tutte le sezioni con paginazione) */}
-        {allPredictions.length > (currentPage + 1) * itemsPerPage && (
-          <button
-            onClick={() => {
-              setCurrentPage(prev => prev + 1);
-            }}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Pagina successiva"
-          >
-            <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        )}
+        {(() => {
+          // Su mobile, mostra le frecce se ci sono più di 2 prediction per tutte le categorie
+          const itemsPerPageForCategory = isMobile ? 2 : itemsPerPage;
+          const shouldShowPagination = allPredictions.length > itemsPerPageForCategory;
+          const hasMorePages = allPredictions.length > (currentPage + 1) * itemsPerPageForCategory;
+          
+          return shouldShowPagination && hasMorePages && (
+            <button
+              onClick={() => {
+                setCurrentPage(prev => prev + 1);
+              }}
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Pagina successiva"
+            >
+              <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          );
+        })()}
       </div>
     </div>
   );

@@ -4,6 +4,23 @@ import PredictionCard from './PredictionCard';
 import { supabase } from '../lib/supabase';
 import { formatItalianDateShort, getClosingDateText } from '../lib/dateUtils';
 
+// Hook per rilevare se siamo su mobile
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint di Tailwind
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  return isMobile;
+}
+
 interface Prediction {
   id: string;
   title: string;
@@ -26,6 +43,7 @@ export default function CancelledPredictionsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const itemsPerPage = 4;
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     loadPredictions();
@@ -129,8 +147,10 @@ export default function CancelledPredictionsList() {
     return null; // Non mostra la sezione se non ci sono prediction cancellate
   }
 
-  const visiblePredictions = allPredictions.slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage);
-  const hasMorePages = allPredictions.length > (currentPage + 1) * itemsPerPage;
+  // Determina il limite per pagina: 2 su mobile, altrimenti itemsPerPage
+  const itemsPerPageForCategory = isMobile ? 2 : itemsPerPage;
+  const visiblePredictions = allPredictions.slice(currentPage * itemsPerPageForCategory, (currentPage + 1) * itemsPerPageForCategory);
+  const hasMorePages = allPredictions.length > (currentPage + 1) * itemsPerPageForCategory;
 
   return (
     <div className="space-y-6">
@@ -142,19 +162,22 @@ export default function CancelledPredictionsList() {
 
       <div className="relative">
         {/* Freccia sinistra */}
-        {currentPage > 0 && (
-          <button
-            onClick={() => {
-              setCurrentPage(prev => prev - 1);
-            }}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Pagina precedente"
-          >
-            <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-        )}
+        {(() => {
+          const shouldShowPagination = allPredictions.length > itemsPerPageForCategory;
+          return shouldShowPagination && currentPage > 0 && (
+            <button
+              onClick={() => {
+                setCurrentPage(prev => prev - 1);
+              }}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Pagina precedente"
+            >
+              <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          );
+        })()}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {visiblePredictions.map((prediction) => (
@@ -176,19 +199,22 @@ export default function CancelledPredictionsList() {
         </div>
 
         {/* Freccia destra */}
-        {hasMorePages && (
-          <button
-            onClick={() => {
-              setCurrentPage(prev => prev + 1);
-            }}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Pagina successiva"
-          >
-            <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        )}
+        {(() => {
+          const shouldShowPagination = allPredictions.length > itemsPerPageForCategory;
+          return shouldShowPagination && hasMorePages && (
+            <button
+              onClick={() => {
+                setCurrentPage(prev => prev + 1);
+              }}
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Pagina successiva"
+            >
+              <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          );
+        })()}
       </div>
     </div>
   );
