@@ -49,8 +49,8 @@ export default function ProfiloPage() {
 
   // Controllo iniziale di autenticazione
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout
-    let maxWaitTime: NodeJS.Timeout
+    let timeoutId: NodeJS.Timeout | undefined
+    let maxWaitTime: NodeJS.Timeout | undefined
     
     const checkAuth = async () => {
       console.log('🔍 Stato attuale:', { isAuthenticated, isConnected, address, isLoading, user: !!user })
