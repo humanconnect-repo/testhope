@@ -21,8 +21,11 @@ interface Prediction {
 
 export default function CancelledPredictionsList() {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [allPredictions, setAllPredictions] = useState<Prediction[]>([]); // Tutte le predictions per paginazione
+  const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const itemsPerPage = 4;
 
   useEffect(() => {
     loadPredictions();
@@ -48,7 +51,7 @@ export default function CancelledPredictionsList() {
         `)
         .eq('status', 'cancellata')
         .order('created_at', { ascending: false })
-        .limit(8);
+        .limit(20); // Limite più alto per supportare più pagine
 
       if (queryError) throw queryError;
 
@@ -98,7 +101,10 @@ export default function CancelledPredictionsList() {
         })
       );
 
-      setPredictions(predictionsWithPercentages);
+      // Salva tutte le predictions per la paginazione
+      setAllPredictions(predictionsWithPercentages);
+      setPredictions(predictionsWithPercentages.slice(0, itemsPerPage));
+      setCurrentPage(0); // Reset alla prima pagina
     } catch (error) {
       console.error('Error loading cancelled predictions:', error);
       setError('Errore nel caricamento delle predictions cancellate');
@@ -119,9 +125,12 @@ export default function CancelledPredictionsList() {
     return null; // Non mostra niente in caso di errore
   }
 
-  if (predictions.length === 0) {
+  if (allPredictions.length === 0) {
     return null; // Non mostra la sezione se non ci sono prediction cancellate
   }
+
+  const visiblePredictions = allPredictions.slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage);
+  const hasMorePages = allPredictions.length > (currentPage + 1) * itemsPerPage;
 
   return (
     <div className="space-y-6">
@@ -131,23 +140,55 @@ export default function CancelledPredictionsList() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {predictions.map((prediction) => (
-          <PredictionCard
-            key={prediction.id}
-            id={prediction.slug}
-            title={prediction.title}
-            closingDate={formatClosingDate(prediction.closing_date, prediction.status)}
-            yesPercentage={prediction.yes_percentage}
-            noPercentage={prediction.no_percentage}
-            category={prediction.category}
-            status={prediction.status}
-            totalBets={prediction.total_bets || 0}
-            imageUrl={prediction.image_url}
-            poolAddress={prediction.pool_address}
-            totalPredictions={prediction.total_predictions || 0}
-          />
-        ))}
+      <div className="relative">
+        {/* Freccia sinistra */}
+        {currentPage > 0 && (
+          <button
+            onClick={() => {
+              setCurrentPage(prev => prev - 1);
+            }}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            aria-label="Pagina precedente"
+          >
+            <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {visiblePredictions.map((prediction) => (
+            <PredictionCard
+              key={prediction.id}
+              id={prediction.slug}
+              title={prediction.title}
+              closingDate={formatClosingDate(prediction.closing_date, prediction.status)}
+              yesPercentage={prediction.yes_percentage}
+              noPercentage={prediction.no_percentage}
+              category={prediction.category}
+              status={prediction.status}
+              totalBets={prediction.total_bets || 0}
+              imageUrl={prediction.image_url}
+              poolAddress={prediction.pool_address}
+              totalPredictions={prediction.total_predictions || 0}
+            />
+          ))}
+        </div>
+
+        {/* Freccia destra */}
+        {hasMorePages && (
+          <button
+            onClick={() => {
+              setCurrentPage(prev => prev + 1);
+            }}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            aria-label="Pagina successiva"
+          >
+            <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );

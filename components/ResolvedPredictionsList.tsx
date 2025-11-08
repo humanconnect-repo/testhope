@@ -23,12 +23,30 @@ interface Prediction {
 
 export default function ResolvedPredictionsList() {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [allPredictions, setAllPredictions] = useState<Prediction[]>([]); // Tutte le predictions per paginazione
+  const [currentPage, setCurrentPage] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all'); // Stato per categoria selezionata
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const itemsPerPage = 8;
+
+  // Categorie disponibili
+  const categories = [
+    { name: "Tutte", value: "all" },
+    { name: "Crypto", value: "Crypto" },
+    { name: "Politica", value: "Politica" },
+    { name: "Degen", value: "Degen" },
+    { name: "Sport", value: "Sport" },
+  ];
 
   useEffect(() => {
     loadPredictions();
   }, []);
+
+  // Reset pagina quando cambia categoria
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [selectedCategory]);
 
   const loadPredictions = async () => {
     try {
@@ -51,7 +69,7 @@ export default function ResolvedPredictionsList() {
         `)
         .eq('status', 'risolta')
         .order('created_at', { ascending: false })
-        .limit(50); // Limite più alto per verificare tutte le risolte
+        .limit(100); // Limite più alto per supportare più pagine
 
       if (queryError) throw queryError;
 
@@ -146,8 +164,10 @@ export default function ResolvedPredictionsList() {
         })
       );
 
-      // Limita a 8 per la visualizzazione
-      setPredictions(predictionsWithPercentages.slice(0, 8));
+      // Salva tutte le predictions per la paginazione
+      setAllPredictions(predictionsWithPercentages);
+      setPredictions(predictionsWithPercentages.slice(0, itemsPerPage));
+      setCurrentPage(0); // Reset alla prima pagina
     } catch (error) {
       console.error('Error loading resolved predictions:', error);
       setError('Errore nel caricamento delle predictions risolte');
@@ -168,9 +188,20 @@ export default function ResolvedPredictionsList() {
     return null; // Non mostra niente in caso di errore
   }
 
-  if (predictions.length === 0) {
+  if (allPredictions.length === 0) {
     return null; // Non mostra la sezione se non ci sono prediction risolte
   }
+
+  // Filtra le predictions in base alla categoria selezionata
+  const filteredPredictions = selectedCategory === 'all' 
+    ? allPredictions 
+    : allPredictions.filter(p => p.category === selectedCategory);
+
+  // Ottieni il nome della categoria selezionata
+  const selectedCategoryName = categories.find(c => c.value === selectedCategory)?.name || selectedCategory;
+
+  const visiblePredictions = filteredPredictions.slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage);
+  const hasMorePages = filteredPredictions.length > (currentPage + 1) * itemsPerPage;
 
   return (
     <div className="space-y-6 mt-12">
@@ -180,24 +211,123 @@ export default function ResolvedPredictionsList() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {predictions.map((prediction) => (
-          <PredictionCard
-            key={prediction.id}
-            id={prediction.slug}
-            title={prediction.title}
-            closingDate={formatClosingDate(prediction.closing_date, prediction.status)}
-            yesPercentage={prediction.yes_percentage}
-            noPercentage={prediction.no_percentage}
-            category={prediction.category}
-            status={prediction.status}
-            totalBets={prediction.total_bets || 0}
-            imageUrl={prediction.image_url}
-            poolAddress={prediction.pool_address}
-            totalPredictions={prediction.total_predictions || 0}
-          />
-        ))}
+      {/* Barra categorie */}
+      <div className="flex justify-center mb-6">
+        <div className="grid grid-cols-4 sm:flex sm:space-x-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg gap-1">
+          {/* Mobile: prima riga con 4 categorie */}
+          <div className="col-span-4 sm:hidden grid grid-cols-4 gap-1">
+            {categories.slice(0, 4).map((category) => (
+              <button
+                key={category.value}
+                onClick={() => setSelectedCategory(category.value)}
+                className={`px-2 py-2 rounded-md text-xs font-medium transition-all duration-200 ${
+                  selectedCategory === category.value
+                    ? "bg-white dark:bg-dark-card text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700"
+                }`}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+          
+          {/* Mobile: seconda riga per "Sport" */}
+          <div className="col-span-4 sm:hidden flex justify-center gap-1 mt-1">
+            {categories.slice(4).map((category) => (
+              <button
+                key={category.value}
+                onClick={() => setSelectedCategory(category.value)}
+                className={`px-2 py-2 rounded-md text-xs font-medium transition-all duration-200 ${
+                  selectedCategory === category.value
+                    ? "bg-white dark:bg-dark-card text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700"
+                }`}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+          
+          {/* Desktop: layout orizzontale */}
+          <div className="hidden sm:contents">
+            {categories.map((category) => (
+              <button
+                key={category.value}
+                onClick={() => setSelectedCategory(category.value)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                  selectedCategory === category.value
+                    ? "bg-white dark:bg-dark-card text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700"
+                }`}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
+
+      {/* Messaggio se non ci sono prediction per la categoria selezionata */}
+      {filteredPredictions.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-gray-600 dark:text-gray-400">
+            {selectedCategory === 'all' 
+              ? 'Nessuna prediction risolta' 
+              : `Nessuna prediction risolta per ${selectedCategoryName}`}
+          </p>
+        </div>
+      ) : (
+        <div className="relative">
+        {/* Freccia sinistra */}
+        {currentPage > 0 && (
+          <button
+            onClick={() => {
+              setCurrentPage(prev => prev - 1);
+            }}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            aria-label="Pagina precedente"
+          >
+            <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {visiblePredictions.map((prediction) => (
+            <PredictionCard
+              key={prediction.id}
+              id={prediction.slug}
+              title={prediction.title}
+              closingDate={formatClosingDate(prediction.closing_date, prediction.status)}
+              yesPercentage={prediction.yes_percentage}
+              noPercentage={prediction.no_percentage}
+              category={prediction.category}
+              status={prediction.status}
+              totalBets={prediction.total_bets || 0}
+              imageUrl={prediction.image_url}
+              poolAddress={prediction.pool_address}
+              totalPredictions={prediction.total_predictions || 0}
+            />
+          ))}
+        </div>
+
+        {/* Freccia destra */}
+        {hasMorePages && (
+          <button
+            onClick={() => {
+              setCurrentPage(prev => prev + 1);
+            }}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            aria-label="Pagina successiva"
+          >
+            <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
+        </div>
+      )}
     </div>
   );
 }

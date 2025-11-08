@@ -27,11 +27,15 @@ interface PredictionListProps {
 
 export default function PredictionList({ selectedCategory, searchQuery }: PredictionListProps) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [allPredictions, setAllPredictions] = useState<Prediction[]>([]); // Tutte le predictions per paginazione
+  const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const itemsPerPage = 8;
 
   useEffect(() => {
     loadPredictions();
+    setCurrentPage(0); // Reset pagina quando cambia categoria o ricerca
   }, [selectedCategory, searchQuery]);
 
   const loadPredictions = async () => {
@@ -46,8 +50,8 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
       const hasSearchQuery = searchQuery.trim().length > 0;
 
       if (selectedCategory === 'trending') {
-        // Trending: top 5 con maggiori puntate
-        limit = 5;
+        // Trending: carica più predictions per supportare paginazione
+        limit = 50;
         let query = supabase
           .from('predictions')
           .select(`
@@ -149,14 +153,17 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
         );
         
         // Ordina per total_predictions (trending) e filtra solo quelle con puntate
-        predictionsData = filteredTrending
+        const allTrending = filteredTrending
           .filter((p: any) => p !== null && p.total_predictions > 0) // Solo prediction con puntate e non risolte
-          .sort((a, b) => b.total_predictions - a.total_predictions)
-          .slice(0, limit);
+          .sort((a, b) => b.total_predictions - a.total_predictions);
+        // Salva tutte le predictions per la paginazione
+        setAllPredictions(allTrending);
+        // Mostra solo le prime 8
+        predictionsData = allTrending.slice(0, itemsPerPage);
 
       } else if (selectedCategory === 'all') {
-        // Novità: ultime 15 prediction
-        limit = 15;
+        // Novità: carica fino a 50 prediction per permettere paginazione (6 pagine da 8)
+        limit = 50;
         let query = supabase
           .from('predictions')
           .select(`
@@ -253,7 +260,11 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             return prediction;
           })
         );
-        predictionsData = filteredPredictions.filter((p: any) => p !== null);
+        const allFiltered = filteredPredictions.filter((p: any) => p !== null);
+        // Salva tutte le predictions per la paginazione
+        setAllPredictions(allFiltered);
+        // Mostra solo le prime 8
+        predictionsData = allFiltered.slice(0, itemsPerPage);
 
       } else if (selectedCategory === 'closing_soon') {
         // In scadenza: tutte le prediction ATTIVE ordinate per data di chiusura (DB)
@@ -352,7 +363,11 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
             return prediction;
           })
         );
-        predictionsData = filteredClosing.filter((p: any) => p !== null);
+        const allClosing = filteredClosing.filter((p: any) => p !== null);
+        // Salva tutte le predictions per la paginazione
+        setAllPredictions(allClosing);
+        // Mostra solo le prime 8
+        predictionsData = allClosing.slice(0, itemsPerPage);
 
       } else {
         // Categoria specifica: tutte le prediction di quella categoria
@@ -454,9 +469,13 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
         );
         
         // ORDINA PER PREDICTIONS TOTALI (numero di bet)
-        predictionsData = filteredCategory
+        const allCategory = filteredCategory
           .filter((p: any) => p !== null)
           .sort((a, b) => b.total_predictions - a.total_predictions);
+        // Salva tutte le predictions per la paginazione
+        setAllPredictions(allCategory);
+        // Mostra solo le prime 8
+        predictionsData = allCategory.slice(0, itemsPerPage);
       }
 
       setPredictions(predictionsData);
@@ -603,23 +622,58 @@ export default function PredictionList({ selectedCategory, searchQuery }: Predic
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {predictions.map((prediction) => (
-          <PredictionCard
-            key={prediction.id}
-            id={prediction.slug}
-            title={prediction.title}
-            closingDate={formatClosingDate(prediction.closing_date, prediction.status)}
-            yesPercentage={prediction.yes_percentage}
-            noPercentage={prediction.no_percentage}
-            category={prediction.category}
-            status={prediction.status}
-            totalBets={prediction.total_bets || 0}
-            imageUrl={prediction.image_url}
-            poolAddress={prediction.pool_address}
-            totalPredictions={prediction.total_predictions || 0}
-          />
-        ))}
+      <div className="relative">
+        {/* Freccia sinistra (per tutte le sezioni con paginazione) */}
+        {allPredictions.length > itemsPerPage && currentPage > 0 && (
+          <button
+            onClick={() => {
+              setCurrentPage(prev => prev - 1);
+            }}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            aria-label="Pagina precedente"
+          >
+            <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {((allPredictions.length > 0 && allPredictions.length > itemsPerPage) 
+            ? allPredictions.slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
+            : (allPredictions.length > 0 ? allPredictions : predictions)
+          ).map((prediction) => (
+            <PredictionCard
+              key={prediction.id}
+              id={prediction.slug}
+              title={prediction.title}
+              closingDate={formatClosingDate(prediction.closing_date, prediction.status)}
+              yesPercentage={prediction.yes_percentage}
+              noPercentage={prediction.no_percentage}
+              category={prediction.category}
+              status={prediction.status}
+              totalBets={prediction.total_bets || 0}
+              imageUrl={prediction.image_url}
+              poolAddress={prediction.pool_address}
+              totalPredictions={prediction.total_predictions || 0}
+            />
+          ))}
+        </div>
+
+        {/* Freccia destra (per tutte le sezioni con paginazione) */}
+        {allPredictions.length > (currentPage + 1) * itemsPerPage && (
+          <button
+            onClick={() => {
+              setCurrentPage(prev => prev + 1);
+            }}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            aria-label="Pagina successiva"
+          >
+            <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );

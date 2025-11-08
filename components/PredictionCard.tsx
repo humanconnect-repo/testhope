@@ -258,6 +258,7 @@ export default function PredictionCard({
                   src={imageUrl}
                   alt={title}
                   className="w-full h-full object-cover"
+                  loading="lazy"
                   onLoad={() => console.log('✅ Immagine caricata:', imageUrl)}
                   onError={() => console.error('❌ Errore caricamento immagine:', imageUrl)}
                 />
