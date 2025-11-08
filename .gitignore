@@ -122,3 +122,7 @@ deployment-info.json
 *.bak
 *.backup
 *.old
+
+# TypeScript build info
+*.tsbuildinfo
+tsconfig.tsbuildinfo
