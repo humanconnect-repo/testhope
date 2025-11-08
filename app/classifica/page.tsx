@@ -25,75 +25,40 @@ export default function ClassificaPage() {
         setLoading(true);
         setError(null);
 
-        // Carica tutte le bets necessarie (user_id, amount_bnb, winning_rewards_amount)
-        const { data: bets, error: betsErr } = await supabase
-          .from('bets')
-          .select('user_id, amount_bnb, winning_rewards_amount')
-          .not('user_id', 'is', null);
-        if (betsErr) throw betsErr;
+        // Carica i profili con tutti i contatori (ottimizzato: tutto da profiles, nessun calcolo!)
+        const { data: profiles, error: profilesErr } = await supabase
+          .from('profiles')
+          .select('id, username, total_bets, total_bnb_bets, total_wins, total_bnb_earned')
+          .gt('total_bets', 0) // Solo utenti con almeno una bet
+          .order('total_bets', { ascending: false });
+        if (profilesErr) throw profilesErr;
 
-        console.log('🔍 Bets caricate:', bets?.length);
+        console.log('🔍 Profili caricati:', profiles?.length);
 
-        // Aggrega per user_id lato client (performante per dimensioni attuali)
-        const agg = new Map<string, LeaderRow>();
-        for (const b of bets || []) {
-          const u = b.user_id as string;
-          if (!u) continue; // Skip se user_id è null/vuoto
-          const amount = Number(b.amount_bnb) || 0;
-          const winAmt = Number(b.winning_rewards_amount) || 0;
-          if (!agg.has(u)) {
-            agg.set(u, {
-              userId: u,
-              username: 'Anonimo', // placeholder temporaneo
-              totalPredictions: 0,
-              totalBnbStaked: 0,
-              totalWins: 0,
-              totalBnbEarned: 0,
-            });
-          }
-          const r = agg.get(u)!;
-          r.totalPredictions += 1;
-          r.totalBnbStaked += amount;
-          if (winAmt > 0) {
-            r.totalWins += 1;
-            r.totalBnbEarned += winAmt;
-          }
-        }
+        // Combina dati da profiles (tutti i contatori già calcolati!)
+        const rowsBase: LeaderRow[] = (profiles || []).map((prof: {
+          id: string;
+          username: string | null;
+          total_bets: number | null;
+          total_bnb_bets: number | null;
+          total_wins: number | null;
+          total_bnb_earned: number | null;
+        }) => {
+          return {
+            userId: prof.id,
+            username: prof.username || 'Anonimo',
+            totalPredictions: prof.total_bets || 0, // Usa total_bets da profiles (ottimizzato!)
+            totalBnbStaked: Number(prof.total_bnb_bets) || 0, // Usa total_bnb_bets da profiles (ottimizzato!)
+            totalWins: prof.total_wins || 0, // Usa total_wins da profiles (ottimizzato!)
+            totalBnbEarned: Number(prof.total_bnb_earned) || 0, // Usa total_bnb_earned da profiles (ottimizzato!)
+          };
+        });
 
-        const rowsBase = Array.from(agg.values());
-        console.log('🔍 User IDs unici trovati:', rowsBase.length, rowsBase.map(r => r.userId).slice(0, 5));
+        console.log('🔍 Righe classifica preparate:', rowsBase.length);
 
-        // Carica i profili per assegnare username (se disponibile), altrimenti Anonimo
-        const userIds = rowsBase.map(r => r.userId).filter(Boolean);
-        // Risolvi username uno a uno (limitato al numero di utenti in classifica, evita errori 400 ed è conforme a RLS)
-        const profilesById: Record<string, { username?: string }> = {};
-        for (const r of rowsBase) {
-          try {
-            if (!r.userId || profilesById[r.userId]) continue;
-            const { data: prof, error: profErr } = await supabase
-              .from('profiles')
-              .select('id, username')
-              .eq('id', r.userId)
-              .maybeSingle();
-            if (profErr) {
-              console.warn('⚠️ Profilo non recuperato per', r.userId, profErr.message);
-              profilesById[r.userId] = {};
-            } else {
-              profilesById[r.userId] = { username: prof?.username };
-            }
-          } catch (e) {
-            console.warn('⚠️ Errore fetch profilo per', r.userId, e);
-            profilesById[r.userId] = {};
-          }
-        }
-
+        // Calcola punti e arricchisci i dati
         const enriched = rowsBase.map(r => {
-          const p = profilesById[r.userId];
-          const displayName = (p?.username && String(p.username).trim())
-            || 'Anonimo';
-          if (displayName === 'Anonimo') {
-            console.log('⚠️ Anonimo per userId:', r.userId, 'profilo trovato:', !!p, 'username:', p?.username);
-          }
+          const displayName = (r.username && String(r.username).trim()) || 'Anonimo';
           // Calcolo punti: 1 per prediction, 2 per prediction vinta, 1 per ogni 0.1 BNB scommessi
           const points = (r.totalPredictions || 0)
             + 2 * (r.totalWins || 0)
@@ -159,8 +124,8 @@ export default function ClassificaPage() {
                 Su desktop vedi più dettagli
               </div>
             </div>
-            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-dark-card">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <div>
+            <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Utente</th>
