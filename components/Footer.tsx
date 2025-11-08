@@ -19,7 +19,37 @@ export default function Footer() {
     <>
       <footer className="bg-transparent border-t border-gray-200 dark:border-gray-700 py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
+          {/* Mobile: layout centrato con sezioni separate */}
+          <div className="flex flex-col items-center space-y-3 sm:hidden">
+            <p className="text-gray-600 dark:text-gray-400 text-sm text-center">
+              © Bella Napoli | Il Prediction Market all'italiana
+            </p>
+            <div className="text-gray-600 dark:text-gray-400 text-sm text-center">
+              Seguici su{' '}
+              <button 
+                onClick={handleKeetClick}
+                className="text-primary hover:underline cursor-pointer"
+              >
+                Keet
+              </button> {' | '} 
+              <a 
+                href="https://x.com/bellanapoli_io"
+                className="text-primary hover:underline"
+                target="_blank" rel="noopener noreferrer"
+              >
+                X
+              </a>
+            </div>
+            <a 
+              href="mailto:bellanapoli@tuta.com" 
+              className="text-primary hover:underline text-sm text-center"
+            >
+              Report a bug
+            </a>
+          </div>
+
+          {/* Desktop: layout originale */}
+          <div className="hidden sm:flex sm:justify-between sm:items-center">
             <p className="text-gray-600 dark:text-gray-400 text-sm">
               © Bella Napoli | Il Prediction Market all'italiana — Seguici su{' '}
               <button 
