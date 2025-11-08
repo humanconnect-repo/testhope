@@ -834,6 +834,11 @@ export default function AdminPanel() {
 
         if (editingPrediction) {
         
+        // Validazione userAddress
+        if (!userAddress) {
+          throw new Error('Wallet address non disponibile. Assicurati di essere connesso.');
+        }
+
         // Prima verifichiamo che la prediction esista
         const { data: existingPrediction, error: checkError } = await supabase
           .from('predictions')
@@ -858,6 +863,7 @@ export default function AdminPanel() {
             closing_bid: predictionData.closing_bid,
             status: predictionData.status,
             rules: predictionData.rules,
+            admin_wallet_address: userAddress,
             image_url: predictionData.image_url,
             notes: predictionData.notes
           });

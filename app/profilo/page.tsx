@@ -18,6 +18,8 @@ export default function ProfiloPage() {
   const [hasBeenAuthenticated, setHasBeenAuthenticated] = useState(false)
   const [resolvedStartIndex, setResolvedStartIndex] = useState(0)
   const resolvedItemsPerPage = 3
+  const [activePredictionsPage, setActivePredictionsPage] = useState(0)
+  const activePredictionsPerPage = 4
   
   // Carica il totale BNB e le statistiche dell'utente
   const { totalBnb, totalBets, bnbGained, bnbLost, netBalance, loading: bnbLoading, error: bnbError } = useUserTotalBnb(user?.id || null)
@@ -285,51 +287,83 @@ export default function ProfiloPage() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-3">
-                  {activePredictions.map((prediction) => (
-                    <div
-                      key={prediction.id}
-                      onClick={() => handlePredictionClick(prediction.slug, prediction.id)}
-                      className={`flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg transition-colors border border-gray-200 dark:border-gray-700 cursor-pointer ${
-                        navigatingTo === prediction.id
-                          ? 'bg-primary/10 dark:bg-primary/20 border-primary/30'
-                          : 'hover:bg-gray-50 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      {navigatingTo === prediction.id ? (
-                        <div className="flex items-center justify-center flex-1 py-2">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-4 h-4 bg-primary/20 rounded-full animate-pulse"></div>
-                            <span className="text-sm text-primary dark:text-primary-400 font-medium">
-                              Caricamento...
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          {prediction.image_url && (
-                            <img
-                              src={prediction.image_url}
-                              alt={prediction.title}
-                              className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                            />
+                <>
+                  <div className="grid grid-cols-1 gap-3">
+                    {activePredictions
+                      .slice(activePredictionsPage * activePredictionsPerPage, (activePredictionsPage + 1) * activePredictionsPerPage)
+                      .map((prediction) => (
+                        <div
+                          key={prediction.id}
+                          onClick={() => handlePredictionClick(prediction.slug, prediction.id)}
+                          className={`flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg transition-colors border border-gray-200 dark:border-gray-700 cursor-pointer ${
+                            navigatingTo === prediction.id
+                              ? 'bg-primary/10 dark:bg-primary/20 border-primary/30'
+                              : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          {navigatingTo === prediction.id ? (
+                            <div className="flex items-center justify-center flex-1 py-2">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-4 h-4 bg-primary/20 rounded-full animate-pulse"></div>
+                                <span className="text-sm text-primary dark:text-primary-400 font-medium">
+                                  Caricamento...
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              {prediction.image_url && (
+                                <img
+                                  src={prediction.image_url}
+                                  alt={prediction.title}
+                                  className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
+                                  {prediction.title}
+                                </h4>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  {prediction.category}
+                                </p>
+                              </div>
+                              <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </>
                           )}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
-                              {prediction.title}
-                            </h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {prediction.category}
-                            </p>
-                          </div>
-                          <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </>
-                      )}
+                        </div>
+                      ))}
+                  </div>
+                  {/* Frecce di navigazione */}
+                  {activePredictions.length > activePredictionsPerPage && (
+                    <div className="flex items-center justify-center gap-4 mt-4">
+                      <button
+                        onClick={() => setActivePredictionsPage(prev => Math.max(0, prev - 1))}
+                        disabled={activePredictionsPage === 0}
+                        className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        aria-label="Pagina precedente"
+                      >
+                        <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Pagina {activePredictionsPage + 1} di {Math.ceil(activePredictions.length / activePredictionsPerPage)}
+                      </span>
+                      <button
+                        onClick={() => setActivePredictionsPage(prev => Math.min(Math.ceil(activePredictions.length / activePredictionsPerPage) - 1, prev + 1))}
+                        disabled={activePredictionsPage >= Math.ceil(activePredictions.length / activePredictionsPerPage) - 1}
+                        className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        aria-label="Pagina successiva"
+                      >
+                        <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </div>
           </div>
