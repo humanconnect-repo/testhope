@@ -118,8 +118,15 @@ export default function ClassificaPage() {
           <>
             {/* Tooltip per mobile */}
             <div className="sm:hidden mb-3 flex justify-center">
-              <div className="inline-block text-xs text-gray-600 dark:text-gray-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg px-3 py-2">
-                Su desktop vedi più dettagli
+              <div className="inline-block text-xs text-gray-600 dark:text-gray-400 bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2">
+                Su desktop vedi più dettagli...
+              </div>
+            </div>
+            
+            {/* Tooltip per desktop */}
+            <div className="hidden sm:flex mb-4 justify-center">
+              <div className="inline-block text-sm font-medium text-gray-600 dark:text-gray-400 bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2">
+                Su desktop vedi più dettagli...
               </div>
             </div>
             <div>

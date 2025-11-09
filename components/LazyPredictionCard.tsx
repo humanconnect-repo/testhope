@@ -50,12 +50,12 @@ export default function LazyPredictionCard(props: LazyPredictionCardProps) {
   }, []);
 
   return (
-    <div ref={cardRef} className="aspect-square">
+    <div ref={cardRef} className="md:aspect-square">
       {isVisible ? (
         <PredictionCard {...props} />
       ) : (
         // Placeholder mentre non è visibile (stessa altezza per evitare layout shift)
-        <div className="w-full h-full bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse aspect-square" />
+        <div className="w-full h-full bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse md:aspect-square" />
       )}
     </div>
   );

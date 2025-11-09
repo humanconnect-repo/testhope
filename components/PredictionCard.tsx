@@ -234,7 +234,7 @@ export default function PredictionCard({
     <>
       <div 
         onClick={handleCardClick}
-        className="relative rounded-xl border border-primary/20 dark:border-primary/30 bg-primary/5 dark:bg-primary/10 shadow-sm hover:shadow-md hover:bg-primary/10 dark:hover:bg-primary/20 transition-all duration-200 p-4 hover:-translate-y-0.5 cursor-pointer aspect-square flex flex-col"
+        className="relative rounded-xl border border-primary/20 dark:border-primary/30 bg-primary/5 dark:bg-primary/10 shadow-sm hover:shadow-md hover:bg-primary/10 dark:hover:bg-primary/20 transition-all duration-200 p-3 md:p-4 hover:-translate-y-0.5 cursor-pointer md:aspect-square flex flex-col"
       >
         {/* Header con categoria */}
         <div className="flex items-center justify-start mb-3">
