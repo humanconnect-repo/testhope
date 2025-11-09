@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from 'react';
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
+import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 
 type LeaderRow = {
@@ -88,11 +87,10 @@ export default function ClassificaPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-dark-bg">
-      <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-10">
         {/* Pulsante HOME */}
         <div className="flex justify-start mt-2 mb-4">
-          <a
+          <Link
             href="/"
             className="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary/90 text-white font-medium rounded-lg transition-colors duration-200"
           >
@@ -100,7 +98,7 @@ export default function ClassificaPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
             HOME
-          </a>
+          </Link>
         </div>
         <div className="flex justify-center mb-6">
           <img
@@ -156,7 +154,6 @@ export default function ClassificaPage() {
           </>
         )}
       </main>
-      <Footer />
     </div>
   );
 }

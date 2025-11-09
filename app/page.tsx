@@ -1,7 +1,6 @@
 "use client";
 import { useState } from 'react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import Link from 'next/link';
 import PredictionList from '../components/PredictionList';
 import CancelledPredictionsList from '../components/CancelledPredictionsList';
 import ResolvedPredictionsList from '../components/ResolvedPredictionsList';
@@ -30,8 +29,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-dark-bg select-none">
-      <Header />
-      
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-10">
         {/* Logo e barra di ricerca */}
         <div className="flex justify-center items-center space-x-8 mb-8">
@@ -75,12 +72,12 @@ export default function Home() {
 
         {/* CTA classifica */}
         <div className="my-8 flex justify-center">
-          <a
+          <Link
             href="/classifica"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-transparent border-2 border-primary text-white font-medium pulse-border-blue hover:border-primary/80 transition-colors"
           >
             Uè guagliò, vedi 'sta classifica!
-          </a>
+          </Link>
         </div>
 
         {/* Categorie */}
@@ -132,8 +129,6 @@ export default function Home() {
           <CancelledPredictionsList />
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 }

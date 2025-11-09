@@ -2,11 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import Web3Login from './Web3Login';
 import { useAdmin } from '../hooks/useAdmin';
+import { useWeb3Auth } from '../hooks/useWeb3Auth';
 import Link from 'next/link';
 import Image from 'next/image';
 
 export default function Header() {
   const { isAdmin, loading } = useAdmin();
+  const { isConnected } = useWeb3Auth();
   // Mantiene lo stato admin anche durante la navigazione per evitare flicker
   const [stableIsAdmin, setStableIsAdmin] = useState(false);
   
@@ -21,6 +23,13 @@ export default function Header() {
       setStableIsAdmin(false);
     }
   }, [isAdmin, loading, stableIsAdmin]);
+
+  // Riserviamo lo spazio per OP Panel SOLO quando sappiamo che è admin:
+  // - Sappiamo già che è admin (stableIsAdmin)
+  // - OPPURE sappiamo che è admin (isAdmin) anche durante il loading
+  // NON riserviamo lo spazio durante il loading iniziale se non sappiamo ancora se è admin
+  // Questo evita layout shift per utenti non admin
+  const shouldReserveSpace = stableIsAdmin || isAdmin;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-dark-bg/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 shadow-sm">
@@ -54,35 +63,39 @@ export default function Header() {
               <span className="sm:hidden">Docs</span>
             </Link>
             
-            {/* OP Panel Button - Solo per admin, non renderizza se non è admin */}
-            {stableIsAdmin && (
-              <Link 
-                href="/0x9dc9ca268dc8370b"
-                className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 font-medium text-sm border border-gray-200 dark:border-gray-600 flex items-center space-x-2"
-              >
-                {/* Icona admin */}
-                <svg 
-                  className="w-5 h-5" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" 
-                  />
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
-                  />
-                </svg>
-                {/* Testo solo su desktop */}
-                <span className="hidden sm:inline">OP Panel</span>
-              </Link>
+            {/* OP Panel Button - Solo per admin, riserviamo lo spazio durante il loading per evitare layout shift */}
+            {shouldReserveSpace && (
+              <div className="min-w-[90px] sm:min-w-[120px] flex items-center justify-end">
+                {stableIsAdmin && (
+                  <Link 
+                    href="/0x9dc9ca268dc8370b"
+                    className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 font-medium text-sm border border-gray-200 dark:border-gray-600 flex items-center space-x-2"
+                  >
+                    {/* Icona admin */}
+                    <svg 
+                      className="w-5 h-5" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" 
+                      />
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
+                      />
+                    </svg>
+                    {/* Testo solo su desktop */}
+                    <span className="hidden sm:inline">OP Panel</span>
+                  </Link>
+                )}
+              </div>
             )}
           </div>
         </div>

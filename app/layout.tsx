@@ -3,6 +3,8 @@ import '../lib/consoleFilter' // Filtra warning server-side e client-side
 import './globals.css'
 import '../styles/animations.css'
 import Web3Provider from '../components/Web3Provider'
+import Header from '../components/Header'
+import Footer from '../components/Footer'
 
 export const metadata: Metadata = {
   title: 'Bella Napoli - Scommetti sul futuro, con stile degen italiano',
@@ -209,7 +211,9 @@ export default function RootLayout({
       </head>
       <body className="bg-white dark:bg-dark-bg text-gray-900 dark:text-white transition-colors duration-200">
         <Web3Provider>
+          <Header />
           {children}
+          <Footer />
         </Web3Provider>
       </body>
     </html>

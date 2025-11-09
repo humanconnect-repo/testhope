@@ -12,8 +12,6 @@ import { supabase } from '../../../lib/supabase';
 import { validateComment } from '../../../lib/profanityFilter';
 import BettingProgressModal, { BettingStep } from '../../../components/BettingProgressModal';
 import TransactionProgressModal, { TransactionStep } from '../../../components/TransactionProgressModal';
-import Header from '../../../components/Header';
-import Footer from '../../../components/Footer';
 import QuoteChart from '../../../components/QuoteChart';
 import Link from 'next/link';
 
@@ -1751,7 +1749,6 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   if (loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-dark-bg">
-        <Header />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-10">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
@@ -1760,7 +1757,6 @@ export default function PredictionPage({ params }: { params: { slug: string } })
             </h1>
           </div>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -1768,7 +1764,6 @@ export default function PredictionPage({ params }: { params: { slug: string } })
   if (error || !prediction) {
     return (
       <div className="min-h-screen bg-white dark:bg-dark-bg">
-        <Header />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-10">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
@@ -1779,15 +1774,12 @@ export default function PredictionPage({ params }: { params: { slug: string } })
             </Link>
           </div>
         </main>
-        <Footer />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-white dark:bg-dark-bg">
-      <Header />
-      
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-10">
         {/* Breadcrumb */}
         <div className="mb-8 flex justify-start mt-8">
@@ -3465,8 +3457,6 @@ export default function PredictionPage({ params }: { params: { slug: string } })
           </div>
         </div>
       </main>
-
-      <Footer />
 
       {/* Modal di Conferma Scommessa */}
       {showBettingConfirmModal && (

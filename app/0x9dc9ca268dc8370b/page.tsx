@@ -1,7 +1,5 @@
 "use client";
 import AdminPanel from '../../components/AdminPanel';
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
 import AdminLoadingModal from '../../components/AdminLoadingModal';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useRouter } from 'next/navigation';
@@ -43,7 +41,6 @@ export default function AdminPage() {
     return (
       <>
         <div className="min-h-screen bg-white dark:bg-dark-bg">
-          <Header />
           <main className="pt-24 pb-10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               {error ? (
@@ -58,7 +55,6 @@ export default function AdminPage() {
               ) : null}
             </div>
           </main>
-          <Footer />
         </div>
       </>
     );
@@ -75,7 +71,6 @@ export default function AdminPage() {
       
       {/* Pagina admin - si carica dietro il modal */}
       <div className="min-h-screen bg-white dark:bg-dark-bg">
-        <Header />
         <main className="pt-24 pb-10">
           {!loading && isAdmin ? (
             <AdminPanel />
@@ -92,7 +87,6 @@ export default function AdminPage() {
             </div>
           ) : null}
         </main>
-        <Footer />
       </div>
     </>
   );

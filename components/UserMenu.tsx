@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { useWeb3Auth } from '../hooks/useWeb3Auth';
 import { useRouter } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -75,10 +76,6 @@ export default function UserMenu() {
 
   const handleProfileClick = () => {
     setIsOpen(false);
-    // Aggiungi un piccolo delay per evitare connessioni multiple
-    setTimeout(() => {
-      router.push('/profilo');
-    }, 200);
   };
 
   const handleSignInClick = () => {
@@ -259,13 +256,14 @@ export default function UserMenu() {
                   </svg>
                   <span className="font-semibold">BNB Faucet</span>
                 </a>
-                <button
+                <Link
+                  href="/profilo"
                   onClick={handleProfileClick}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center space-x-2"
                 >
                   <span>👤</span>
                   <span>Profilo</span>
-                </button>
+                </Link>
                 <button
                   onClick={handleSignOutClick}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center space-x-2"
