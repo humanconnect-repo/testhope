@@ -34,8 +34,8 @@ BEGIN
   RETURN QUERY
   UPDATE public.bets
   SET claim_tx_hash = p_claim_tx_hash
-  WHERE user_id = v_user_id
-    AND prediction_id = v_prediction_id
+  WHERE bets.user_id = v_user_id
+    AND bets.prediction_id = v_prediction_id
   RETURNING bets.id, bets.user_id, bets.prediction_id, bets.claim_tx_hash;
 END;
 $$;
