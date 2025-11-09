@@ -45,12 +45,8 @@ export default function ProfileForm() {
       try {
         // Prima prova a usare i dati già caricati nell'utente
         const userProfile = user?.user_metadata
-        console.log('🔍 ProfileForm useEffect - user:', user)
-        console.log('🔍 ProfileForm useEffect - userProfile:', userProfile)
-        console.log('🔍 ProfileForm useEffect - user.user_metadata:', user?.user_metadata)
         
         if (userProfile && userProfile.username) {
-          console.log('📋 Caricando profilo da utente autenticato:', userProfile)
           setProfile({
             nickname: userProfile.username || '', // username nel DB, nickname nel form
             avatar_url: userProfile.avatar_url || '',
@@ -62,7 +58,6 @@ export default function ProfileForm() {
         }
 
         // Se non ci sono dati nell'utente, carica dal database
-        console.log('📋 Caricando profilo dal database...')
         // Normalizza l'indirizzo per il match case-insensitive
         const normalizedAddress = address.toLowerCase().trim()
         
@@ -72,25 +67,18 @@ export default function ProfileForm() {
           .ilike('wallet_address', normalizedAddress) // Case-insensitive match
           .maybeSingle() // Usa maybeSingle invece di single per evitare errori 406
 
-        console.log('🔍 Database query result:', { data, error })
-
         // Gestisci errore PGRST116 (No rows) come caso normale (quando il profilo non esiste ancora)
         if (error) {
-          if (error.code === 'PGRST116') {
-            console.log('📋 Nessun profilo trovato per questo wallet (normale per nuovi utenti)')
-          } else {
+          if (error.code !== 'PGRST116') {
             console.error('Errore caricamento profilo:', error)
           }
         } else if (data) {
-          console.log('📋 Dati caricati dal database:', data)
           setProfile({
             nickname: data.username || '', // username nel DB, nickname nel form
             avatar_url: data.avatar_url || '',
             bio: data.bio || ''
           })
           // Non serve più setAvatarPreview
-        } else {
-          console.log('📋 Nessun profilo trovato nel database')
         }
       } catch (err) {
         console.error('Errore caricamento profilo:', err)

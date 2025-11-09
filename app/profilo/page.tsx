@@ -36,12 +36,18 @@ export default function ProfiloPage() {
   // Calcola le statistiche di successo usando i dati da profiles (ottimizzato!)
   // Usa totalWins da profiles invece di filtrare resolvedPredictions
   const wonPredictions = totalWins;
-  // Per la percentuale di successo, usa totalWins / totalBets (percentuale di successo sulle scommesse totali)
-  // Oppure se preferisci la percentuale sulle prediction risolte, usa resolvedPredictions.length solo per il conteggio
+  // totalResolvedPredictions = tutte le prediction risolte dove l'utente ha scommesso (vincite + perse)
   const totalResolvedPredictions = resolvedPredictions.length;
+  // La percentuale di successo è calcolata SOLO sulle prediction risolte
   const successRate = totalResolvedPredictions > 0 
     ? ((wonPredictions / totalResolvedPredictions) * 100).toFixed(1) 
-    : (totalBets > 0 ? ((wonPredictions / totalBets) * 100).toFixed(1) : '0.0');
+    : '0.0';
+
+  // Calcola i volumi BNB solo dalle prediction risolte (escludendo quelle cancellate)
+  const totalResolvedBnb = resolvedPredictions.reduce((sum, pred) => sum + (pred.amount_bnb || 0), 0);
+  const totalResolvedGained = resolvedPredictions.reduce((sum, pred) => sum + (pred.winning_rewards_amount || 0), 0);
+  const totalResolvedLost = totalResolvedBnb > totalResolvedGained ? totalResolvedBnb - totalResolvedGained : 0;
+  const totalResolvedNetBalance = totalResolvedGained - totalResolvedBnb;
   
   // Stato per il loading durante la navigazione
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
@@ -58,11 +64,8 @@ export default function ProfiloPage() {
     let maxWaitTime: NodeJS.Timeout | undefined
     
     const checkAuth = async () => {
-      console.log('🔍 Stato attuale:', { isAuthenticated, isConnected, address, isLoading, user: !!user })
-      
       // Se è già autenticato (user disponibile), non mostrare il loading
       if (isAuthenticated && user) {
-        console.log('✅ Già autenticato, accesso diretto')
         setIsChecking(false)
         setHasBeenAuthenticated(true)
         return
@@ -70,7 +73,6 @@ export default function ProfiloPage() {
       
       // Se non è connesso, reindirizza subito senza loading
       if (!isConnected) {
-        console.log('❌ Non connesso, reindirizzamento immediato...')
         router.push('/')
         return
       }
@@ -78,13 +80,11 @@ export default function ProfiloPage() {
       // Se è connesso ma user non è ancora disponibile, aspetta
       // (la query potrebbe essere ancora in corso anche se isLoading è false)
       if (isConnected && !user) {
-        console.log('⏳ Wallet connesso ma user non ancora disponibile, aspetto...')
         setIsChecking(true)
         
         // Timeout massimo: se dopo 8 secondi user non è disponibile, reindirizza
         maxWaitTime = setTimeout(() => {
           if (!user && !isAuthenticated) {
-            console.log('❌ Timeout: user non disponibile dopo 8 secondi, reindirizzamento...')
             router.push('/')
           }
         }, 8000)
@@ -109,7 +109,6 @@ export default function ProfiloPage() {
   // Monitora direttamente quando user diventa disponibile (reazione immediata)
   useEffect(() => {
     if (user && isConnected && address) {
-      console.log('✅ User disponibile, autenticazione confermata')
       setIsChecking(false)
       setHasBeenAuthenticated(true)
     }
@@ -118,7 +117,6 @@ export default function ProfiloPage() {
   // Reindirizza immediatamente se cambia wallet e non è autenticato
   useEffect(() => {
     if (isConnected && address && !isAuthenticated && !isChecking && hasBeenAuthenticated) {
-      console.log('❌ Wallet cambiato e non autenticato, reindirizzamento immediato...')
       router.push('/')
     }
   }, [address, isAuthenticated, isConnected, isChecking, hasBeenAuthenticated, router])
@@ -150,7 +148,6 @@ export default function ProfiloPage() {
       return
     }
     if (!isAuthenticated && !user && !isChecking && hasBeenAuthenticated) {
-      console.log('❌ Non autenticato dopo controllo, reindirizzamento...')
       const timeoutId = setTimeout(() => {
         router.push('/')
       }, 500)
@@ -219,57 +216,57 @@ export default function ProfiloPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Volumi effettuati totali</span>
                   <span className="text-lg font-bold text-gray-900 dark:text-white">
-                    {bnbLoading ? (
+                    {(bnbLoading || resolvedLoading) ? (
                       <div className="animate-pulse">
                         <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
                       </div>
-                    ) : bnbError ? (
+                    ) : (bnbError || resolvedError) ? (
                       <span className="text-red-500 dark:text-red-400 text-sm">Errore</span>
                     ) : (
-                      `${totalBnb.toFixed(4)} BNB`
+                      `${totalResolvedBnb.toFixed(4)} BNB`
                     )}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500 dark:text-gray-400">BNB guadagnati</span>
                   <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {bnbLoading ? (
+                    {(bnbLoading || resolvedLoading) ? (
                       <div className="animate-pulse">
                         <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
                       </div>
-                    ) : bnbError ? (
+                    ) : (bnbError || resolvedError) ? (
                       <span className="text-red-500 dark:text-red-400 text-sm">Errore</span>
                     ) : (
-                      `+${bnbGained.toFixed(4)} BNB`
+                      `+${totalResolvedGained.toFixed(4)} BNB`
                     )}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500 dark:text-gray-400">BNB persi</span>
                   <span className="text-lg font-bold text-red-600 dark:text-red-400">
-                    {bnbLoading ? (
+                    {(bnbLoading || resolvedLoading) ? (
                       <div className="animate-pulse">
                         <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
                       </div>
-                    ) : bnbError ? (
+                    ) : (bnbError || resolvedError) ? (
                       <span className="text-red-500 dark:text-red-400 text-sm">Errore</span>
                     ) : (
-                      `-${bnbLost.toFixed(4)} BNB`
+                      `-${totalResolvedLost.toFixed(4)} BNB`
                     )}
                   </span>
                 </div>
                 <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Bilancio netto</span>
-                    <span className={`text-lg font-bold ${netBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {bnbLoading ? (
+                    <span className={`text-lg font-bold ${totalResolvedNetBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {(bnbLoading || resolvedLoading) ? (
                         <div className="animate-pulse">
                           <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
                         </div>
-                      ) : bnbError ? (
+                      ) : (bnbError || resolvedError) ? (
                         <span className="text-red-500 dark:text-red-400 text-sm">Errore</span>
                       ) : (
-                        `${netBalance >= 0 ? '+' : ''}${netBalance.toFixed(4)} BNB`
+                        `${totalResolvedNetBalance >= 0 ? '+' : ''}${totalResolvedNetBalance.toFixed(4)} BNB`
                       )}
                     </span>
                   </div>
@@ -420,14 +417,14 @@ export default function ProfiloPage() {
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Prediction fatte</span>
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {bnbLoading ? (
+                    {(bnbLoading || resolvedLoading) ? (
                       <div className="animate-pulse">
                         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8"></div>
                       </div>
-                    ) : bnbError ? (
+                    ) : (bnbError || resolvedError) ? (
                       <span className="text-red-500 dark:text-red-400 text-xs">Errore</span>
                     ) : (
-                      totalBets
+                      totalResolvedPredictions
                     )}
                   </span>
                 </div>

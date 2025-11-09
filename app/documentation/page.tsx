@@ -1331,9 +1331,9 @@ export default function DocumentationPage() {
                             <li>La firma non costa nulla e non è una transazione sulla blockchain</li>
                             <li>Una volta firmato, sarai automaticamente loggato sulla piattaforma</li>
                           </ol>
-                          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                              <strong>⚠️ Nota importante:</strong> la firma del messaggio è necessaria solo una volta per sessione. Non devi firmare ad ogni operazione.
+                          <div className="mt-4 p-4 bg-gray-50 dark:bg-dark-bg border border-cyan-400/30 dark:border-cyan-400/30 rounded-lg inline-block">
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              <strong className="text-cyan-400">⚠️ Nota importante:</strong> la firma del messaggio è necessaria solo una volta per sessione. Non devi firmare ad ogni operazione.
                             </p>
                           </div>
                         </div>
@@ -1738,9 +1738,9 @@ export default function DocumentationPage() {
                             <li>Procedere per la prediction cliccando sul pulsante di conferma</li>
                             <li>Firmare la transazione nel tuo wallet quando richiesto</li>
                           </ol>
-                          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                              <strong>⚠️ Nota importante:</strong> se dal tuo wallet non procedi alla firma della transazione e annulli, ricorda di controllare che la transazione non rimanga in coda nel tuo wallet e quindi di non firmarla in un secondo momento.
+                          <div className="mt-4 p-4 bg-gray-50 dark:bg-dark-bg border border-cyan-400/30 dark:border-cyan-400/30 rounded-lg inline-block">
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              <strong className="text-cyan-400">⚠️ Nota importante:</strong> se dal tuo wallet non procedi alla firma della transazione e annulli, ricorda di controllare che la transazione non rimanga in coda nel tuo wallet e quindi di non firmarla in un secondo momento.
                             </p>
                           </div>
                         </div>
@@ -2721,18 +2721,13 @@ public/                  # Asset statici
                             </ul>
                           </div>
                         </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                            Note sull&apos;architettura
-                          </h3>
-                          <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400 p-4 rounded">
-                            <p className="text-sm text-blue-800 dark:text-blue-200">
-                              <strong>Nota:</strong> l&apos;integrazione Supabase + Custom Auth permette di combinare i vantaggi 
-                              di un database PostgreSQL moderno e scalabile con un sistema di autenticazione Web3 che si allinea 
-                              perfettamente con la natura della piattaforma. Questo approccio offre maggiore controllo 
-                              sul processo di autenticazione mantenendo la sicurezza e le performance del database.
-                            </p>
-                          </div>
+                        <div className="mt-4 p-4 bg-gray-50 dark:bg-dark-bg border border-cyan-400/30 dark:border-cyan-400/30 rounded-lg inline-block">
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            <strong className="text-cyan-400">💡 Nota:</strong> l&apos;integrazione Supabase + Custom Auth permette di combinare i vantaggi 
+                            di un database PostgreSQL moderno e scalabile con un sistema di autenticazione Web3 che si allinea 
+                            perfettamente con la natura della piattaforma. Questo approccio offre maggiore controllo 
+                            sul processo di autenticazione mantenendo la sicurezza e le performance del database.
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -4159,8 +4154,8 @@ totalFees = totalPot * 0.015`}</code>
                         </div>
 
                         {/* Note */}
-                        <div className="mt-6 p-4 bg-slate-900 dark:bg-slate-900 border border-slate-700 dark:border-slate-700 rounded-lg">
-                          <p className="text-sm text-gray-200 dark:text-gray-300">
+                        <div className="mt-6 p-4 bg-gray-50 dark:bg-dark-bg border border-cyan-400/30 dark:border-cyan-400/30 rounded-lg inline-block">
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
                             <strong className="text-cyan-400">💡 Nota:</strong> i vincitori ricevono il loro investimento iniziale più la loro quota proporzionale del piatto dei perdenti (meno le fee). 
                             I perdenti perdono completamente la loro scommessa.
                           </p>
