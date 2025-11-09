@@ -17,12 +17,12 @@ export default function ProfiloPage() {
   const [isChecking, setIsChecking] = useState(true)
   const [hasBeenAuthenticated, setHasBeenAuthenticated] = useState(false)
   const [resolvedStartIndex, setResolvedStartIndex] = useState(0)
-  const resolvedItemsPerPage = 3
+  const resolvedItemsPerPage = 4
   const [activePredictionsPage, setActivePredictionsPage] = useState(0)
   const activePredictionsPerPage = 4
   
   // Carica il totale BNB e le statistiche dell'utente
-  const { totalBnb, totalBets, bnbGained, bnbLost, netBalance, loading: bnbLoading, error: bnbError } = useUserTotalBnb(user?.id || null)
+  const { totalBnb, totalBets, bnbGained, bnbLost, netBalance, totalWins, loading: bnbLoading, error: bnbError } = useUserTotalBnb(user?.id || null)
   
   // Carica le prediction attive dell'utente
   const { predictions: activePredictions, loading: predictionsLoading, error: predictionsError } = useUserActivePredictions(user?.id || null)
@@ -33,10 +33,15 @@ export default function ProfiloPage() {
   // Carica le prediction cancellate dell'utente
   const { predictions: cancelledPredictions, loading: cancelledLoading, error: cancelledError } = useUserCancelledPredictions(user?.id || null)
   
-  // Calcola le statistiche di successo
-  const wonPredictions = resolvedPredictions.filter(p => p.winning_rewards_amount && p.winning_rewards_amount > 0).length;
+  // Calcola le statistiche di successo usando i dati da profiles (ottimizzato!)
+  // Usa totalWins da profiles invece di filtrare resolvedPredictions
+  const wonPredictions = totalWins;
+  // Per la percentuale di successo, usa totalWins / totalBets (percentuale di successo sulle scommesse totali)
+  // Oppure se preferisci la percentuale sulle prediction risolte, usa resolvedPredictions.length solo per il conteggio
   const totalResolvedPredictions = resolvedPredictions.length;
-  const successRate = totalResolvedPredictions > 0 ? ((wonPredictions / totalResolvedPredictions) * 100).toFixed(1) : '0.0';
+  const successRate = totalResolvedPredictions > 0 
+    ? ((wonPredictions / totalResolvedPredictions) * 100).toFixed(1) 
+    : (totalBets > 0 ? ((wonPredictions / totalBets) * 100).toFixed(1) : '0.0');
   
   // Stato per il loading durante la navigazione
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
@@ -130,6 +135,12 @@ export default function ProfiloPage() {
   )
   const canScrollUp = resolvedStartIndex > 0
   const canScrollDown = resolvedStartIndex + resolvedItemsPerPage < resolvedPredictions.length
+  
+  // Calcola il totale pagine in modo esplicito
+  const totalResolvedPages = resolvedPredictions.length > 0 
+    ? Math.ceil(resolvedPredictions.length / resolvedItemsPerPage)
+    : 1
+  const currentResolvedPage = Math.floor(resolvedStartIndex / resolvedItemsPerPage) + 1
 
   // Reindirizza quando non autenticato (dopo il controllo iniziale e solo se ha già controllato)
   // NON reindirizzare se user potrebbe ancora arrivare (isConnected ma user null)
@@ -423,10 +434,12 @@ export default function ProfiloPage() {
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Prediction vinte</span>
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {resolvedLoading ? (
+                    {bnbLoading ? (
                       <div className="animate-pulse">
                         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8"></div>
                       </div>
+                    ) : bnbError ? (
+                      <span className="text-red-500 dark:text-red-400 text-xs">Errore</span>
                     ) : (
                       wonPredictions
                     )}
@@ -435,10 +448,12 @@ export default function ProfiloPage() {
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Percentuale successo</span>
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {resolvedLoading ? (
+                    {(bnbLoading || resolvedLoading) ? (
                       <div className="animate-pulse">
                         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-12"></div>
                       </div>
+                    ) : bnbError ? (
+                      <span className="text-red-500 dark:text-red-400 text-xs">Errore</span>
                     ) : (
                       `${successRate}%`
                     )}
@@ -542,18 +557,14 @@ export default function ProfiloPage() {
                       
                       {/* Indicatore pagine */}
                       <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {Math.floor(resolvedStartIndex / resolvedItemsPerPage) + 1} / {Math.ceil(resolvedPredictions.length / resolvedItemsPerPage)}
+                        {currentResolvedPage} di {totalResolvedPages}
                       </span>
                       
                       {/* Freccia giù */}
                       {canScrollDown && (
                         <button
                           onClick={() => {
-                            const newIndex = Math.min(
-                              resolvedPredictions.length - resolvedItemsPerPage,
-                              resolvedStartIndex + resolvedItemsPerPage
-                            )
-                            setResolvedStartIndex(newIndex)
+                            setResolvedStartIndex(resolvedStartIndex + resolvedItemsPerPage)
                           }}
                           className="p-2 text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
                           aria-label="Mostra prediction successive"

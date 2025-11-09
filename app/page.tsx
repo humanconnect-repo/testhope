@@ -29,7 +29,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-dark-bg">
+    <div className="min-h-screen bg-white dark:bg-dark-bg select-none">
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-10">
@@ -47,7 +47,7 @@ export default function Home() {
               placeholder="Cerca una prediction…"
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full px-6 py-2 text-lg rounded-xl border border-primary/20 dark:border-primary/30 bg-primary/5 dark:bg-primary/10 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200"
+              className="w-full px-6 py-2 text-lg rounded-xl border border-primary/20 dark:border-primary/30 bg-primary/5 dark:bg-primary/10 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200 select-text"
             />
           </div>
           {/* Mobile: icona lente cliccabile */}
@@ -101,7 +101,7 @@ export default function Home() {
                   placeholder="Cerca una prediction…"
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  className="flex-1 px-4 py-2 text-base rounded-lg border border-primary/20 dark:border-primary/30 bg-primary/5 dark:bg-primary/10 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="flex-1 px-4 py-2 text-base rounded-lg border border-primary/20 dark:border-primary/30 bg-primary/5 dark:bg-primary/10 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent select-text"
                   autoFocus
                 />
                 <button

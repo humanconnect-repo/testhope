@@ -36,9 +36,6 @@ export default function Avatar({
           src="/media/image/pizzacolorsmall.png" 
           alt="Avatar Stock" 
           className="w-full h-full object-cover"
-          onError={() => {
-            console.log('Errore caricamento immagine stock PNG');
-          }}
         />
       </div>
     );

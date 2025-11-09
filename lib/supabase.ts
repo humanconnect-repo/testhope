@@ -23,7 +23,6 @@ export const supabase = (() => {
         detectSessionInUrl: false
       }
     })
-    console.log('✅ Supabase client inizializzato')
   }
   return supabaseInstance
 })()

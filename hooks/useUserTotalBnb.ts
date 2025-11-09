@@ -7,6 +7,7 @@ export function useUserTotalBnb(userId: string | null) {
   const [bnbGained, setBnbGained] = useState<number>(0);
   const [bnbLost, setBnbLost] = useState<number>(0);
   const [netBalance, setNetBalance] = useState<number>(0);
+  const [totalWins, setTotalWins] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,6 +18,7 @@ export function useUserTotalBnb(userId: string | null) {
       setBnbGained(0);
       setBnbLost(0);
       setNetBalance(0);
+      setTotalWins(0);
       setLoading(false);
       return;
     }
@@ -26,61 +28,50 @@ export function useUserTotalBnb(userId: string | null) {
         setLoading(true);
         setError(null);
 
-        // Ottieni tutte le scommesse dell'utente con i dati delle predictions
-        const { data: bets, error: betsError } = await supabase
-          .from('bets')
-          .select(`
-            amount_bnb,
-            winning_rewards_amount,
-            prediction:prediction_id (
-              id,
-              status,
-              pool_address
-            )
-          `)
-          .eq('user_id', userId);
+        // Leggi direttamente da profiles (molto più veloce!)
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('total_bnb_bets, total_bnb_earned, total_bets, total_wins')
+          .eq('id', userId)
+          .single();
 
-        if (betsError) {
-          throw betsError;
+        if (profileError) {
+          throw profileError;
         }
 
-        if (!bets || bets.length === 0) {
+        if (!profile) {
           setTotalBnb(0);
           setTotalBets(0);
           setBnbGained(0);
           setBnbLost(0);
           setNetBalance(0);
+          setTotalWins(0);
         } else {
-          // Filtra le scommesse escludendo quelle con prediction cancellata
-          const validBets = bets.filter((bet: any) => bet.prediction?.status !== 'cancellata');
+          // Volumi effettuati totali da profiles
+          const totalBnbBets = Number(profile.total_bnb_bets) || 0;
+          setTotalBnb(totalBnbBets);
           
-          // Somma tutti i BNB scommessi (escludendo quelli cancellati)
-          const total = validBets.reduce((sum: number, bet: any) => {
-            return sum + (bet.amount_bnb || 0);
-          }, 0);
-          setTotalBnb(total);
-          
-          // Conta il numero totale di scommesse (escludendo quelle con prediction cancellata)
-          setTotalBets(validBets.length);
+          // Numero totale di scommesse da profiles
+          setTotalBets(Number(profile.total_bets) || 0);
 
-          // Calcola BNB guadagnati (somma di winning_rewards_amount dove presente, escludendo quelle cancellate)
-          const gained = validBets.reduce((sum: number, bet: any) => {
-            return sum + (bet.winning_rewards_amount || 0);
-          }, 0);
-          setBnbGained(gained);
+          // BNB guadagnati da profiles
+          const totalBnbEarned = Number(profile.total_bnb_earned) || 0;
+          setBnbGained(totalBnbEarned);
 
-          // Calcola BNB persi: per le pool risolte dove winning_rewards_amount è NULL (escludendo quelle cancellate)
-          const lost = validBets.reduce((sum: number, bet: any) => {
-            // Se la prediction è risolta e non ha winning_rewards_amount, significa che ha perso
-            if (bet.prediction?.status === 'risolta' && !bet.winning_rewards_amount) {
-              return sum + (bet.amount_bnb || 0);
-            }
-            return sum;
-          }, 0);
+          // BNB persi = volumi effettuati - guadagnati (quando guadagnati < volumi)
+          // Questo rappresenta le scommesse perse (volumi totali - vincite = perdite)
+          const lost = totalBnbBets > totalBnbEarned ? totalBnbBets - totalBnbEarned : 0;
           setBnbLost(lost);
 
-          // Bilancio netto = guadagnati - persi
-          setNetBalance(gained - lost);
+          // Bilancio netto = guadagnati - volumi effettuati
+          // (positivo se in guadagno, negativo se in perdita)
+          // Equivale a: guadagnati - (guadagnati + persi) = -persi quando in perdita
+          // Oppure: guadagnati - volumi quando guadagnati > volumi (impossibile, ma per sicurezza)
+          const balance = totalBnbEarned - totalBnbBets;
+          setNetBalance(balance);
+
+          // Prediction vinte da profiles
+          setTotalWins(Number(profile.total_wins) || 0);
         }
 
       } catch (error) {
@@ -94,5 +85,5 @@ export function useUserTotalBnb(userId: string | null) {
     fetchUserData();
   }, [userId]);
 
-  return { totalBnb, totalBets, bnbGained, bnbLost, netBalance, loading, error };
+  return { totalBnb, totalBets, bnbGained, bnbLost, netBalance, totalWins, loading, error };
 }

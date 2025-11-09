@@ -2,13 +2,15 @@
 import AdminPanel from '../../components/AdminPanel';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import AdminLoadingModal from '../../components/AdminLoadingModal';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function AdminPage() {
   const { isAdmin, loading, error } = useAdmin();
   const router = useRouter();
+  const [isPanelReady, setIsPanelReady] = useState(false);
 
   useEffect(() => {
     // Aggiungi un delay per evitare reindirizzamenti prematuri durante il refresh
@@ -23,63 +25,75 @@ export default function AdminPage() {
     return () => clearTimeout(timeoutId);
   }, [isAdmin, loading, router]);
 
-  // Mostra loading mentre controlla i permessi
-  if (loading) {
+  // Monitora quando il pannello è pronto (dopo che i permessi sono verificati e ha avuto tempo di caricare)
+  useEffect(() => {
+    if (!loading && isAdmin && !isPanelReady) {
+      // Aspetta che AdminPanel abbia tempo di caricare tutti i dati asincroni
+      // (pools, predictions, contract states, etc.)
+      const timer = setTimeout(() => {
+        setIsPanelReady(true);
+      }, 2000); // 2 secondi per dare tempo a tutti i caricamenti asincroni
+      
+      return () => clearTimeout(timer);
+    }
+  }, [loading, isAdmin, isPanelReady]);
+
+  // Se non è admin, mostra solo il modal di errore o nulla (il redirect è gestito da useEffect)
+  if (!isAdmin && !loading) {
     return (
+      <>
+        <div className="min-h-screen bg-white dark:bg-dark-bg">
+          <Header />
+          <main className="pt-24 pb-10">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              {error ? (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+                  <h2 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">
+                    Errore di Accesso
+                  </h2>
+                  <p className="text-red-600 dark:text-red-300">
+                    {error}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </main>
+          <Footer />
+        </div>
+      </>
+    );
+  }
+
+  // Mostra sempre la pagina (si carica dietro il modal) e il modal quando è in loading
+  // Il modal si chiude solo quando loading è false, isAdmin è true E il pannello è pronto
+  const showModal = loading || (!loading && !isAdmin) || (!loading && isAdmin && !isPanelReady);
+
+  return (
+    <>
+      {/* Modal popup con loading - si chiude quando tutto è completamente caricato */}
+      <AdminLoadingModal isOpen={showModal} />
+      
+      {/* Pagina admin - si carica dietro il modal */}
       <div className="min-h-screen bg-white dark:bg-dark-bg">
         <Header />
         <main className="pt-24 pb-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Verifica permessi admin...
+          {!loading && isAdmin ? (
+            <AdminPanel />
+          ) : error ? (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+                <h2 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">
+                  Errore di Accesso
+                </h2>
+                <p className="text-red-600 dark:text-red-300">
+                  {error}
                 </p>
               </div>
             </div>
-          </div>
+          ) : null}
         </main>
         <Footer />
       </div>
-    );
-  }
-
-  // Se non è admin, non mostra nulla (il redirect è gestito da useEffect)
-  if (!isAdmin) {
-    return null;
-  }
-
-  // Se c'è un errore, mostra il messaggio
-  if (error) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-dark-bg">
-        <Header />
-        <main className="pt-24 pb-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">
-                Errore di Accesso
-              </h2>
-              <p className="text-red-600 dark:text-red-300">
-                {error}
-              </p>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  // Se è admin, mostra il pannello
-  return (
-    <div className="min-h-screen bg-white dark:bg-dark-bg">
-      <Header />
-      <main className="pt-24 pb-10">
-        <AdminPanel />
-      </main>
-      <Footer />
-    </div>
+    </>
   );
 }

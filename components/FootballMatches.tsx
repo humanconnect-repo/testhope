@@ -518,7 +518,7 @@ export default function FootballMatches() {
               {/* Form per creare prediction */}
               {showMatchForm && selectedMatch && (
                 <div id="match-prediction-form" className="p-6 border-t border-gray-200 dark:border-gray-700 mt-6">
-                  <div className="bg-white dark:bg-dark-card p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-md">
+                  <div className="p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30 shadow-md">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                         Crea Prediction per {selectedMatch.homeTeam.name} vs {selectedMatch.awayTeam.name}
@@ -590,13 +590,30 @@ export default function FootballMatches() {
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Data Chiusura Scommesse *
                           </label>
-                          <input
-                            type="datetime-local"
-                            value={formData.closing_date}
-                            onChange={(e) => setFormData({...formData, closing_date: e.target.value})}
-                            className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            required
-                          />
+                          <div className="relative">
+                            <input
+                              type="datetime-local"
+                              value={formData.closing_date}
+                              onChange={(e) => setFormData({...formData, closing_date: e.target.value})}
+                              className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:w-5 [&::-webkit-calendar-picker-indicator]:h-5 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                              required
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                const input = e.currentTarget.parentElement?.querySelector('input[type="datetime-local"]') as HTMLInputElement;
+                                if (input) {
+                                  input.showPicker?.();
+                                }
+                              }}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer"
+                            >
+                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </button>
+                          </div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Fino a quando si può scommettere
                           </p>
@@ -606,13 +623,30 @@ export default function FootballMatches() {
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Data Chiusura Prediction *
                           </label>
-                          <input
-                            type="datetime-local"
-                            value={formData.closing_bid}
-                            onChange={(e) => setFormData({...formData, closing_bid: e.target.value})}
-                            className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            required
-                          />
+                          <div className="relative">
+                            <input
+                              type="datetime-local"
+                              value={formData.closing_bid}
+                              onChange={(e) => setFormData({...formData, closing_bid: e.target.value})}
+                              className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:w-5 [&::-webkit-calendar-picker-indicator]:h-5 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                              required
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                const input = e.currentTarget.parentElement?.querySelector('input[type="datetime-local"]') as HTMLInputElement;
+                                if (input) {
+                                  input.showPicker?.();
+                                }
+                              }}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer"
+                            >
+                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </button>
+                          </div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Quando finisce l'evento della prediction
                           </p>

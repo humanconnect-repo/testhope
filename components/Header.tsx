@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Web3Login from './Web3Login';
 import { useAdmin } from '../hooks/useAdmin';
 import Link from 'next/link';
@@ -7,6 +7,20 @@ import Image from 'next/image';
 
 export default function Header() {
   const { isAdmin, loading } = useAdmin();
+  // Mantiene lo stato admin anche durante la navigazione per evitare flicker
+  const [stableIsAdmin, setStableIsAdmin] = useState(false);
+  
+  useEffect(() => {
+    // Se è admin e non è in loading, imposta sempre true (non tornare mai a false)
+    if (isAdmin && !loading) {
+      setStableIsAdmin(true);
+    }
+    // Se non è in loading e non è admin, aggiorna solo se non era già admin
+    // (evita di nascondere il pulsante durante la navigazione se era già visibile)
+    if (!loading && !isAdmin && !stableIsAdmin) {
+      setStableIsAdmin(false);
+    }
+  }, [isAdmin, loading, stableIsAdmin]);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-dark-bg/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 shadow-sm">
@@ -40,8 +54,8 @@ export default function Header() {
               <span className="sm:hidden">Docs</span>
             </Link>
             
-            {/* OP Panel Button - Solo per admin */}
-            {!loading && isAdmin && (
+            {/* OP Panel Button - Solo per admin, non renderizza se non è admin */}
+            {stableIsAdmin && (
               <Link 
                 href="/0x9dc9ca268dc8370b"
                 className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 font-medium text-sm border border-gray-200 dark:border-gray-600 flex items-center space-x-2"

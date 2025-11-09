@@ -657,26 +657,8 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     return newHash !== lastHash;
   };
 
-  // Funzione per calcolare il totale delle scommesse
-  const calculateTotalBets = async (predictionId: string) => {
-    try {
-      const { data: bets, error } = await supabase
-        .from('bets')
-        .select('amount_bnb')
-        .eq('prediction_id', predictionId);
-      
-      if (error) {
-        console.warn('Error fetching bets for total:', error);
-        return 0;
-      }
-      
-      const total = bets?.reduce((sum: number, bet: any) => sum + (bet.amount_bnb || 0), 0) || 0;
-      return total;
-    } catch (error) {
-      console.warn('Error calculating total bets:', error);
-      return 0;
-    }
-  };
+  // Funzione rimossa: i dati aggregati vengono ora letti direttamente dalla tabella predictions
+  // (calcolati automaticamente dal trigger PostgreSQL quando cambiano le bets)
 
   useEffect(() => {
     // Non ricaricare durante il processo di betting
@@ -857,83 +839,45 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         return;
       }
 
-      // Calcola il conteggio totale delle bets dal database e i conteggi specifici Sì/No
-      const { count: totalBetsFromDB } = await supabase
-        .from('bets')
-        .select('*', { count: 'exact', head: true })
-        .eq('prediction_id', predictionData.id);
-      
-      const { count: yesBetsFromDB } = await supabase
-        .from('bets')
-        .select('*', { count: 'exact', head: true })
-        .eq('prediction_id', predictionData.id)
-        .eq('position', 'yes');
-      
-      const { count: noBetsFromDB } = await supabase
-        .from('bets')
-        .select('*', { count: 'exact', head: true })
-        .eq('prediction_id', predictionData.id)
-        .eq('position', 'no');
-      
-      setTotalBetsCount(totalBetsFromDB || 0);
-      setYesBetsCount(yesBetsFromDB || 0);
-      setNoBetsCount(noBetsFromDB || 0);
+      // Leggi i dati aggregati direttamente dalla tabella predictions
+      // (già calcolati automaticamente dal trigger PostgreSQL quando cambiano le bets)
+      const totalBetsCountValue = predictionData.total_bets_count || 0;
+      const yesBetsCountValue = predictionData.yes_bets_count || 0;
+      const noBetsCountValue = predictionData.no_bets_count || 0;
+      const totalBetsAmountValue = Number(predictionData.total_bnb_amount || 0);
+      const yesBetsAmountValue = Number(predictionData.yes_bnb_amount || 0);
+      const noBetsAmountValue = Number(predictionData.no_bnb_amount || 0);
+      const yesPercentageValue = Number(predictionData.yes_percentage || 0);
+      const noPercentageValue = Number(predictionData.no_percentage || 0);
 
-      // Calcola le percentuali basate solo sul numero di Sì e No (non importi)
-      let stats = { yes_percentage: 0, no_percentage: 0, total_bets: 0 };
-      
-      // Usa sempre i conteggi dal database per le percentuali
-      const totalBets = totalBetsFromDB || 0;
-      const yesCount = yesBetsFromDB || 0;
-      const noCount = noBetsFromDB || 0;
-      
-      stats = {
-        yes_percentage: totalBets > 0 ? Math.round((yesCount / totalBets) * 100 * 10) / 10 : 0,
-        no_percentage: totalBets > 0 ? Math.round((noCount / totalBets) * 100 * 10) / 10 : 0,
-        total_bets: totalBets
-      };
+      // Aggiorna gli stati con i valori pre-calcolati
+      setTotalBetsCount(totalBetsCountValue);
+      setYesBetsCount(yesBetsCountValue);
+      setNoBetsCount(noBetsCountValue);
+      setTotalBetsAmount(totalBetsAmountValue);
+      setYesBetsAmount(yesBetsAmountValue);
+      setNoBetsAmount(noBetsAmountValue);
 
       // Rileva i cambiamenti nelle percentuali per l'animazione
-      const newYesPercentage = stats.yes_percentage || 0;
-      const newNoPercentage = stats.no_percentage || 0;
       const hasChanged = 
-        Math.abs(newYesPercentage - previousPercentages.yes) > 0.1 ||
-        Math.abs(newNoPercentage - previousPercentages.no) > 0.1;
+        Math.abs(yesPercentageValue - previousPercentages.yes) > 0.1 ||
+        Math.abs(noPercentageValue - previousPercentages.no) > 0.1;
 
+      // Usa le percentuali già calcolate dal trigger
       setPrediction({
         ...predictionData,
-        yes_percentage: newYesPercentage,
-        no_percentage: newNoPercentage,
-        total_bets: stats.total_bets || 0
+        yes_percentage: yesPercentageValue,
+        no_percentage: noPercentageValue,
+        total_bets: totalBetsCountValue
       });
 
-          // I commenti verranno caricati tramite useEffect quando prediction è disponibile
+      // I commenti verranno caricati tramite useEffect quando prediction è disponibile
 
       // Aggiorna le percentuali precedenti
       setPreviousPercentages({
-        yes: newYesPercentage,
-        no: newNoPercentage
+        yes: yesPercentageValue,
+        no: noPercentageValue
       });
-
-      // Calcola il totale delle scommesse (tutte)
-      const totalAmount = await calculateTotalBets(predictionData.id);
-      setTotalBetsAmount(totalAmount);
-
-      // Calcola volume YES e NO (in BNB) dal DB bets
-      try {
-        const [{ data: yesRows }, { data: noRows }] = await Promise.all([
-          supabase.from('bets').select('amount_bnb').eq('prediction_id', predictionData.id).eq('position', 'yes'),
-          supabase.from('bets').select('amount_bnb').eq('prediction_id', predictionData.id).eq('position', 'no')
-        ]);
-        const yesTotalAmt = yesRows?.reduce((sum: number, r: any) => sum + (r.amount_bnb || 0), 0) || 0;
-        const noTotalAmt = noRows?.reduce((sum: number, r: any) => sum + (r.amount_bnb || 0), 0) || 0;
-        setYesBetsAmount(Number(yesTotalAmt));
-        setNoBetsAmount(Number(noTotalAmt));
-      } catch (e) {
-        // Se fallisce, lascia 0 (non bloccare UI)
-        setYesBetsAmount(0);
-        setNoBetsAmount(0);
-      }
 
       // Imposta il pool address se disponibile
       if (predictionData.pool_address) {
@@ -1016,58 +960,12 @@ export default function PredictionPage({ params }: { params: { slug: string } })
     }
   };
 
-  // Carica le ultime scommesse del sito (globali) usando RPC o Smart Contract
+  // Carica le ultime scommesse del sito (globali) dal database
   const loadRecentBets = async (forceRefresh: boolean = false) => {
     try {
       setRecentLoading(true);
 
-      // Prima prova a caricare dal contratto se disponibile
-      if (contractBets && contractBets.length > 0) {
-        const currentBetsHash = generateDataHash(contractBets);
-        
-        // Controlla se i dati sono cambiati (a meno che non sia un refresh forzato)
-        if (!forceRefresh && !hasDataChanged(contractBets, lastRecentBetsHash)) {
-          setRecentLoading(false);
-          return;
-        }
-        
-        setLastRecentBetsHash(currentBetsHash);
-        // Risolvi tutti gli username in parallelo
-        const betsWithUsernames = await Promise.all(
-          contractBets.map(async (bet: any) => {
-            const username = await resolveUsername(bet.userAddress);
-            return {
-              id: `${bet.userAddress}-${bet.timestamp}`,
-              amount_bnb: Number(bet.amount) / 1e18, // Converti da wei a BNB
-              position: (bet.choice ? 'yes' : 'no') as 'yes' | 'no',
-              created_at: new Date(Number(bet.timestamp) * 1000).toISOString(),
-              username: username,
-              prediction_title: prediction?.title || '',
-              prediction_slug: prediction?.slug || ''
-            };
-          })
-        );
-
-        // Rileva le nuove scommesse per l'animazione
-        const newRecentBets = betsWithUsernames.filter((bet: {
-          id: string;
-          amount_bnb: number;
-          position: 'yes' | 'no';
-          created_at: string;
-          username: string;
-          prediction_title: string;
-          prediction_slug: string;
-        }) => 
-          !previousRecentBets.some(prev => prev.id === bet.id)
-        );
-        
-        // Aggiorna le scommesse precedenti
-        setPreviousRecentBets(betsWithUsernames);
-        setRecentBets(betsWithUsernames);
-        return;
-      }
-
-      // Fallback al database se il contratto non è disponibile o errore
+      // Carica dal database tramite RPC (bets globali da tutte le prediction)
       const { data: recentBetsData, error } = await supabase
         .rpc('get_recent_bets', { limit_count: 5 });
 
@@ -1097,7 +995,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
         prediction_slug: (bet.prediction_slug as string) || ''
       }));
 
-      // Rileva le nuove scommesse per l'animazione (fallback database)
+      // Rileva le nuove scommesse per l'animazione
       const newRecentBets = mappedBets.filter((bet: any) => 
         !previousRecentBets.some(prev => prev.id === bet.id)
       );
@@ -1268,6 +1166,7 @@ export default function PredictionPage({ params }: { params: { slug: string } })
           const winningSide = winnerInfo.winner ? 'yes' : 'no';
 
           // Prova join con profili per ottenere gli username
+          // Filtra solo chi ha fatto claim (winning_rewards_amount IS NOT NULL)
           const { data: betRows, error: betErr } = await supabase
             .from('bets')
             .select(`
@@ -1276,7 +1175,10 @@ export default function PredictionPage({ params }: { params: { slug: string } })
               profiles:profiles(username)
             `)
             .eq('prediction_id', prediction.id)
-            .eq('position', winningSide);
+            .eq('position', winningSide)
+            .not('winning_rewards_amount', 'is', null)
+            .order('winning_rewards_amount', { ascending: false })
+            .limit(3);
 
           if (betErr) {
             throw betErr;
@@ -1284,24 +1186,9 @@ export default function PredictionPage({ params }: { params: { slug: string } })
 
           const mapped: WinnerItem[] = (betRows || []).map((row: any) => ({
             username: row?.profiles?.username || 'Anonimo',
-            // winning_rewards_amount è in BNB se presente; se assente (non ancora claimata) lasciamo null
+            // winning_rewards_amount è in BNB (solo chi ha fatto claim viene incluso)
             rewardBnb: typeof row?.winning_rewards_amount === 'number' ? row.winning_rewards_amount : null
           }));
-
-          // Ordina: prima chi ha reward noto (claim fatti) per importo decrescente, poi alfabetico chi non ha fatto claim
-          mapped.sort((a, b) => {
-            // Prima separa chi ha fatto claim da chi non l'ha fatto
-            if (a.rewardBnb !== null && b.rewardBnb === null) return -1;
-            if (a.rewardBnb === null && b.rewardBnb !== null) return 1;
-            
-            // Se entrambi hanno fatto claim, ordina per importo decrescente
-            if (a.rewardBnb !== null && b.rewardBnb !== null) {
-              return b.rewardBnb - a.rewardBnb;
-            }
-            
-            // Se nessuno ha fatto claim, ordina alfabeticamente
-            return a.username.localeCompare(b.username);
-          });
 
           setWinners(mapped);
         } catch (e) {
