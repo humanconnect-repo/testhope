@@ -131,6 +131,8 @@ export default function ResolvedPredictionsList() {
   // Refs per gestione swipe
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const touchEndRef = useRef<{ x: number; y: number } | null>(null);
+  const scrollPositionRef = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
   const minSwipeDistance = 50; // Distanza minima per considerare uno swipe
 
   // Categorie disponibili
@@ -150,6 +152,24 @@ export default function ResolvedPredictionsList() {
   useEffect(() => {
     setCurrentPage(0);
   }, [selectedCategory]);
+
+  // Salva posizione scroll prima del cambio pagina e ripristinala dopo
+  useEffect(() => {
+    if (!isMobile) return;
+    
+    // Salva la posizione corrente dello scroll
+    scrollPositionRef.current = window.scrollY || document.documentElement.scrollTop;
+    
+    // Ripristina la posizione dopo che il DOM si è aggiornato
+    const timer = setTimeout(() => {
+      window.scrollTo({
+        top: scrollPositionRef.current,
+        behavior: 'instant' as ScrollBehavior
+      });
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [currentPage, isMobile]);
 
   // Handler per swipe su mobile
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -189,11 +209,13 @@ export default function ResolvedPredictionsList() {
       // Swipe sinistra: vai alla pagina successiva
       const hasMorePages = filteredPredictions.length > (currentPage + 1) * itemsPerPageForCategory;
       if (hasMorePages) {
+        scrollPositionRef.current = window.scrollY || document.documentElement.scrollTop;
         setCurrentPage(prev => prev + 1);
       }
     } else if (isRightSwipe) {
       // Swipe destra: vai alla pagina precedente
       if (currentPage > 0) {
+        scrollPositionRef.current = window.scrollY || document.documentElement.scrollTop;
         setCurrentPage(prev => prev - 1);
       }
     }
@@ -413,7 +435,11 @@ export default function ResolvedPredictionsList() {
           const shouldShowPagination = filteredPredictions.length > itemsPerPageForCategory;
           return shouldShowPagination && currentPage > 0 && (
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                if (isMobile) {
+                  scrollPositionRef.current = window.scrollY || document.documentElement.scrollTop;
+                }
                 setCurrentPage(prev => prev - 1);
               }}
               className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -427,6 +453,7 @@ export default function ResolvedPredictionsList() {
         })()}
 
         <div 
+          ref={containerRef}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -455,7 +482,11 @@ export default function ResolvedPredictionsList() {
           const shouldShowPagination = filteredPredictions.length > itemsPerPageForCategory;
           return shouldShowPagination && hasMorePages && (
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                if (isMobile) {
+                  scrollPositionRef.current = window.scrollY || document.documentElement.scrollTop;
+                }
                 setCurrentPage(prev => prev + 1);
               }}
               className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
