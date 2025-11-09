@@ -331,7 +331,7 @@ export default function DocumentationPage() {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 bg-slate-900 text-white p-2 rounded-lg hover:bg-slate-800 transition-colors"
+        className="md:hidden fixed top-20 left-4 z-50 bg-slate-900 text-white p-2 rounded-lg hover:bg-slate-800 transition-colors"
         aria-label="Toggle menu"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -352,12 +352,12 @@ export default function DocumentationPage() {
       )}
 
       {/* Main Layout */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex md:items-start overflow-hidden md:overflow-visible">
         {/* Sidebar Navigation */}
-        <aside className={`fixed md:static inset-y-0 left-0 z-40 w-64 flex-shrink-0 bg-slate-900 border-r border-slate-800 overflow-y-auto h-screen max-h-screen transform transition-transform duration-300 ease-in-out ${
+        <aside className={`fixed md:static top-16 left-0 bottom-0 md:top-0 md:bottom-auto z-40 w-64 flex-shrink-0 bg-slate-900 border-r border-slate-800 border-b border-slate-800 overflow-y-auto md:overflow-y-visible md:h-auto transform transition-transform duration-300 ease-in-out ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}>
-          <nav className="p-4">
+          <nav className="p-4 pt-24 md:pt-24">
             {/* Logo Image */}
             <div className="mb-6">
               <Image
@@ -467,7 +467,7 @@ export default function DocumentationPage() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark-bg w-full md:w-auto">
+        <main className="flex-1 overflow-y-auto md:overflow-y-visible bg-gray-50 dark:bg-dark-bg w-full md:w-auto pt-24">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
             {/* Content based on active section */}
             {activeSection === 'introduzione' && (
