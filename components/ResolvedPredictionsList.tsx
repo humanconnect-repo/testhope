@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import LazyPredictionCard from './LazyPredictionCard';
 import { supabase } from '../lib/supabase';
 import { getPoolWinner } from '../lib/contracts';
@@ -127,6 +127,11 @@ export default function ResolvedPredictionsList() {
   const [error, setError] = useState<string | null>(null);
   const itemsPerPage = 8;
   const isMobile = useIsMobile();
+  
+  // Refs per gestione swipe
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchEndRef = useRef<{ x: number; y: number } | null>(null);
+  const minSwipeDistance = 50; // Distanza minima per considerare uno swipe
 
   // Categorie disponibili
   const categories = [
@@ -145,6 +150,58 @@ export default function ResolvedPredictionsList() {
   useEffect(() => {
     setCurrentPage(0);
   }, [selectedCategory]);
+
+  // Handler per swipe su mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isMobile) return;
+    touchStartRef.current = {
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY,
+    };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isMobile) return;
+    touchEndRef.current = {
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY,
+    };
+  };
+
+  const handleTouchEnd = (filteredPredictions: Prediction[]) => {
+    if (!isMobile) return;
+    if (!touchStartRef.current || !touchEndRef.current) return;
+
+    const itemsPerPageForCategory = isMobile ? 2 : itemsPerPage;
+    const shouldShowPagination = filteredPredictions.length > itemsPerPageForCategory;
+    if (!shouldShowPagination) return;
+
+    const distanceX = touchStartRef.current.x - touchEndRef.current.x;
+    const distanceY = touchStartRef.current.y - touchEndRef.current.y;
+    const isLeftSwipe = distanceX > minSwipeDistance;
+    const isRightSwipe = distanceX < -minSwipeDistance;
+    const isVerticalSwipe = Math.abs(distanceY) > Math.abs(distanceX);
+
+    // Ignora swipe verticali (per permettere scroll normale)
+    if (isVerticalSwipe) return;
+
+    if (isLeftSwipe) {
+      // Swipe sinistra: vai alla pagina successiva
+      const hasMorePages = filteredPredictions.length > (currentPage + 1) * itemsPerPageForCategory;
+      if (hasMorePages) {
+        setCurrentPage(prev => prev + 1);
+      }
+    } else if (isRightSwipe) {
+      // Swipe destra: vai alla pagina precedente
+      if (currentPage > 0) {
+        setCurrentPage(prev => prev - 1);
+      }
+    }
+
+    // Reset
+    touchStartRef.current = null;
+    touchEndRef.current = null;
+  };
 
   const loadPredictions = async () => {
     try {
@@ -369,7 +426,12 @@ export default function ResolvedPredictionsList() {
           );
         })()}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={() => handleTouchEnd(filteredPredictions)}
+        >
           {visiblePredictions.map((prediction) => (
             <LazyPredictionCard
               key={prediction.id}
