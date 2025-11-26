@@ -35,7 +35,7 @@ interface PredictionFormData {
   notes?: string;
 }
 
-export default function FootballMatches() {
+export default function ChampionsLeagueMatches() {
   const { userAddress } = useAdmin();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(false);
@@ -80,8 +80,8 @@ export default function FootballMatches() {
         setLoading(true);
         setError(null);
         
-        // Serie A: competition=2019, days=7
-        const response = await fetch('/api/football/matches?competition=2019&days=7');
+        // Champions League: competition=2001, days=10 (limite API)
+        const response = await fetch('/api/football/matches?competition=2001&days=10');
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -229,7 +229,7 @@ export default function FootballMatches() {
     const formattedDate = formatDateItalian(match.utcDate);
     const title = `${match.homeTeam.name} vs ${match.awayTeam.name} - ${formattedDate}`;
     
-    // Pre-compila descrizione: La (homeTeam) vincerà questa partita di (Serie A/Champions) del (data formattata)?
+    // Pre-compila descrizione: La (homeTeam) vincerà questa partita di (Champions League) del (data formattata)?
     const competitionName = getCompetitionName(match.competition.code);
     const description = `La ${match.homeTeam.name} vincerà questa partita di ${competitionName} del ${formattedDate}?`;
     
@@ -238,7 +238,7 @@ export default function FootballMatches() {
     const closingBid = addThreeHours(match.utcDate);
     
     // Pre-compila regolamento con nome squadra
-    const rules = `L'esito sarà "Sì" se la ${match.homeTeam.name} risulterà vincitore ufficiale dell'incontro secondo i dati pubblicati dalla Serie A o altre fonti sportive autorevoli. L'esito sarà "No" in caso di pareggio o sconfitta. In caso di rinvio, sospensione o annullamento dell'incontro la prediction sarà rimborsata.`;
+    const rules = `L'esito sarà "Sì" se la ${match.homeTeam.name} risulterà vincitore ufficiale dell'incontro secondo i dati pubblicati dalla UEFA Champions League o altre fonti sportive autorevoli. L'esito sarà "No" in caso di pareggio o sconfitta. In caso di rinvio, sospensione o annullamento dell'incontro la prediction sarà rimborsata.`;
     
     // Imposta i dati del form
     setFormData({
@@ -258,7 +258,7 @@ export default function FootballMatches() {
     
     // Scroll al form dopo un breve delay per permettere il rendering
     setTimeout(() => {
-      const formElement = document.getElementById('match-prediction-form');
+      const formElement = document.getElementById('champions-match-prediction-form');
       if (formElement) {
         formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
@@ -392,7 +392,7 @@ export default function FootballMatches() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            Crea una Prediction di Serie A {matches.length > 0 && `(${matches.length} match)`}
+            Crea una Prediction di Champions L. {matches.length > 0 && `(${matches.length} match)`}
           </h2>
         </div>
       </div>
@@ -415,7 +415,7 @@ export default function FootballMatches() {
             </div>
           ) : matches.length === 0 ? (
             <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-              Nessun match programmato per questa settimana
+              Nessun match programmato per i prossimi 10 giorni
             </div>
           ) : (
             <>
@@ -518,7 +518,7 @@ export default function FootballMatches() {
 
               {/* Form per creare prediction */}
               {showMatchForm && selectedMatch && (
-                <div id="match-prediction-form" className="p-6 border-t border-gray-200 dark:border-gray-700 mt-6">
+                <div id="champions-match-prediction-form" className="p-6 border-t border-gray-200 dark:border-gray-700 mt-6">
                   <div className="p-6 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30 shadow-md">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-xl font-bold text-gray-900 dark:text-white">

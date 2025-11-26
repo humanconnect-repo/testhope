@@ -23,7 +23,7 @@ interface FootballDataResponse {
   matches: Match[];
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const apiKey = process.env.FOOTBALL_API_KEY;
     
@@ -34,25 +34,44 @@ export async function GET() {
       );
     }
 
-    // Calcola range: da oggi fino a 7 giorni nel futuro
+    // Leggi i parametri dalla query string
+    const { searchParams } = new URL(request.url);
+    const competitionId = searchParams.get('competition') || '2019'; // Default: Serie A
+    const requestedDays = parseInt(searchParams.get('days') || '7', 10); // Default: 7 giorni
+
+    // L'API ha un limite di 10 giorni per richiesta - limitiamo a max 10 giorni
+    // IMPORTANTE: Il range include sia il giorno iniziale che quello finale
+    // Se richiediamo 10 giorni, dobbiamo andare da oggi a 9 giorni dopo (non 10)
+    // perché oggi + 9 giorni = 10 giorni totali nel range
+    const maxDays = Math.min(requestedDays, 10);
+    const daysToAdd = maxDays - 1; // Sottraiamo 1 perché includiamo il giorno di oggi
+
+    // Calcola range: da oggi fino a N giorni nel futuro
     const now = new Date();
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
     
-    const sevenDaysLater = new Date(today);
-    sevenDaysLater.setDate(today.getDate() + 7);
-    sevenDaysLater.setHours(23, 59, 59, 999);
+    const daysLater = new Date(today);
+    daysLater.setDate(today.getDate() + daysToAdd);
+    daysLater.setHours(23, 59, 59, 999);
 
     // Formatta le date in ISO per l'API (formato YYYY-MM-DD)
     const dateFrom = today.toISOString().split('T')[0];
-    const dateTo = sevenDaysLater.toISOString().split('T')[0];
+    const dateTo = daysLater.toISOString().split('T')[0];
 
-    console.log('🔍 Fetching matches from', dateFrom, 'to', dateTo);
+    console.log('🔍 Fetching matches from', dateFrom, 'to', dateTo, `(competition: ${competitionId}, requested: ${requestedDays} days, actual range: ${maxDays} days)`);
 
-    // Filtri: Solo Serie A (SA)
-    // Serie A competition ID: 2019 (secondo football-data.org)
+    // Determina la competizione in base all'ID
+    // Serie A competition ID: 2019
+    // Champions League competition ID: 2001
+    const competitionMap: Record<string, { name: string; code: string }> = {
+      '2019': { name: 'Serie A', code: 'SA' },
+      '2001': { name: 'Champions League', code: 'CL' }
+    };
+
+    const competition = competitionMap[competitionId] || competitionMap['2019'];
     const competitions = [
-      { id: '2019', name: 'Serie A', code: 'SA' }
+      { id: competitionId, name: competition.name, code: competition.code }
     ];
     
     let allMatches: Match[] = [];
@@ -84,25 +103,53 @@ export async function GET() {
             teams: `${m.homeTeam.name} vs ${m.awayTeam.name}`,
             date: m.utcDate,
             status: m.status,
-            competition: m.competition.code
+            competitionCode: m.competition.code,
+            competitionId: m.competition.id,
+            competitionName: m.competition.name
           })));
+          
+          // Per Champions League, mostra anche le competizioni uniche trovate
+          if (comp.id === '2001') {
+            const uniqueCompetitions = [...new Set(data.matches.map(m => `${m.competition.id}-${m.competition.code}-${m.competition.name}`))];
+            console.log(`🔍 Champions League - Competizioni trovate:`, uniqueCompetitions);
+          }
         }
         
-        // Filtra match futuri: include TIMED, SCHEDULED, POSTPONED
-        // L'API restituisce match con status TIMED per i match programmati
+        // Filtra match nel range: include TIMED, SCHEDULED, POSTPONED, LIVE, IN_PLAY
+        // Include tutte le partite nel range da oggi a N giorni nel futuro
+        // IMPORTANTE: Filtra anche per competizione per evitare match di altre competizioni
         const scheduledMatches = (data.matches || []).filter(
           (match) => {
+            // Verifica che il match appartenga alla competizione richiesta
+            // Controlla sia per ID che per codice
+            const matchCompetitionCode = match.competition?.code?.toUpperCase();
+            const matchCompetitionId = match.competition?.id?.toString();
+            const expectedCode = competition.code.toUpperCase();
+            const expectedId = comp.id;
+            
+            // Accetta se corrisponde per ID O per codice (doppio controllo)
+            const isCorrectCompetition = matchCompetitionId === expectedId || matchCompetitionCode === expectedCode;
+            
+            if (!isCorrectCompetition) {
+              return false; // Escludi match di altre competizioni
+            }
+            
             const status = match.status?.toUpperCase();
-            const validStatuses = ['SCHEDULED', 'TIMED', 'POSTPONED'];
+            // Include anche LIVE e IN_PLAY per partite di oggi
+            const validStatuses = ['SCHEDULED', 'TIMED', 'POSTPONED', 'LIVE', 'IN_PLAY'];
             const hasValidStatus = validStatuses.includes(status);
             
-            // Verifica anche che la data sia nel futuro
+            // Verifica che la data sia nel range (da oggi a N giorni nel futuro)
+            // Usa today invece di now per includere tutti i match di oggi
             const matchDate = new Date(match.utcDate);
-            const now = new Date();
-            const isInFuture = matchDate >= now;
+            const matchDateOnly = new Date(matchDate);
+            matchDateOnly.setHours(0, 0, 0, 0);
             
-            // Accetta se ha status valido O se è nel futuro (doppio controllo)
-            return hasValidStatus && isInFuture;
+            // Match deve essere >= oggi e <= N giorni nel futuro
+            const isInRange = matchDateOnly >= today && matchDateOnly <= daysLater;
+            
+            // Accetta se ha status valido E è nel range E appartiene alla competizione corretta
+            return hasValidStatus && isInRange && isCorrectCompetition;
           }
         );
         
@@ -111,6 +158,8 @@ export async function GET() {
           scheduledMatches.forEach(match => {
             console.log(`  ✅ ${match.competition.name} (${match.competition.code}) | ${match.homeTeam.name} vs ${match.awayTeam.name} | ${match.utcDate}`);
           });
+        } else if (data.matches && data.matches.length > 0) {
+          console.log(`⚠️ Nessun match valido dopo il filtro per ${comp.name}. Match totali: ${data.matches.length}`);
         }
         
         allMatches = [...allMatches, ...scheduledMatches];

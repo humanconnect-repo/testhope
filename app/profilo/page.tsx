@@ -198,12 +198,41 @@ export default function ProfiloPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Form profilo */}
-          <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-8">
+          {/* Mobile: Wallet connesso (primo) */}
+          <div className="lg:order-2">
+            {/* Info wallet */}
+            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                🔗 Wallet connesso
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Indirizzo</p>
+                  <p className="font-mono text-sm text-gray-900 dark:text-white break-all">
+                    {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ''}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Stato</p>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-green-600 dark:text-green-400 font-medium">
+                      Connesso
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile: Form profilo (secondo) */}
+          <div className="lg:col-span-2 lg:order-1">
             <ProfileForm />
-            
-            {/* Volumi BNB */}
+          </div>
+
+          {/* Mobile: Volumi BNB (terzo) */}
+          <div className="lg:col-span-2 lg:order-3 lg:-mt-6">
             <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 💰 Volumi in BNB
@@ -270,6 +299,64 @@ export default function ProfiloPage() {
               </div>
             </div>
 
+          </div>
+
+          {/* Mobile: Statistiche (quarto) */}
+          <div className="lg:order-4">
+            {/* Statistiche */}
+            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                📊 Le tue statistiche
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Prediction fatte</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {(bnbLoading || resolvedLoading) ? (
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8"></div>
+                      </div>
+                    ) : (bnbError || resolvedError) ? (
+                      <span className="text-red-500 dark:text-red-400 text-xs">Errore</span>
+                    ) : (
+                      totalResolvedPredictions
+                    )}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Prediction vinte</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {bnbLoading ? (
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8"></div>
+                      </div>
+                    ) : bnbError ? (
+                      <span className="text-red-500 dark:text-red-400 text-xs">Errore</span>
+                    ) : (
+                      wonPredictions
+                    )}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Percentuale successo</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {(bnbLoading || resolvedLoading) ? (
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-12"></div>
+                      </div>
+                    ) : bnbError ? (
+                      <span className="text-red-500 dark:text-red-400 text-xs">Errore</span>
+                    ) : (
+                      `${successRate}%`
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile: Prediction in corso (sesto) */}
+          <div className="lg:col-span-2 lg:order-6">
             {/* Le tue Prediction in corso */}
             <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -378,83 +465,8 @@ export default function ProfiloPage() {
             </div>
           </div>
 
-          {/* Info aggiuntive */}
-          <div className="space-y-6">
-            {/* Info wallet */}
-            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                🔗 Wallet connesso
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Indirizzo</p>
-                  <p className="font-mono text-sm text-gray-900 dark:text-white break-all">
-                    {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ''}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Stato</p>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-green-600 dark:text-green-400 font-medium">
-                      Connesso
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Statistiche */}
-            <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                📊 Le tue statistiche
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">Prediction fatte</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {(bnbLoading || resolvedLoading) ? (
-                      <div className="animate-pulse">
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8"></div>
-                      </div>
-                    ) : (bnbError || resolvedError) ? (
-                      <span className="text-red-500 dark:text-red-400 text-xs">Errore</span>
-                    ) : (
-                      totalResolvedPredictions
-                    )}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">Prediction vinte</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {bnbLoading ? (
-                      <div className="animate-pulse">
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8"></div>
-                      </div>
-                    ) : bnbError ? (
-                      <span className="text-red-500 dark:text-red-400 text-xs">Errore</span>
-                    ) : (
-                      wonPredictions
-                    )}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">Percentuale successo</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {(bnbLoading || resolvedLoading) ? (
-                      <div className="animate-pulse">
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-12"></div>
-                      </div>
-                    ) : bnbError ? (
-                      <span className="text-red-500 dark:text-red-400 text-xs">Errore</span>
-                    ) : (
-                      `${successRate}%`
-                    )}
-                  </span>
-                </div>
-              </div>
-            </div>
-
+          {/* Mobile: Prediction risolte (quinto) */}
+          <div className="lg:order-5 lg:-mt-6">
             {/* Le tue Prediction risolte */}
             <div id="resolved-predictions-section" className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -572,9 +584,11 @@ export default function ProfiloPage() {
                 </>
               )}
             </div>
+          </div>
 
-            {/* Le tue Prediction cancellate - mostrato solo se ci sono prediction cancellate */}
-            {cancelledLoading ? (
+          {/* Mobile: Prediction cancellate (settimo) - mostrato solo se ci sono prediction cancellate */}
+          {cancelledLoading ? (
+            <div className="lg:col-span-3 lg:order-7">
               <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   ❌ Le tue Prediction cancellate
@@ -590,7 +604,9 @@ export default function ProfiloPage() {
                   </div>
                 </div>
               </div>
-            ) : cancelledError ? (
+            </div>
+          ) : cancelledError ? (
+            <div className="lg:col-span-3 lg:order-7">
               <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   ❌ Le tue Prediction cancellate
@@ -599,7 +615,9 @@ export default function ProfiloPage() {
                   <p className="text-red-500 dark:text-red-400 text-sm">{cancelledError}</p>
                 </div>
               </div>
-            ) : cancelledPredictions.length > 0 ? (
+            </div>
+          ) : cancelledPredictions.length > 0 ? (
+            <div className="lg:col-span-3 lg:order-7">
               <div className="bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   ❌ Le tue Prediction cancellate
@@ -650,8 +668,8 @@ export default function ProfiloPage() {
                   ))}
                 </div>
               </div>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
       </main>
     </div>

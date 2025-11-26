@@ -9,6 +9,7 @@ import TransactionProgressModal, { TransactionStep } from './TransactionProgress
 import AdminProgressModal, { AdminStep } from './AdminProgressModal';
 import ImageUpload from './ImageUpload';
 import FootballMatches from './FootballMatches';
+import ChampionsLeagueMatches from './ChampionsLeagueMatches';
 import PolymarketMarkets from './PolymarketMarkets';
 
 interface Prediction {
@@ -3423,6 +3424,9 @@ contract PredictionPool is Ownable, ReentrancyGuard {
 
       {/* Sezione Prediction Serie A */}
       <FootballMatches />
+
+      {/* Sezione Prediction Champions League */}
+      <ChampionsLeagueMatches />
 
       {/* Sezione Smart Contracts */}
       <div>

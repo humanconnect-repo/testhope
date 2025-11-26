@@ -122,13 +122,6 @@ export default function ClassificaPage() {
                 Su desktop vedi più dettagli...
               </div>
             </div>
-            
-            {/* Tooltip per desktop */}
-            <div className="hidden sm:flex mb-4 justify-center">
-              <div className="inline-block text-sm font-medium text-gray-600 dark:text-gray-400 bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2">
-                Su desktop vedi più dettagli...
-              </div>
-            </div>
             <div>
             <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
